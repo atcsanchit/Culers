@@ -1,0 +1,144 @@
+{
+  "venues": {
+    "2580": {
+      "groundId": 2580,
+      "name": "Mendizorroza",
+      "path": "/backgrounds/stadium/venues/2580-mendizorroza.jpg",
+      "source": "Bundled stadium photo"
+    },
+    "2589": {
+      "groundId": 2589,
+      "name": "Estadio de la Cerámica",
+      "path": "/backgrounds/stadium/venues/2589-estadio-de-la-ceramica.jpg",
+      "source": "Bundled stadium photo"
+    },
+    "2593": {
+      "groundId": 2593,
+      "name": "Ciutat de Valencia",
+      "path": "/backgrounds/stadium/venues/2593-ciutat-de-valencia.jpg",
+      "source": "Bundled stadium photo"
+    },
+    "2598": {
+      "groundId": 2598,
+      "name": "San Mamés",
+      "path": "/backgrounds/stadium/venues/2598-san-mames.jpg",
+      "source": "Bundled stadium photo"
+    },
+    "2602": {
+      "groundId": 2602,
+      "name": "Parc des Princes",
+      "path": "/backgrounds/stadium/venues/2602-parc-des-princes.jpg",
+      "source": "Bundled stadium photo"
+    },
+    "2645": {
+      "groundId": 2645,
+      "name": "Estádio José Alvalade",
+      "path": "/backgrounds/stadium/venues/2645-estadio-jose-alvalade.jpg",
+      "source": "Bundled stadium photo"
+    },
+    "2743": {
+      "groundId": 2743,
+      "name": "Estadio de Vallecas",
+      "path": "/backgrounds/stadium/venues/2743-estadio-de-vallecas.jpg",
+      "source": "Bundled stadium photo"
+    },
+    "2765": {
+      "groundId": 2765,
+      "name": "ABANCA-Riazor",
+      "path": "/backgrounds/stadium/venues/2765-abanca-riazor.jpg",
+      "source": "Bundled stadium photo"
+    },
+    "3294": {
+      "groundId": 3294,
+      "name": "La Rosaleda",
+      "path": "/backgrounds/stadium/venues/3294-la-rosaleda.jpg",
+      "source": "Bundled stadium photo"
+    },
+    "3924": {
+      "groundId": 3924,
+      "name": "Spotify Camp Nou",
+      "path": "/backgrounds/stadium/venues/3924-spotify-camp-nou.jpg",
+      "source": "Bundled stadium photo"
+    },
+    "5342": {
+      "groundId": 5342,
+      "name": "Riyadh Air Metropolitano",
+      "path": "/backgrounds/stadium/venues/5342-riyadh-air-metropolitano.jpg",
+      "source": "Bundled stadium photo"
+    },
+    "5425": {
+      "groundId": 5425,
+      "name": "Estadio Coliseum",
+      "path": "/backgrounds/stadium/venues/5425-estadio-coliseum.jpg",
+      "source": "Bundled stadium photo"
+    },
+    "5431": {
+      "groundId": 5431,
+      "name": "Stage Front Stadium",
+      "path": "/backgrounds/stadium/venues/5431-stage-front-stadium.jpg",
+      "source": "Bundled stadium photo"
+    },
+    "6557": {
+      "groundId": 6557,
+      "name": "RAMS Park",
+      "path": "/backgrounds/stadium/venues/6557-rams-park.jpg",
+      "source": "Bundled stadium photo"
+    },
+    "7017": {
+      "groundId": 7017,
+      "name": "El Sadar",
+      "path": "/backgrounds/stadium/venues/7017-el-sadar.jpg",
+      "source": "Bundled stadium photo"
+    },
+    "7018": {
+      "groundId": 7018,
+      "name": "Reale Arena",
+      "path": "/backgrounds/stadium/venues/7018-reale-arena.jpg",
+      "source": "Bundled stadium photo"
+    },
+    "7023": {
+      "groundId": 7023,
+      "name": "Martínez Valero",
+      "path": "/backgrounds/stadium/venues/7023-martinez-valero.jpg",
+      "source": "Bundled stadium photo"
+    },
+    "7338": {
+      "groundId": 7338,
+      "name": "El Sardinero",
+      "path": "/backgrounds/stadium/venues/7338-el-sardinero.jpg",
+      "source": "Bundled stadium photo"
+    },
+    "9096": {
+      "groundId": 9096,
+      "name": "Estadio Abanca-Balaídos",
+      "path": "/backgrounds/stadium/venues/9096-estadio-abanca-balaidos.jpg",
+      "source": "Bundled stadium photo"
+    },
+    "9558": {
+      "groundId": 9558,
+      "name": "Estadio La Cartuja de Sevilla",
+      "path": "/backgrounds/stadium/venues/9558-estadio-la-cartuja-de-sevilla.jpg",
+      "source": "Bundled stadium photo"
+    },
+    "9623": {
+      "groundId": 9623,
+      "name": "Mestalla",
+      "path": "/backgrounds/stadium/venues/9623-mestalla.jpg",
+      "source": "Bundled stadium photo"
+    },
+    "9624": {
+      "groundId": 9624,
+      "name": "Ramón Sánchez-Pizjuán",
+      "path": "/backgrounds/stadium/venues/9624-ramon-sanchez-pizjuan.jpg",
+      "source": "Bundled stadium photo"
+    },
+    "9840": {
+      "groundId": 9840,
+      "name": "Estadio Bernabéu",
+      "path": "/backgrounds/stadium/venues/9840-estadio-bernabeu.jpg",
+      "source": "Bundled stadium photo"
+    }
+  },
+  "fixtures": {},
+  "updatedAt": "2026-09-04T17:37:12.831Z"
+}

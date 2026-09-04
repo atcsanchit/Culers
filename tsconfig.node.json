@@ -1,0 +1,33 @@
+{
+	"compilerOptions": {
+		"tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+		"target": "ES2023",
+		"lib": ["ES2023"],
+		"module": "ESNext",
+		"skipLibCheck": true,
+		"moduleResolution": "bundler",
+		"allowImportingTsExtensions": true,
+		"verbatimModuleSyntax": true,
+		"moduleDetection": "force",
+		"noEmit": true,
+		"strict": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"erasableSyntaxOnly": true,
+		"noFallthroughCasesInSwitch": true,
+		"noUncheckedSideEffectImports": true
+	},
+	"include": [
+		"vite.config.ts",
+		"culers-fetch.ts",
+		"culers-api-handlers.ts",
+		"culers-lineup.ts",
+		"culers-fcb.ts",
+		"culers-twitter.ts",
+		"culers-stadium-sync.ts",
+		"culers-stadium-photos.ts",
+		"culers-stadium-plugin.ts",
+		"culers-home-backgrounds.ts",
+		"scripts/sync-stadiums.ts"
+	]
+}
