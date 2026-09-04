@@ -13,6 +13,7 @@ const FCB_SITE = 'https://www.fcbarcelona.com';
 const THESPORTSDB = 'https://www.thesportsdb.com/api/v1/json/3';
 const CAMP_NOU_BG = '/backgrounds/player/camp-nou-grass.jpg';
 const PROJECT_ROOT = process.cwd();
+const IS_SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 
 const venueCache = new Map<string, string>();
 
@@ -91,6 +92,9 @@ async function fetchFcbMatchReportPhoto(optaId: string, awayTeam: string): Promi
 }
 
 async function cacheFixturePhoto(fixtureId: string, remoteUrl: string): Promise<string> {
+	// Vercel serverless FS is read-only — never mkdir/write; use the remote URL as-is.
+	if (IS_SERVERLESS) return remoteUrl;
+
 	try {
 		const res = await fetch(remoteUrl, {
 			headers: { 'User-Agent': 'Culers/1.0 (local Barcelona fan app)' },
@@ -121,30 +125,53 @@ export type StadiumPhotoInput = {
 /**
  * Resolve stadium background for match review modal.
  * Priority: fixture override → venue bundle → TheSportsDB → FCB match photo → Camp Nou grass.
+ * On serverless, never sync/write to disk — return public paths or remote URLs only.
  */
 export async function fetchStadiumBackground(input: StadiumPhotoInput): Promise<string> {
 	const { fixtureId, venueName, groundId, optaId, awayTeam = '', homeTeam = '' } = input;
 	if (!venueName?.trim() && !groundId) return CAMP_NOU_BG;
 
-	let manifest = loadStadiumManifest(PROJECT_ROOT);
-	if (!manifest?.venues || Object.keys(manifest.venues).length === 0) {
-		manifest = await syncStadiumPhotos(PROJECT_ROOT);
+	try {
+		if (IS_SERVERLESS) {
+			// Static assets from the Vite build are served by the CDN; don't require local FS.
+			const manifest = loadStadiumManifest(PROJECT_ROOT);
+			const fromManifest = resolveStadiumPathFromManifest(manifest, fixtureId, groundId);
+			if (fromManifest) return fromManifest;
+			if (groundId && venueName) return venuePublicPath(groundId, venueName);
+
+			const tsdb = await fetchTheSportsDbVenuePhoto(venueName);
+			if (tsdb) return tsdb;
+
+			const opponent = awayTeam.toLowerCase().includes('barcelona') ? homeTeam : awayTeam;
+			const matchPhoto = await fetchFcbMatchReportPhoto(optaId ?? '', opponent);
+			if (matchPhoto) return matchPhoto;
+
+			return CAMP_NOU_BG;
+		}
+
+		let manifest = loadStadiumManifest(PROJECT_ROOT);
+		if (!manifest?.venues || Object.keys(manifest.venues).length === 0) {
+			manifest = await syncStadiumPhotos(PROJECT_ROOT);
+		}
+
+		const fromManifest = resolveStadiumPathFromManifest(manifest, fixtureId, groundId);
+		if (fromManifest && localStadiumFileExists(PROJECT_ROOT, fromManifest)) return fromManifest;
+
+		if (groundId) {
+			const expected = venuePublicPath(groundId, venueName);
+			if (localStadiumFileExists(PROJECT_ROOT, expected)) return expected;
+		}
+
+		const tsdb = await fetchTheSportsDbVenuePhoto(venueName);
+		if (tsdb) return tsdb;
+
+		const opponent = awayTeam.toLowerCase().includes('barcelona') ? homeTeam : awayTeam;
+		const matchPhoto = await fetchFcbMatchReportPhoto(optaId ?? '', opponent);
+		if (matchPhoto) return cacheFixturePhoto(fixtureId, matchPhoto);
+
+		return CAMP_NOU_BG;
+	} catch (err) {
+		console.warn('[stadium]', err);
+		return CAMP_NOU_BG;
 	}
-
-	const fromManifest = resolveStadiumPathFromManifest(manifest, fixtureId, groundId);
-	if (fromManifest && localStadiumFileExists(PROJECT_ROOT, fromManifest)) return fromManifest;
-
-	if (groundId) {
-		const expected = venuePublicPath(groundId, venueName);
-		if (localStadiumFileExists(PROJECT_ROOT, expected)) return expected;
-	}
-
-	const tsdb = await fetchTheSportsDbVenuePhoto(venueName);
-	if (tsdb) return tsdb;
-
-	const opponent = awayTeam.toLowerCase().includes('barcelona') ? homeTeam : awayTeam;
-	const matchPhoto = await fetchFcbMatchReportPhoto(optaId ?? '', opponent);
-	if (matchPhoto) return cacheFixturePhoto(fixtureId, matchPhoto);
-
-	return CAMP_NOU_BG;
 }

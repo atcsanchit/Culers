@@ -437,6 +437,7 @@ var FCB_SITE = "https://www.fcbarcelona.com";
 var THESPORTSDB2 = "https://www.thesportsdb.com/api/v1/json/3";
 var CAMP_NOU_BG = "/backgrounds/player/camp-nou-grass.jpg";
 var PROJECT_ROOT = process.cwd();
+var IS_SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 var venueCache = /* @__PURE__ */ new Map();
 function normalizeVenue(name) {
   return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
@@ -501,6 +502,7 @@ async function fetchFcbMatchReportPhoto(optaId, awayTeam) {
   return "";
 }
 async function cacheFixturePhoto(fixtureId, remoteUrl) {
+  if (IS_SERVERLESS) return remoteUrl;
   try {
     const res = await fetch(remoteUrl, {
       headers: { "User-Agent": "Culers/1.0 (local Barcelona fan app)" }
@@ -521,22 +523,39 @@ async function cacheFixturePhoto(fixtureId, remoteUrl) {
 async function fetchStadiumBackground(input) {
   const { fixtureId, venueName, groundId, optaId, awayTeam = "", homeTeam = "" } = input;
   if (!venueName?.trim() && !groundId) return CAMP_NOU_BG;
-  let manifest = loadStadiumManifest(PROJECT_ROOT);
-  if (!manifest?.venues || Object.keys(manifest.venues).length === 0) {
-    manifest = await syncStadiumPhotos(PROJECT_ROOT);
+  try {
+    if (IS_SERVERLESS) {
+      const manifest2 = loadStadiumManifest(PROJECT_ROOT);
+      const fromManifest2 = resolveStadiumPathFromManifest(manifest2, fixtureId, groundId);
+      if (fromManifest2) return fromManifest2;
+      if (groundId && venueName) return venuePublicPath(groundId, venueName);
+      const tsdb2 = await fetchTheSportsDbVenuePhoto(venueName);
+      if (tsdb2) return tsdb2;
+      const opponent2 = awayTeam.toLowerCase().includes("barcelona") ? homeTeam : awayTeam;
+      const matchPhoto2 = await fetchFcbMatchReportPhoto(optaId ?? "", opponent2);
+      if (matchPhoto2) return matchPhoto2;
+      return CAMP_NOU_BG;
+    }
+    let manifest = loadStadiumManifest(PROJECT_ROOT);
+    if (!manifest?.venues || Object.keys(manifest.venues).length === 0) {
+      manifest = await syncStadiumPhotos(PROJECT_ROOT);
+    }
+    const fromManifest = resolveStadiumPathFromManifest(manifest, fixtureId, groundId);
+    if (fromManifest && localStadiumFileExists(PROJECT_ROOT, fromManifest)) return fromManifest;
+    if (groundId) {
+      const expected = venuePublicPath(groundId, venueName);
+      if (localStadiumFileExists(PROJECT_ROOT, expected)) return expected;
+    }
+    const tsdb = await fetchTheSportsDbVenuePhoto(venueName);
+    if (tsdb) return tsdb;
+    const opponent = awayTeam.toLowerCase().includes("barcelona") ? homeTeam : awayTeam;
+    const matchPhoto = await fetchFcbMatchReportPhoto(optaId ?? "", opponent);
+    if (matchPhoto) return cacheFixturePhoto(fixtureId, matchPhoto);
+    return CAMP_NOU_BG;
+  } catch (err) {
+    console.warn("[stadium]", err);
+    return CAMP_NOU_BG;
   }
-  const fromManifest = resolveStadiumPathFromManifest(manifest, fixtureId, groundId);
-  if (fromManifest && localStadiumFileExists(PROJECT_ROOT, fromManifest)) return fromManifest;
-  if (groundId) {
-    const expected = venuePublicPath(groundId, venueName);
-    if (localStadiumFileExists(PROJECT_ROOT, expected)) return expected;
-  }
-  const tsdb = await fetchTheSportsDbVenuePhoto(venueName);
-  if (tsdb) return tsdb;
-  const opponent = awayTeam.toLowerCase().includes("barcelona") ? homeTeam : awayTeam;
-  const matchPhoto = await fetchFcbMatchReportPhoto(optaId ?? "", opponent);
-  if (matchPhoto) return cacheFixturePhoto(fixtureId, matchPhoto);
-  return CAMP_NOU_BG;
 }
 
 // culers-sofascore.ts
@@ -2472,14 +2491,14 @@ var ROOT2 = path5.dirname(fileURLToPath2(import.meta.url));
 var PYTHON2 = path5.join(ROOT2, ".venv-sofascore", "bin", "python");
 var INSTAGRAM_SCRIPT = path5.join(ROOT2, "scripts", "instagram-scrape.py");
 var CACHE_DIR = path5.join(ROOT2, ".cache", "instagram");
-var IS_SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+var IS_SERVERLESS2 = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 var BARCA_X_HANDLE = "FCBarcelona";
 var BARCA_INSTAGRAM_USER = "fcbarcelona";
 function proxyInstagramImage(id) {
   return `/api/social/instagram/image?id=${encodeURIComponent(id)}`;
 }
 async function runInstagramScraper() {
-  if (IS_SERVERLESS) return null;
+  if (IS_SERVERLESS2) return null;
   return new Promise((resolve) => {
     const child = spawn2(PYTHON2, [INSTAGRAM_SCRIPT, BARCA_INSTAGRAM_USER], { cwd: ROOT2 });
     let stdout = "";
