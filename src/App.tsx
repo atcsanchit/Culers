@@ -17,19 +17,31 @@ import { MatchSummaryModal } from './components/MatchSummaryModal';
 import { SocialDock } from './components/SocialDock';
 import { SocialFeedModal } from './components/SocialFeedModal';
 import { DATA_SOURCES } from './lib/sources';
+import { useRivalryMode } from './hooks/useRivalryMode';
 import type { SocialPlatformId } from './types';
 
 function Body() {
 	const { tab, data, selectedPlayer, playerOpenOrigin, playerStatsContext, closePlayerStats, selectedMatchSummary, closeMatchSummary } = useBarca();
 	const [socialPlatform, setSocialPlatform] = useState<SocialPlatformId | null>(null);
+	const liveMatch = data?.live.live ? data.live.match : null;
+	const rivalry = useRivalryMode(data?.fixtures, liveMatch);
 
 	return (
 		<FetchAnimationProvider>
 			<>
 			<BarcaAmbience />
 			<StadiumBackdrop />
-			<div className="app-shell">
-			<Header />
+			<div
+				className={[
+					'app-shell',
+					rivalry.themeOn && rivalry.themeId ? 'rivalry-mode' : '',
+					rivalry.themeOn && rivalry.themeId ? `rivalry-theme-${rivalry.themeId}` : '',
+				]
+					.filter(Boolean)
+					.join(' ')}
+				data-rivalry={rivalry.themeOn ? rivalry.themeId ?? undefined : undefined}
+			>
+			<Header rivalry={rivalry.active} />
 			<AppNav />
 			<main className="app-main">
 				{tab === 'home' && <HomePage />}

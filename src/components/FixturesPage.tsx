@@ -10,11 +10,16 @@ import { HomeNewsCard } from './HomeNewsCard';
 import { RecentFormCarousel } from './RecentFormCarousel';
 import { OnThisDayCard } from './OnThisDayCard';
 import { LaMasiaSpotlight } from './LaMasiaSpotlight';
+import { RivalryModePanel } from './RivalryModePanel';
+import { useRivalryMode } from '../hooks/useRivalryMode';
+import { matchRivalry } from '../lib/rivalry';
 import { BARCA_CREST } from '../lib/photos';
 
 export function HomePage() {
 	const { data, setTab, goLive, openFixture, openPlayerStats } = useBarca();
 	const { isActive: fetchAnimActive } = useFetchAnimationState();
+	const liveMatch = data?.live.live ? data.live.match : null;
+	const { active: rivalry } = useRivalryMode(data?.fixtures, liveMatch ?? null);
 
 	if (!data) {
 		return (
@@ -30,17 +35,23 @@ export function HomePage() {
 	}
 
 	const next = data.fixtures.find((f) => f.kind === 'upcoming');
-	const liveMatch = data.live.live ? data.live.match : null;
 	const todayNews = data.news.slice(0, 4);
+	const nextIsRivalry = next ? matchRivalry(next.opponent) : null;
 
 	return (
 		<section className="home-page">
-			<div className={`hero home-hero${fetchAnimActive ? ' is-fetch-active' : ''}`}>
+			<div
+				className={`hero home-hero${fetchAnimActive ? ' is-fetch-active' : ''}${rivalry ? ' has-rivalry' : ''}`}
+			>
 				<FetchHeroBackdrop />
 				<div className="hero-text">
-					<span className="eyebrow">Visca el Barça</span>
-					<h2>Més que un club</h2>
-					<p>Fixtures, live matchday, squad intel & Barça news — synced on demand.</p>
+					<span className="eyebrow">{rivalry ? rivalry.rivalry.name : 'Visca el Barça'}</span>
+					<h2>{rivalry ? 'Rivalry mode' : 'Més que un club'}</h2>
+					<p>
+						{rivalry
+							? rivalry.rivalry.tagline
+							: 'Fixtures, live matchday, squad intel & Barça news — synced on demand.'}
+					</p>
 					<div className="hero-actions">
 						{data.live.live && (
 							<button type="button" className="btn-live" onClick={goLive}>
@@ -71,7 +82,16 @@ export function HomePage() {
 				</div>
 			</div>
 
-			{liveMatch && (
+			{rivalry && (
+				<RivalryModePanel
+					ctx={rivalry}
+					fixtures={data.fixtures}
+					onOpenFixture={openFixture}
+					onGoLive={goLive}
+				/>
+			)}
+
+			{liveMatch && !matchRivalry(liveMatch.opponent) && (
 				<div className="home-block live-block glass-panel">
 					<h3>Happening now</h3>
 					<Scoreboard fixture={liveMatch} live clock={data.live.clock} />
@@ -88,12 +108,13 @@ export function HomePage() {
 					{next ? (
 						<button
 							type="button"
-							className="fixture-spotlight"
+							className={`fixture-spotlight${nextIsRivalry ? ` is-rivalry rivalry-row-${nextIsRivalry.id}` : ''}`}
 							onClick={() => openFixture(next)}
 						>
 							<img src={BARCA_CREST} alt="" className="fixture-crest-watermark" aria-hidden />
 							<div className="fixture-spotlight-main">
 								<span className="comp-badge">{next.competition}</span>
+								{nextIsRivalry && <span className="rivalry-chip">{nextIsRivalry.shortLabel}</span>}
 								<strong className="fixture-opponent">vs {next.opponent}</strong>
 								<span className="fixture-when">{formatFixtureWhen(next.date, next.time)}</span>
 								<span className="fixture-venue">{next.isHome ? 'Spotify Camp Nou' : next.venue}</span>
@@ -151,7 +172,7 @@ export function HomePage() {
 
 export function FixturesPage() {
 	const { data, openFixture } = useBarca();
-	const [filter, setFilter] = useState<'all' | 'laliga' | 'ucl' | 'upcoming' | 'past'>('all');
+	const [filter, setFilter] = useState<'all' | 'laliga' | 'ucl' | 'upcoming' | 'past' | 'rivalries'>('all');
 	const [calDate, setCalDate] = useState<string | null>(null);
 
 	if (!data) {
@@ -167,11 +188,13 @@ export function FixturesPage() {
 		if (filter === 'ucl') return f.competition === 'UEFA Champions League';
 		if (filter === 'upcoming') return f.kind === 'upcoming';
 		if (filter === 'past') return f.kind === 'past';
+		if (filter === 'rivalries') return Boolean(matchRivalry(f.opponent));
 		return true;
 	});
 
 	const laligaCount = allowed.filter((f) => f.competition === 'La Liga').length;
 	const uclCount = allowed.filter((f) => f.competition === 'UEFA Champions League').length;
+	const rivalryCount = allowed.filter((f) => matchRivalry(f.opponent)).length;
 
 	return (
 		<section className="fixtures-page">
@@ -179,7 +202,8 @@ export function FixturesPage() {
 				<h2>Fixtures</h2>
 				<p>
 					La Liga & UEFA Champions League from FC Barcelona official calendar — {laligaCount} league, {uclCount}{' '}
-					European.
+					European
+					{rivalryCount ? ` · ${rivalryCount} rivalry` : ''}.
 				</p>
 			</div>
 
@@ -189,6 +213,7 @@ export function FixturesPage() {
 						['all', 'All'],
 						['laliga', 'La Liga'],
 						['ucl', 'UCL'],
+						['rivalries', 'Rivalries'],
 						['upcoming', 'Upcoming'],
 						['past', 'Results'],
 					] as const
@@ -212,11 +237,12 @@ export function FixturesPage() {
 			<div className="fixture-list">
 				{filtered.map((f) => {
 					const result = resultLabel(f);
+					const rivalry = matchRivalry(f.opponent);
 					return (
 						<button
 							key={f.id}
 							type="button"
-							className="fixture-row"
+							className={`fixture-row${rivalry ? ` is-rivalry rivalry-row-${rivalry.id}` : ''}`}
 							onClick={() => openFixture(f)}
 						>
 							<div className="fixture-date">
@@ -224,6 +250,7 @@ export function FixturesPage() {
 								<span className={`comp-badge ${f.competition.includes('Champions') ? 'ucl' : 'laliga'}`}>
 									{f.competition.includes('Champions') ? 'UCL' : 'La Liga'}
 								</span>
+								{rivalry && <span className="rivalry-chip">{rivalry.shortLabel}</span>}
 							</div>
 							<div className="fixture-match">
 								<span>{f.isHome ? 'Barça' : f.opponent}</span>

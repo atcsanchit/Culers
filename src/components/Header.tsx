@@ -6,8 +6,13 @@ import { useAnthemMute } from '../hooks/useBarcaAnthem';
 import { useFetchSfxMute } from '../hooks/useFetchSfxMute';
 import { BARCA } from '../lib/sources';
 import { BARCA_CREST } from '../lib/photos';
+import type { RivalryContext } from '../lib/rivalry';
 
-export function Header() {
+type Props = {
+	rivalry?: RivalryContext | null;
+};
+
+export function Header({ rivalry = null }: Props) {
 	const { muted: anthemMuted, toggleMute: toggleAnthem } = useAnthemMute();
 	const { muted: fetchSfxMuted, toggleMute: toggleFetchSfx } = useFetchSfxMute();
 
@@ -24,7 +29,15 @@ export function Header() {
 					</p>
 				</div>
 			</div>
-			<FetchHeaderStatus />
+			<div className="header-center">
+				{rivalry && (
+					<span className={`header-rivalry-pill rivalry-pill-${rivalry.rivalry.id}`} title={rivalry.rivalry.tagline}>
+						{rivalry.phase === 'live' ? 'LIVE · ' : ''}
+						{rivalry.rivalry.shortLabel}
+					</span>
+				)}
+				<FetchHeaderStatus />
+			</div>
 			<div className="header-actions">
 				<AnthemMuteButton muted={anthemMuted} onToggle={toggleAnthem} />
 				<FetchSfxMuteButton muted={fetchSfxMuted} onToggle={toggleFetchSfx} />
