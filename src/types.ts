@@ -37,6 +37,8 @@ export type NewsItem = {
 export type Player = {
 	id: string;
 	fcbId?: number;
+	/** SofaScore id — used for Barça Atlètic / reserve stats */
+	sofaId?: number;
 	name: string;
 	position: string;
 	number: string;
@@ -56,6 +58,20 @@ export type Squad = {
 		starters: number;
 		subs: number;
 	};
+};
+
+export type LaMasiaPlayer = Player & {
+	sofaId?: number;
+	group: 'first-team' | 'atletic';
+	statsAvailable: boolean;
+};
+
+export type LaMasiaHub = {
+	firstTeam: LaMasiaPlayer[];
+	atletic: LaMasiaPlayer[];
+	fetchedAt: string;
+	source: string;
+	note?: string;
 };
 
 export type TimelineEvent = {

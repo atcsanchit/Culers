@@ -1,4 +1,4 @@
-import type { FetchPayload, InstagramFeed, LineupData, LiveData, MatchSummary, PlayerMatchStats, PlayerStats, SocialHubData, XFeed } from '../types';
+import type { FetchPayload, InstagramFeed, LaMasiaHub, LineupData, LiveData, MatchSummary, PlayerMatchStats, PlayerStats, SocialHubData, XFeed } from '../types';
 
 export const LIVE_POLL_MS = 10_000;
 
@@ -68,6 +68,18 @@ export async function fetchLineup(fixtureId?: string): Promise<LineupData> {
 	const qs = fixtureId ? `?fixtureId=${encodeURIComponent(fixtureId)}` : '';
 	const res = await fetch(`/api/lineup${qs}`);
 	if (!res.ok) throw new Error('Failed to fetch lineup');
+	return res.json();
+}
+
+export async function fetchLaMasia(): Promise<LaMasiaHub> {
+	const res = await fetch('/api/la-masia');
+	if (!res.ok) throw new Error('Failed to fetch La Masia squad');
+	return res.json();
+}
+
+export async function fetchLaMasiaPlayerStats(sofaId: number): Promise<PlayerStats> {
+	const res = await fetch(`/api/la-masia-player-stats?sofaId=${sofaId}`);
+	if (!res.ok) throw new Error('Failed to fetch Atlètic player stats');
 	return res.json();
 }
 

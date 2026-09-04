@@ -525,6 +525,179 @@ a {
 	margin-bottom: 1rem;
 }
 
+.culture-grid .home-block {
+	margin-bottom: 0;
+}
+
+.culture-card-body {
+	display: flex;
+	flex-direction: column;
+	gap: 0.55rem;
+	min-height: 168px;
+}
+
+.culture-meta-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.4rem 0.75rem;
+}
+
+.culture-tag {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.2rem 0.55rem;
+	border-radius: 999px;
+	font-size: 0.68rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--gold);
+	border: 1px solid rgba(212, 175, 55, 0.35);
+	background: rgba(212, 175, 55, 0.08);
+}
+
+.culture-tag.is-exact {
+	color: #f5d76e;
+	border-color: rgba(245, 215, 110, 0.55);
+	box-shadow: 0 0 16px rgba(212, 175, 55, 0.12);
+}
+
+.culture-when {
+	font-size: 0.78rem;
+}
+
+.culture-title {
+	font-family: var(--display);
+	font-size: 1.2rem;
+	letter-spacing: 0.03em;
+	line-height: 1.25;
+}
+
+.culture-blurb {
+	margin: 0;
+	color: var(--muted);
+	font-size: 0.92rem;
+	line-height: 1.45;
+}
+
+.culture-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.75rem;
+	margin-top: auto;
+}
+
+.culture-nav {
+	display: flex;
+	gap: 0.35rem;
+}
+
+.culture-controls {
+	margin-bottom: 0.65rem;
+}
+
+.la-masia-spotlight {
+	position: relative;
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: 0.9rem;
+	width: 100%;
+	padding: 0.95rem 1rem;
+	border-radius: 14px;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	background: rgba(255, 255, 255, 0.03);
+	text-align: left;
+	overflow: hidden;
+	min-height: 168px;
+	color: inherit;
+	cursor: default;
+	transition: border-color 0.2s, transform 0.2s, background 0.2s;
+}
+
+.la-masia-spotlight.is-clickable {
+	cursor: pointer;
+}
+
+.la-masia-spotlight.is-clickable:hover {
+	border-color: rgba(212, 175, 55, 0.4);
+	background: rgba(255, 255, 255, 0.05);
+	transform: translateY(-1px);
+}
+
+.la-masia-spotlight:disabled {
+	opacity: 1;
+}
+
+.la-masia-photo {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	align-items: flex-start;
+}
+
+.la-masia-photo .player-placeholder.lg,
+.la-masia-photo img {
+	width: 72px;
+	height: 72px;
+	border-radius: 16px;
+	object-fit: cover;
+}
+
+.la-masia-crest-fallback {
+	width: 72px;
+	height: 72px;
+	border-radius: 16px;
+	display: grid;
+	place-items: center;
+	background: rgba(0, 0, 0, 0.25);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.la-masia-crest-fallback img {
+	width: 42px;
+	height: 42px;
+	opacity: 0.9;
+}
+
+.la-masia-copy {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 0.3rem;
+	min-width: 0;
+}
+
+.la-masia-pos {
+	font-size: 0.8rem;
+}
+
+.la-masia-debut {
+	font-size: 0.78rem;
+	font-style: italic;
+}
+
+.la-masia-cta {
+	margin-top: 0.25rem;
+	font-size: 0.78rem;
+	letter-spacing: 0.04em;
+	color: var(--gold);
+}
+
+.on-this-day-card {
+	background:
+		radial-gradient(ellipse at top right, rgba(165, 0, 52, 0.18), transparent 55%),
+		var(--glass);
+}
+
+.la-masia-card {
+	background:
+		radial-gradient(ellipse at bottom left, rgba(0, 77, 152, 0.22), transparent 50%),
+		var(--glass);
+}
+
 .home-block {
 	padding: 1.15rem 1.25rem;
 	border-radius: 18px;
@@ -2090,7 +2263,12 @@ a {
 @media (max-width: 768px) {
 	.hero,
 	.home-grid,
+	.culture-grid,
 	.live-graphic {
+		grid-template-columns: 1fr;
+	}
+
+	.la-masia-spotlight {
 		grid-template-columns: 1fr;
 	}
 
@@ -2839,6 +3017,61 @@ a {
 	gap: 0.65rem;
 }
 
+.squad-hub-tabs {
+	margin-bottom: 1rem;
+}
+
+.la-masia-hub {
+	display: flex;
+	flex-direction: column;
+	gap: 1.35rem;
+}
+
+.la-masia-section .section-head.inline {
+	margin-bottom: 0.75rem;
+}
+
+.la-masia-section h3 {
+	margin: 0.15rem 0 0;
+	font-family: var(--display);
+	font-size: 1.25rem;
+	letter-spacing: 0.03em;
+}
+
+.la-masia-badge {
+	display: inline-flex;
+	align-self: flex-start;
+	margin-top: 0.2rem;
+	padding: 0.15rem 0.45rem;
+	border-radius: 999px;
+	font-size: 0.65rem;
+	letter-spacing: 0.07em;
+	text-transform: uppercase;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	color: var(--muted);
+}
+
+.la-masia-badge.first-team {
+	color: var(--gold);
+	border-color: rgba(212, 175, 55, 0.4);
+	background: rgba(212, 175, 55, 0.08);
+}
+
+.la-masia-badge.atletic {
+	color: #8ec7ff;
+	border-color: rgba(142, 199, 255, 0.35);
+	background: rgba(0, 77, 152, 0.2);
+}
+
+.squad-hub-card.is-static {
+	cursor: default;
+}
+
+.squad-hub-card.is-static:hover {
+	transform: none;
+	border-color: var(--line);
+}
+
 .squad-hub-card {
 	display: flex;
 	gap: 0.65rem;
@@ -2975,6 +3208,26 @@ a {
 	object-fit: cover;
 	object-position: top center;
 	z-index: 1;
+}
+
+/* SofaScore / Atlètic headshots are low-res — keep panel full-bleed, contain the photo */
+.modal-photo-panel.is-compact-photo::before {
+	background: rgba(0, 10, 28, 0.55);
+}
+
+.modal-hero-photo.is-compact {
+	inset: auto;
+	top: 8%;
+	left: 0;
+	right: 0;
+	margin-inline: auto;
+	width: min(58%, 340px);
+	height: auto;
+	max-height: 62%;
+	object-fit: contain;
+	object-position: center top;
+	filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.45));
+	border-radius: 4px;
 }
 
 .modal-photo-fallback {
@@ -4508,6 +4761,12 @@ a {
 
 	.modal-hero-photo {
 		max-height: 42vh;
+	}
+
+	.modal-hero-photo.is-compact {
+		top: 6%;
+		width: min(42%, 200px);
+		max-height: 28vh;
 	}
 
 	.stat-row {

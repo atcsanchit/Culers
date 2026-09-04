@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Player, PlayerMatchStats, PlayerStats } from '../types';
 import type { PlayerOpenOrigin, PlayerStatsContext } from '../store/BarcaState';
-import { fetchPlayerMatchStats, fetchPlayerStats, formatDateTime, LIVE_POLL_MS } from '../lib/api';
+import { fetchPlayerMatchStats, fetchPlayerStats, fetchLaMasiaPlayerStats, formatDateTime, LIVE_POLL_MS } from '../lib/api';
 import { useProfileMotion } from '../lib/motion';
 import { CAMP_NOU_BG, playerInitials, playerPhotoSrc } from '../lib/photos';
 
@@ -97,21 +97,31 @@ export function PlayerStatsModal({ player, origin, statsContext, onClose }: Prop
 			setStats(null);
 			return;
 		}
-		if (!player.fcbId) {
+		if (player.fcbId) {
 			setStats(null);
-			setError('No FCB official ID — fetch latest to link squad.');
-			setInitialLoading(false);
+			setInitialLoading(true);
+			setError(null);
+			void fetchPlayerStats(player.fcbId)
+				.then(setStats)
+				.catch(() => setError('Could not load stats from FC Barcelona official API.'))
+				.finally(() => setInitialLoading(false));
+			return;
+		}
+		if (player.sofaId) {
+			setStats(null);
+			setInitialLoading(true);
+			setError(null);
+			void fetchLaMasiaPlayerStats(player.sofaId)
+				.then(setStats)
+				.catch(() => setError('Could not load Barça Atlètic stats from SofaScore.'))
+				.finally(() => setInitialLoading(false));
 			return;
 		}
 
 		setStats(null);
-		setInitialLoading(true);
-		setError(null);
-		void fetchPlayerStats(player.fcbId)
-			.then(setStats)
-			.catch(() => setError('Could not load stats from FC Barcelona official API.'))
-			.finally(() => setInitialLoading(false));
-	}, [player?.fcbId, player?.id, isLiveMatch]);
+		setError('No stats ID — fetch latest to link this player.');
+		setInitialLoading(false);
+	}, [player?.fcbId, player?.sofaId, player?.id, isLiveMatch]);
 
 	if (!player) return null;
 
@@ -121,6 +131,7 @@ export function PlayerStatsModal({ player, origin, statsContext, onClose }: Prop
 			? (stats?.season ?? [])
 			: (stats?.career ?? []);
 	const showPhoto = Boolean(photo && photoOk);
+	const compactPhoto = Boolean(player.sofaId && !player.fcbId);
 	const ox = origin ? (origin.x / window.innerWidth) * 100 : 22;
 	const oy = origin ? (origin.y / window.innerHeight) * 100 : 78;
 
@@ -142,7 +153,7 @@ export function PlayerStatsModal({ player, origin, statsContext, onClose }: Prop
 				}
 			>
 				<div
-					className={`modal-photo-panel profile-photo-panel profile-motion-${motion}`}
+					className={`modal-photo-panel profile-photo-panel profile-motion-${motion}${compactPhoto ? ' is-compact-photo' : ''}`}
 					style={{ backgroundImage: `url(${CAMP_NOU_BG})` }}
 					onClick={requestClose}
 					role="presentation"
@@ -151,7 +162,7 @@ export function PlayerStatsModal({ player, origin, statsContext, onClose }: Prop
 						<img
 							src={photo}
 							alt=""
-							className={`modal-hero-photo profile-hero-photo profile-motion-${motion} ${showPhoto ? '' : 'is-loading'}`}
+							className={`modal-hero-photo profile-hero-photo profile-motion-${motion}${compactPhoto ? ' is-compact' : ''}${showPhoto ? '' : ' is-loading'}`}
 							onLoad={() => setPhotoOk(true)}
 							onError={() => setPhotoOk(false)}
 						/>
@@ -182,17 +193,23 @@ export function PlayerStatsModal({ player, origin, statsContext, onClose }: Prop
 					) : (
 						<div className="stats-tabs">
 							<button type="button" className={tab === 'season' ? 'active' : ''} onClick={() => setTab('season')}>
-								Season {stats?.seasonLabel ?? '2026/27'}
+								{player.sofaId && !player.fcbId
+									? stats?.seasonLabel ?? 'Season'
+									: `Season ${stats?.seasonLabel ?? '2026/27'}`}
 							</button>
 							<button type="button" className={tab === 'career' ? 'active' : ''} onClick={() => setTab('career')}>
-								Barça career
+								{player.sofaId && !player.fcbId ? 'Logged seasons' : 'Barça career'}
 							</button>
 						</div>
 					)}
 
 					{initialLoading && !rows.length && (
 						<p className="muted loading-msg">
-							{isLiveMatch ? 'Loading live match stats…' : 'Loading from FC Barcelona official…'}
+							{isLiveMatch
+								? 'Loading live match stats…'
+								: player.sofaId && !player.fcbId
+									? 'Loading Atlètic stats from SofaScore…'
+									: 'Loading from FC Barcelona official…'}
 						</p>
 					)}
 					{error && !rows.length && <p className="fetch-error">{error}</p>}

@@ -207,6 +207,39 @@ async function sofaFetch(apiPath: string): Promise<Json | null> {
 	return sofaFetchDirect(apiPath);
 }
 
+export type SofaTeamPlayer = {
+	id: number;
+	name: string;
+	position: string;
+	number: string;
+	nationality: string;
+	birthDate: string;
+};
+
+/** Current squad list for a SofaScore team (e.g. Barcelona Atlètic = 24343). */
+export async function sofaFetchTeamPlayers(teamId: number): Promise<SofaTeamPlayer[]> {
+	const data = await sofaFetch(`/team/${teamId}/players`);
+	const rows = (data?.players as Json[]) ?? [];
+	return rows
+		.map((row) => {
+			const player = (row.player as Json | undefined) ?? row;
+			const id = Number(player.id ?? 0);
+			if (!id) return null;
+			const country = player.country as Json | undefined;
+			return {
+				id,
+				name: String(player.name ?? ''),
+				position: String(player.position ?? ''),
+				number: player.jerseyNumber != null || player.shirtNumber != null
+					? String(player.jerseyNumber ?? player.shirtNumber)
+					: '',
+				nationality: String(country?.name ?? ''),
+				birthDate: '',
+			} satisfies SofaTeamPlayer;
+		})
+		.filter(Boolean) as SofaTeamPlayer[];
+}
+
 function parseEvent(raw: Json): SofaScoreEvent | null {
 	const home = raw.homeTeam as Json | undefined;
 	const away = raw.awayTeam as Json | undefined;
@@ -557,4 +590,50 @@ export async function isSofaScoreReady() {
 	return new Promise<boolean>((resolve) => {
 		spawn(PYTHON, ['--version']).on('error', () => resolve(false)).on('close', (code) => resolve(code === 0));
 	});
+}
+
+export type SofaPlayerSeasonStats = {
+	year: string;
+	competition: string;
+	statistics: Record<string, number>;
+};
+
+/** Season-by-season stats for any SofaScore player (works for Atlètic reserves). */
+export async function sofaFetchPlayerStatistics(sofaId: number): Promise<{
+	name: string;
+	position: string;
+	number: string;
+	seasons: SofaPlayerSeasonStats[];
+} | null> {
+	const [profile, statsPack] = await Promise.all([
+		sofaFetch(`/player/${sofaId}`),
+		sofaFetch(`/player/${sofaId}/statistics`),
+	]);
+	if (!statsPack) return null;
+
+	const player = (profile?.player as Json | undefined) ?? {};
+	const seasonsRaw = (statsPack.seasons as Json[]) ?? [];
+	const seasons: SofaPlayerSeasonStats[] = seasonsRaw.map((s) => {
+		const tournament = (s.uniqueTournament as Json | undefined) ?? {};
+		const statistics = (s.statistics as Json | undefined) ?? {};
+		const nums: Record<string, number> = {};
+		for (const [key, value] of Object.entries(statistics)) {
+			if (typeof value === 'number' && Number.isFinite(value)) nums[key] = value;
+		}
+		return {
+			year: String(s.year ?? ''),
+			competition: String(tournament.name ?? 'Competition'),
+			statistics: nums,
+		};
+	});
+
+	return {
+		name: String(player.name ?? ''),
+		position: String(player.position ?? ''),
+		number:
+			player.jerseyNumber != null || player.shirtNumber != null
+				? String(player.jerseyNumber ?? player.shirtNumber)
+				: '',
+		seasons,
+	};
 }

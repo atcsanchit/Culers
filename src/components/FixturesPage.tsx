@@ -8,10 +8,12 @@ import { useFetchAnimationState } from '../context/FetchAnimationContext';
 import { FixtureCalendar } from './FixtureCalendar';
 import { HomeNewsCard } from './HomeNewsCard';
 import { RecentFormCarousel } from './RecentFormCarousel';
+import { OnThisDayCard } from './OnThisDayCard';
+import { LaMasiaSpotlight } from './LaMasiaSpotlight';
 import { BARCA_CREST } from '../lib/photos';
 
 export function HomePage() {
-	const { data, setTab, goLive, openFixture } = useBarca();
+	const { data, setTab, goLive, openFixture, openPlayerStats } = useBarca();
 	const { isActive: fetchAnimActive } = useFetchAnimationState();
 
 	if (!data) {
@@ -112,6 +114,14 @@ export function HomePage() {
 						}}
 					/>
 				</div>
+			</div>
+
+			<div className="home-grid culture-grid">
+				<OnThisDayCard />
+				<LaMasiaSpotlight
+					squad={data.squad.players}
+					onOpenPlayer={(player) => openPlayerStats(player)}
+				/>
 			</div>
 
 			<div className="home-block glass-panel home-news-panel">
