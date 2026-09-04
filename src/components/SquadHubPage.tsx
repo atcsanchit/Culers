@@ -28,8 +28,9 @@ export function SquadHubPage() {
 				</p>
 				{data.squad.lastMatch && (
 					<p className="muted squad-source-note">
-						{data.squad.lastMatch.starters} starters + {data.squad.lastMatch.subs} subs from vs{' '}
-						{data.squad.lastMatch.opponent} ({formatDate(data.squad.lastMatch.date)})
+						Full first-team roster · last match: {data.squad.lastMatch.starters} starters +{' '}
+						{data.squad.lastMatch.subs} subs vs {data.squad.lastMatch.opponent} (
+						{formatDate(data.squad.lastMatch.date)})
 					</p>
 				)}
 			</div>

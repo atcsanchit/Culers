@@ -319,7 +319,8 @@ async function fetchFcbFirstTeamSquad(): Promise<{ players: FcbPlayer[]; coach: 
 			photo: '',
 			birthDate: String((birth?.date as Json | undefined)?.label ?? ''),
 			onLoan: false,
-			inLastMatchSquad: true,
+			inLastMatchXi: false,
+			inLastMatchSquad: false,
 		});
 	}
 
@@ -335,8 +336,53 @@ async function fetchFcbFirstTeamSquad(): Promise<{ players: FcbPlayer[]; coach: 
 }
 
 export async function fetchFcbSquad(): Promise<{ players: FcbPlayer[]; coach: string; source?: string; lastMatch?: SquadMeta['lastMatch'] }> {
-	const lastMatchSquad = await fetchLastMatchSquad();
-	return lastMatchSquad;
+	const [firstTeam, lastMatch] = await Promise.all([
+		fetchFcbFirstTeamSquad().catch(() => null),
+		fetchLastMatchSquad().catch(() => null),
+	]);
+
+	const roster = firstTeam?.players?.length ? firstTeam.players : lastMatch?.players ?? [];
+	if (!roster.length) {
+		return { players: [], coach: 'Hansi Flick', source: 'FC Barcelona squad unavailable' };
+	}
+
+	const lastById = new Map((lastMatch?.players ?? []).map((p) => [p.fcbId, p]));
+	const players = roster.map((p) => {
+		const last = lastById.get(p.fcbId);
+		if (!last) return { ...p, inLastMatchXi: false, inLastMatchSquad: false };
+		return {
+			...p,
+			number: p.number || last.number,
+			position: p.position || last.position,
+			inLastMatchXi: Boolean(last.inLastMatchXi),
+			inLastMatchSquad: Boolean(last.inLastMatchSquad),
+		};
+	});
+
+	// Include anyone from last match who is missing from the scraped first-team page
+	for (const last of lastMatch?.players ?? []) {
+		if (!players.some((p) => p.fcbId === last.fcbId)) {
+			players.push(last);
+		}
+	}
+
+	players.sort((a, b) => {
+		const an = Number(a.number) || 999;
+		const bn = Number(b.number) || 999;
+		if (an !== bn) return an - bn;
+		return a.name.localeCompare(b.name);
+	});
+
+	const source = firstTeam?.players?.length
+		? `FC Barcelona official first team${lastMatch?.lastMatch ? ` · last match vs ${lastMatch.lastMatch.opponent}` : ''}`
+		: lastMatch?.source ?? 'FC Barcelona squad';
+
+	return {
+		players,
+		coach: firstTeam?.coach ?? lastMatch?.coach ?? 'Hansi Flick',
+		source,
+		lastMatch: lastMatch?.lastMatch,
+	};
 }
 
 const STAT_LABELS: Record<string, string> = {
