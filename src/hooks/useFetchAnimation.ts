@@ -47,7 +47,6 @@ export function useFetchAnimation() {
 	const [lineIndex, setLineIndex] = useState(0);
 	const [goalLineIndex, setGoalLineIndex] = useState(0);
 	const [fadingOut, setFadingOut] = useState(false);
-	const [goalMinute, setGoalMinute] = useState<number | null>(null);
 	const wasFetching = useRef(false);
 
 	useEffect(() => {
@@ -55,7 +54,6 @@ export function useFetchAnimation() {
 			wasFetching.current = true;
 			setFadingOut(false);
 			setGoalSubPhase(null);
-			setGoalMinute(null);
 			setPhase('run');
 			setLineIndex(0);
 			return;
@@ -63,7 +61,6 @@ export function useFetchAnimation() {
 		if (wasFetching.current) {
 			wasFetching.current = false;
 			setFadingOut(false);
-			setGoalMinute(1 + Math.floor(Math.random() * 90));
 			setPhase('goal');
 			setGoalSubPhase('approach');
 			setGoalLineIndex(0);
@@ -87,7 +84,6 @@ export function useFetchAnimation() {
 			if (!cancelled) {
 				setFadingOut(false);
 				setGoalSubPhase(null);
-				setGoalMinute(null);
 				setPhase('idle');
 			}
 		};
@@ -169,7 +165,7 @@ export function useFetchAnimation() {
 		caption = { title: 'Through on goal…', line: 'Messi bears down on goal…' };
 	} else if (goalSubPhase === 'score') {
 		caption = {
-			title: goalMinute != null ? `GOAL! ${goalMinute}'` : 'GOAL!',
+			title: 'GOAL!',
 			line: 'Messi slots it past the keeper!',
 		};
 	} else {
@@ -193,6 +189,5 @@ export function useFetchAnimation() {
 		goalLineIndex,
 		pitchBanner,
 		pitchChants,
-		goalMinute,
 	};
 }
