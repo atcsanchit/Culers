@@ -58,6 +58,20 @@ export type Squad = {
 	};
 };
 
+export type LaMasiaPlayer = Player & {
+	sofaId?: number;
+	group: 'first-team' | 'atletic';
+	statsAvailable: boolean;
+};
+
+export type LaMasiaHub = {
+	firstTeam: LaMasiaPlayer[];
+	atletic: LaMasiaPlayer[];
+	fetchedAt: string;
+	source: string;
+	note?: string;
+};
+
 export type TimelineEvent = {
 	minute: string;
 	type: string;

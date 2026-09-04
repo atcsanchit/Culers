@@ -3017,6 +3017,61 @@ a {
 	gap: 0.65rem;
 }
 
+.squad-hub-tabs {
+	margin-bottom: 1rem;
+}
+
+.la-masia-hub {
+	display: flex;
+	flex-direction: column;
+	gap: 1.35rem;
+}
+
+.la-masia-section .section-head.inline {
+	margin-bottom: 0.75rem;
+}
+
+.la-masia-section h3 {
+	margin: 0.15rem 0 0;
+	font-family: var(--display);
+	font-size: 1.25rem;
+	letter-spacing: 0.03em;
+}
+
+.la-masia-badge {
+	display: inline-flex;
+	align-self: flex-start;
+	margin-top: 0.2rem;
+	padding: 0.15rem 0.45rem;
+	border-radius: 999px;
+	font-size: 0.65rem;
+	letter-spacing: 0.07em;
+	text-transform: uppercase;
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	color: var(--muted);
+}
+
+.la-masia-badge.first-team {
+	color: var(--gold);
+	border-color: rgba(212, 175, 55, 0.4);
+	background: rgba(212, 175, 55, 0.08);
+}
+
+.la-masia-badge.atletic {
+	color: #8ec7ff;
+	border-color: rgba(142, 199, 255, 0.35);
+	background: rgba(0, 77, 152, 0.2);
+}
+
+.squad-hub-card.is-static {
+	cursor: default;
+}
+
+.squad-hub-card.is-static:hover {
+	transform: none;
+	border-color: var(--line);
+}
+
 .squad-hub-card {
 	display: flex;
 	gap: 0.65rem;

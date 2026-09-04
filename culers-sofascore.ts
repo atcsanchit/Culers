@@ -207,6 +207,39 @@ async function sofaFetch(apiPath: string): Promise<Json | null> {
 	return sofaFetchDirect(apiPath);
 }
 
+export type SofaTeamPlayer = {
+	id: number;
+	name: string;
+	position: string;
+	number: string;
+	nationality: string;
+	birthDate: string;
+};
+
+/** Current squad list for a SofaScore team (e.g. Barcelona Atlètic = 24343). */
+export async function sofaFetchTeamPlayers(teamId: number): Promise<SofaTeamPlayer[]> {
+	const data = await sofaFetch(`/team/${teamId}/players`);
+	const rows = (data?.players as Json[]) ?? [];
+	return rows
+		.map((row) => {
+			const player = (row.player as Json | undefined) ?? row;
+			const id = Number(player.id ?? 0);
+			if (!id) return null;
+			const country = player.country as Json | undefined;
+			return {
+				id,
+				name: String(player.name ?? ''),
+				position: String(player.position ?? ''),
+				number: player.jerseyNumber != null || player.shirtNumber != null
+					? String(player.jerseyNumber ?? player.shirtNumber)
+					: '',
+				nationality: String(country?.name ?? ''),
+				birthDate: '',
+			} satisfies SofaTeamPlayer;
+		})
+		.filter(Boolean) as SofaTeamPlayer[];
+}
+
 function parseEvent(raw: Json): SofaScoreEvent | null {
 	const home = raw.homeTeam as Json | undefined;
 	const away = raw.awayTeam as Json | undefined;

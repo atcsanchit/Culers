@@ -6,6 +6,7 @@ import { fetchFcbFixtures, fetchFcbLiveSnapshot, fetchFcbMatchSummary, fetchFcbF
 import { enrichPlayerPhotos } from './culers-photos.ts';
 import { fetchBarcaInstagramFeed, fetchBarcaSocialHub, fetchBarcaXFeed, streamInstagramImage } from './culers-social.ts';
 import { fetchFabrizioProfile, fetchFabrizioRomanoNews, fetchReshadProfile, fetchReshadRahmanNews } from './culers-twitter.ts';
+import { fetchLaMasiaHub } from './culers-lamasia.ts';
 
 const BARCA_TEAM_ID = '133739';
 
@@ -395,6 +396,10 @@ export async function dispatchCulersApi(
 				return jsonResult(await fetchFcbFixturePreview(fixtureId, fixtures, liveFixture?.id ?? null));
 			}
 			return jsonResult(await fetchFcbMatchSummary(fixtureId));
+		}
+		if (url.pathname === '/api/la-masia') {
+			const squad = await fetchSquad();
+			return jsonResult(await fetchLaMasiaHub(squad.players));
 		}
 		if (url.pathname === '/api/social') {
 			return jsonResult(await fetchBarcaSocialHub());

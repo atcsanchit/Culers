@@ -718,6 +718,24 @@ async function sofaFetch(apiPath) {
   }
   return sofaFetchDirect(apiPath);
 }
+async function sofaFetchTeamPlayers(teamId) {
+  const data = await sofaFetch(`/team/${teamId}/players`);
+  const rows = data?.players ?? [];
+  return rows.map((row) => {
+    const player = row.player ?? row;
+    const id = Number(player.id ?? 0);
+    if (!id) return null;
+    const country = player.country;
+    return {
+      id,
+      name: String(player.name ?? ""),
+      position: String(player.position ?? ""),
+      number: player.jerseyNumber != null || player.shirtNumber != null ? String(player.jerseyNumber ?? player.shirtNumber) : "",
+      nationality: String(country?.name ?? ""),
+      birthDate: ""
+    };
+  }).filter(Boolean);
+}
 function parseEvent(raw) {
   const home = raw.homeTeam;
   const away = raw.awayTeam;
@@ -2623,6 +2641,481 @@ function formatFollowers(n) {
   return String(n);
 }
 
+// culers-lamasia-atletic-fallback.json
+var culers_lamasia_atletic_fallback_default = [
+  {
+    id: "1620575",
+    sofaId: 1620575,
+    name: "Max Bonfill",
+    position: "Goalkeeper",
+    number: "1",
+    nationality: "Spain",
+    photo: "https://img.sofascore.com/api/v1/player/1620575/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "2128115",
+    sofaId: 2128115,
+    name: "Sergi Mayans",
+    position: "Defender",
+    number: "5",
+    nationality: "Spain",
+    photo: "https://img.sofascore.com/api/v1/player/2128115/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "1542727",
+    sofaId: 1542727,
+    name: "Dani \xC1vila",
+    position: "Midfielder",
+    number: "6",
+    nationality: "Spain",
+    photo: "https://img.sofascore.com/api/v1/player/1542727/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "1539491",
+    sofaId: 1539491,
+    name: "\xD2scar Gistau",
+    position: "Forward",
+    number: "6",
+    nationality: "Spain",
+    photo: "https://img.sofascore.com/api/v1/player/1539491/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "1982217",
+    sofaId: 1982217,
+    name: "Sama Nomoko",
+    position: "Forward",
+    number: "7",
+    nationality: "Spain",
+    photo: "https://img.sofascore.com/api/v1/player/1982217/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "2679424",
+    sofaId: 2679424,
+    name: "Javi Castro",
+    position: "Defender",
+    number: "12",
+    nationality: "Spain",
+    photo: "https://img.sofascore.com/api/v1/player/2679424/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "1482410",
+    sofaId: 1482410,
+    name: "Patricio Pacifico",
+    position: "Defender",
+    number: "14",
+    nationality: "Uruguay",
+    photo: "https://img.sofascore.com/api/v1/player/1482410/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "1939135",
+    sofaId: 1939135,
+    name: "Alexander Walton",
+    position: "Defender",
+    number: "15",
+    nationality: "England",
+    photo: "https://img.sofascore.com/api/v1/player/1939135/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "1801391",
+    sofaId: 1801391,
+    name: "Lovro Chelfi",
+    position: "Midfielder",
+    number: "18",
+    nationality: "Croatia",
+    photo: "https://img.sofascore.com/api/v1/player/1801391/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "1457200",
+    sofaId: 1457200,
+    name: "Abdul Aziz Issah",
+    position: "Midfielder",
+    number: "19",
+    nationality: "Ghana",
+    photo: "https://img.sofascore.com/api/v1/player/1457200/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "2488625",
+    sofaId: 2488625,
+    name: "Juan Ybarra",
+    position: "Midfielder",
+    number: "20",
+    nationality: "Spain",
+    photo: "https://img.sofascore.com/api/v1/player/2488625/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "2229087",
+    sofaId: 2229087,
+    name: "Nuhu Fofana",
+    position: "Forward",
+    number: "20",
+    nationality: "Spain",
+    photo: "https://img.sofascore.com/api/v1/player/2229087/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "1977602",
+    sofaId: 1977602,
+    name: "Ignasi Quer",
+    position: "Forward",
+    number: "22",
+    nationality: "Spain",
+    photo: "https://img.sofascore.com/api/v1/player/1977602/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "2268815",
+    sofaId: 2268815,
+    name: "\xC1lex Gonz\xE1lez",
+    position: "Forward",
+    number: "23",
+    nationality: "Spain",
+    photo: "https://img.sofascore.com/api/v1/player/2268815/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "1590760",
+    sofaId: 1590760,
+    name: "Landry Farr\xE9",
+    position: "Defender",
+    number: "23",
+    nationality: "Spain",
+    photo: "https://img.sofascore.com/api/v1/player/1590760/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "1657202",
+    sofaId: 1657202,
+    name: "Shane Kluivert",
+    position: "Forward",
+    number: "24",
+    nationality: "Netherlands",
+    photo: "https://img.sofascore.com/api/v1/player/1657202/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "1590920",
+    sofaId: 1590920,
+    name: "Guillem V\xEDctor",
+    position: "Defender",
+    number: "26",
+    nationality: "Spain",
+    photo: "https://img.sofascore.com/api/v1/player/1590920/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "2219071",
+    sofaId: 2219071,
+    name: "Josue Caicedo",
+    position: "Defender",
+    number: "26",
+    nationality: "Ecuador",
+    photo: "https://img.sofascore.com/api/v1/player/2219071/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "2128084",
+    sofaId: 2128084,
+    name: "Ebrima Tunkara",
+    position: "Midfielder",
+    number: "28",
+    nationality: "Spain",
+    photo: "https://img.sofascore.com/api/v1/player/2128084/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "1542744",
+    sofaId: 1542744,
+    name: "Ibrahim Diarra",
+    position: "Forward",
+    number: "28",
+    nationality: "Mali",
+    photo: "https://img.sofascore.com/api/v1/player/1542744/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "1929977",
+    sofaId: 1929977,
+    name: "Eder Aller",
+    position: "Goalkeeper",
+    number: "31",
+    nationality: "Spain",
+    photo: "https://img.sofascore.com/api/v1/player/1929977/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "2128094",
+    sofaId: 2128094,
+    name: "Jordi Pesquer",
+    position: "Defender",
+    number: "33",
+    nationality: "Spain",
+    photo: "https://img.sofascore.com/api/v1/player/2128094/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "2076869",
+    sofaId: 2076869,
+    name: "Hafiz Gariba",
+    position: "Defender",
+    number: "34",
+    nationality: "Ghana",
+    photo: "https://img.sofascore.com/api/v1/player/2076869/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "1926117",
+    sofaId: 1926117,
+    name: "Alex Campos",
+    position: "Defender",
+    number: "35",
+    nationality: "Spain",
+    photo: "https://img.sofascore.com/api/v1/player/1926117/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "1937274",
+    sofaId: 1937274,
+    name: "Mirza \u0106atovi\u0107",
+    position: "Midfielder",
+    number: "35",
+    nationality: "Germany",
+    photo: "https://img.sofascore.com/api/v1/player/1937274/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "1493491",
+    sofaId: 1493491,
+    name: "Juan Hern\xE1ndez",
+    position: "Forward",
+    number: "41",
+    nationality: "Spain",
+    photo: "https://img.sofascore.com/api/v1/player/1493491/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "2076883",
+    sofaId: 2076883,
+    name: "Pedro Villar",
+    position: "Midfielder",
+    number: "44",
+    nationality: "Spain",
+    photo: "https://img.sofascore.com/api/v1/player/2076883/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "1798716",
+    sofaId: 1798716,
+    name: "Juwensley Onstein",
+    position: "Defender",
+    number: "54",
+    nationality: "Netherlands",
+    photo: "https://img.sofascore.com/api/v1/player/1798716/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "1926093",
+    sofaId: 1926093,
+    name: "Iker Rodr\xEDguez",
+    position: "Goalkeeper",
+    number: "88",
+    nationality: "Spain",
+    photo: "https://img.sofascore.com/api/v1/player/1926093/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "2076887",
+    sofaId: 2076887,
+    name: "Adam Argem\xED",
+    position: "Midfielder",
+    number: "",
+    nationality: "Spain",
+    photo: "https://img.sofascore.com/api/v1/player/2076887/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "2580333",
+    sofaId: 2580333,
+    name: "Jonathan Hern\xE1ndez",
+    position: "Forward",
+    number: "",
+    nationality: "Spain",
+    photo: "https://img.sofascore.com/api/v1/player/2580333/image",
+    birthDate: "",
+    group: "atletic"
+  },
+  {
+    id: "2679425",
+    sofaId: 2679425,
+    name: "Joni Hern\xE1ndez",
+    position: "Forward",
+    number: "",
+    nationality: "Spain",
+    photo: "https://img.sofascore.com/api/v1/player/2679425/image",
+    birthDate: "",
+    group: "atletic"
+  }
+];
+
+// culers-lamasia.ts
+var FIRST_TEAM_ACADEMY_KEYS = [
+  "lamine yamal",
+  "yamal",
+  "pau cubarsi",
+  "cubarsi",
+  "gavi",
+  "paez gavira",
+  "pedri",
+  "pedro gonzalez",
+  "alejandro balde",
+  "balde",
+  "fermin",
+  "fermin lopez",
+  "marc bernal",
+  "bernal",
+  "eric garcia",
+  "gerard martin",
+  "xavi espart",
+  "espart",
+  "brian farinas",
+  "farinas",
+  "hamza abdelkarim",
+  "abdelkarim",
+  "jesse bisiwu",
+  "bisiwu",
+  "eder aller",
+  "aller"
+];
+function normalizeNameKey(name) {
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+function isFirstTeamAcademy(name) {
+  const n = normalizeNameKey(name);
+  return FIRST_TEAM_ACADEMY_KEYS.some((k) => n === k || n.includes(k) || k.includes(n));
+}
+function mapSofaPos(code) {
+  switch (code.toUpperCase()) {
+    case "G":
+      return "Goalkeeper";
+    case "D":
+      return "Defender";
+    case "M":
+      return "Midfielder";
+    case "F":
+      return "Forward";
+    default:
+      return code || "Unknown";
+  }
+}
+function sortLaMasia(players) {
+  return [...players].sort((a, b) => {
+    const an = Number(a.number) || 999;
+    const bn = Number(b.number) || 999;
+    if (an !== bn) return an - bn;
+    return a.name.localeCompare(b.name);
+  });
+}
+function fromFallback() {
+  return culers_lamasia_atletic_fallback_default.map((p) => ({
+    id: `atletic-${p.id}`,
+    sofaId: p.sofaId,
+    name: p.name,
+    position: p.position,
+    number: p.number,
+    nationality: p.nationality,
+    photo: p.photo,
+    birthDate: p.birthDate || "",
+    group: "atletic",
+    statsAvailable: false
+  }));
+}
+async function fetchAtleticLive() {
+  const rows = await sofaFetchTeamPlayers(24343);
+  if (!rows?.length) return null;
+  return sortLaMasia(
+    rows.map((p) => ({
+      id: `atletic-${p.id}`,
+      sofaId: p.id,
+      name: p.name,
+      position: mapSofaPos(p.position),
+      number: p.number,
+      nationality: p.nationality,
+      photo: p.id ? `https://img.sofascore.com/api/v1/player/${p.id}/image` : "",
+      birthDate: p.birthDate,
+      group: "atletic",
+      statsAvailable: false
+    }))
+  );
+}
+function filterFirstTeamAcademy(squad) {
+  return sortLaMasia(
+    squad.filter((p) => isFirstTeamAcademy(p.name)).map((p) => ({
+      id: p.id,
+      fcbId: p.fcbId,
+      name: p.name,
+      position: p.position,
+      number: p.number,
+      nationality: p.nationality,
+      photo: p.photo,
+      birthDate: p.birthDate,
+      group: "first-team",
+      statsAvailable: Boolean(p.fcbId)
+    }))
+  );
+}
+async function fetchLaMasiaHub(firstTeamSquad) {
+  const firstTeam = filterFirstTeamAcademy(firstTeamSquad);
+  const live = await fetchAtleticLive().catch(() => null);
+  const atletic = live?.length ? live : fromFallback();
+  return {
+    firstTeam,
+    atletic,
+    fetchedAt: (/* @__PURE__ */ new Date()).toISOString(),
+    source: live?.length ? "La Masia \u2014 first-team academy filter + Barcelona Atl\xE8tic (SofaScore)" : "La Masia \u2014 first-team academy filter + Barcelona Atl\xE8tic snapshot fallback",
+    note: live?.length ? void 0 : "Live Atl\xE8tic feed unavailable here \u2014 showing the latest cached Bar\xE7a Atl\xE8tic snapshot."
+  };
+}
+
 // culers-api-handlers.ts
 var BARCA_TEAM_ID3 = "133739";
 async function fetchJson2(url) {
@@ -2932,6 +3425,10 @@ async function dispatchCulersApi(url, options = {}) {
         return jsonResult(await fetchFcbFixturePreview(fixtureId, fixtures, liveFixture?.id ?? null));
       }
       return jsonResult(await fetchFcbMatchSummary(fixtureId));
+    }
+    if (url.pathname === "/api/la-masia") {
+      const squad = await fetchSquad();
+      return jsonResult(await fetchLaMasiaHub(squad.players));
     }
     if (url.pathname === "/api/social") {
       return jsonResult(await fetchBarcaSocialHub());
