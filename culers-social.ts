@@ -8,6 +8,7 @@ const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PYTHON = path.join(ROOT, '.venv-sofascore', 'bin', 'python');
 const INSTAGRAM_SCRIPT = path.join(ROOT, 'scripts', 'instagram-scrape.py');
 const CACHE_DIR = path.join(ROOT, '.cache', 'instagram');
+const IS_SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 
 export const BARCA_X_HANDLE = 'FCBarcelona';
 export const BARCA_INSTAGRAM_USER = 'fcbarcelona';
@@ -49,14 +50,25 @@ async function runInstagramScraper(): Promise<{
 	postsLabel: string;
 	posts: Array<InstagramPost & { cached?: boolean }>;
 } | null> {
+	// Python + curl_cffi are local-only; on Vercel this would hang until function timeout.
+	if (IS_SERVERLESS) return null;
+
 	return new Promise((resolve) => {
 		const child = spawn(PYTHON, [INSTAGRAM_SCRIPT, BARCA_INSTAGRAM_USER], { cwd: ROOT });
 		let stdout = '';
+		const timer = setTimeout(() => {
+			child.kill('SIGKILL');
+			resolve(null);
+		}, 12_000);
 		child.stdout.on('data', (chunk) => {
 			stdout += String(chunk);
 		});
-		child.on('error', () => resolve(null));
+		child.on('error', () => {
+			clearTimeout(timer);
+			resolve(null);
+		});
 		child.on('close', (code) => {
+			clearTimeout(timer);
 			if (code !== 0) {
 				resolve(null);
 				return;

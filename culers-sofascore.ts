@@ -199,7 +199,8 @@ async function sofaFetchDirect(apiPath: string): Promise<Json | null> {
 }
 
 async function sofaFetch(apiPath: string): Promise<Json | null> {
-	if (await isSofaScoreReady()) {
+	// Skip Python venv on Vercel/Lambda — spawn can hang until maxDuration.
+	if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME && (await isSofaScoreReady())) {
 		const viaPython = await sofaFetchPython(apiPath);
 		if (viaPython) return viaPython;
 	}
