@@ -35,7 +35,8 @@ Configured in `culers-fetch.ts` and documented in `src/lib/sources.ts`. You can 
 
 ```
 culers/
-  api/[...path].ts       # Vercel serverless /api/* (same handlers as local)
+  api/[...path].js       # Bundled Vercel serverless /api/* (generated)
+  scripts/vercel-api-entry.ts  # Source for the Vercel API bundle
   culers-fetch.ts        # Vite dev-server API middleware
   culers-api-handlers.ts # Shared API dispatcher
   vercel.json            # Vercel Hobby deploy settings
@@ -48,5 +49,5 @@ culers/
 ## Deploy (Vercel Hobby — free)
 
 1. Import this repo in Vercel (Framework: Vite)
-2. Build: `npm run build` · Output: `dist`
-3. Deploy — `/api/*` is served by `api/[...path].ts`
+2. Build: `npm run build` · Output: `dist` (also bundles `api/[...path].js`)
+3. Deploy — `/api/*` is served by the bundled serverless function

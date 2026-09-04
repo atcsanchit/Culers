@@ -19,7 +19,7 @@
 	},
 	"include": [
 		"vite.config.ts",
-		"api/**/*.ts",
+		"scripts/vercel-api-entry.ts",
 		"culers-fetch.ts",
 		"culers-api-handlers.ts",
 		"culers-lineup.ts",
