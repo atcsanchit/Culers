@@ -3210,6 +3210,26 @@ a {
 	z-index: 1;
 }
 
+/* SofaScore / Atlètic headshots are low-res — keep panel full-bleed, contain the photo */
+.modal-photo-panel.is-compact-photo::before {
+	background: rgba(0, 10, 28, 0.55);
+}
+
+.modal-hero-photo.is-compact {
+	inset: auto;
+	top: 8%;
+	left: 0;
+	right: 0;
+	margin-inline: auto;
+	width: min(58%, 340px);
+	height: auto;
+	max-height: 62%;
+	object-fit: contain;
+	object-position: center top;
+	filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.45));
+	border-radius: 4px;
+}
+
 .modal-photo-fallback {
 	position: absolute;
 	inset: 0;
@@ -4741,6 +4761,12 @@ a {
 
 	.modal-hero-photo {
 		max-height: 42vh;
+	}
+
+	.modal-hero-photo.is-compact {
+		top: 6%;
+		width: min(42%, 200px);
+		max-height: 28vh;
 	}
 
 	.stat-row {

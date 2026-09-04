@@ -77,6 +77,12 @@ export async function fetchLaMasia(): Promise<LaMasiaHub> {
 	return res.json();
 }
 
+export async function fetchLaMasiaPlayerStats(sofaId: number): Promise<PlayerStats> {
+	const res = await fetch(`/api/la-masia-player-stats?sofaId=${sofaId}`);
+	if (!res.ok) throw new Error('Failed to fetch Atlètic player stats');
+	return res.json();
+}
+
 export async function fetchSocialHub(): Promise<SocialHubData> {
 	const res = await fetch('/api/social');
 	if (!res.ok) throw new Error('Failed to fetch social stats');

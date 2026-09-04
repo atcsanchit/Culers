@@ -591,3 +591,49 @@ export async function isSofaScoreReady() {
 		spawn(PYTHON, ['--version']).on('error', () => resolve(false)).on('close', (code) => resolve(code === 0));
 	});
 }
+
+export type SofaPlayerSeasonStats = {
+	year: string;
+	competition: string;
+	statistics: Record<string, number>;
+};
+
+/** Season-by-season stats for any SofaScore player (works for Atlètic reserves). */
+export async function sofaFetchPlayerStatistics(sofaId: number): Promise<{
+	name: string;
+	position: string;
+	number: string;
+	seasons: SofaPlayerSeasonStats[];
+} | null> {
+	const [profile, statsPack] = await Promise.all([
+		sofaFetch(`/player/${sofaId}`),
+		sofaFetch(`/player/${sofaId}/statistics`),
+	]);
+	if (!statsPack) return null;
+
+	const player = (profile?.player as Json | undefined) ?? {};
+	const seasonsRaw = (statsPack.seasons as Json[]) ?? [];
+	const seasons: SofaPlayerSeasonStats[] = seasonsRaw.map((s) => {
+		const tournament = (s.uniqueTournament as Json | undefined) ?? {};
+		const statistics = (s.statistics as Json | undefined) ?? {};
+		const nums: Record<string, number> = {};
+		for (const [key, value] of Object.entries(statistics)) {
+			if (typeof value === 'number' && Number.isFinite(value)) nums[key] = value;
+		}
+		return {
+			year: String(s.year ?? ''),
+			competition: String(tournament.name ?? 'Competition'),
+			statistics: nums,
+		};
+	});
+
+	return {
+		name: String(player.name ?? ''),
+		position: String(player.position ?? ''),
+		number:
+			player.jerseyNumber != null || player.shirtNumber != null
+				? String(player.jerseyNumber ?? player.shirtNumber)
+				: '',
+		seasons,
+	};
+}

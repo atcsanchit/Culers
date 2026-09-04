@@ -129,7 +129,15 @@ export function SquadHubPage() {
 								</div>
 								<div className="squad-hub-grid">
 									{laMasia.atletic.map((p) => (
-										<LaMasiaCard key={p.id} player={p} />
+										<LaMasiaCard
+											key={p.id}
+											player={p}
+											onOpen={
+												p.statsAvailable
+													? (origin) => openPlayerStats(toPlayer(p), origin)
+													: undefined
+											}
+										/>
 									))}
 								</div>
 							</div>
@@ -145,6 +153,7 @@ function toPlayer(p: LaMasiaPlayer): Player {
 	return {
 		id: p.id,
 		fcbId: p.fcbId,
+		sofaId: p.sofaId,
 		name: p.name,
 		position: p.position,
 		number: p.number,
@@ -205,7 +214,7 @@ function LaMasiaCard({
 				{clickable ? (
 					<span className="click-hint">View stats →</span>
 				) : (
-					<span className="click-hint muted">Reserve roster</span>
+					<span className="click-hint muted">Stats unavailable</span>
 				)}
 			</div>
 		</>

@@ -995,6 +995,34 @@ async function isSofaScoreReady() {
     spawn(PYTHON, ["--version"]).on("error", () => resolve(false)).on("close", (code) => resolve(code === 0));
   });
 }
+async function sofaFetchPlayerStatistics(sofaId) {
+  const [profile, statsPack] = await Promise.all([
+    sofaFetch(`/player/${sofaId}`),
+    sofaFetch(`/player/${sofaId}/statistics`)
+  ]);
+  if (!statsPack) return null;
+  const player = profile?.player ?? {};
+  const seasonsRaw = statsPack.seasons ?? [];
+  const seasons = seasonsRaw.map((s) => {
+    const tournament = s.uniqueTournament ?? {};
+    const statistics = s.statistics ?? {};
+    const nums = {};
+    for (const [key, value] of Object.entries(statistics)) {
+      if (typeof value === "number" && Number.isFinite(value)) nums[key] = value;
+    }
+    return {
+      year: String(s.year ?? ""),
+      competition: String(tournament.name ?? "Competition"),
+      statistics: nums
+    };
+  });
+  return {
+    name: String(player.name ?? ""),
+    position: String(player.position ?? ""),
+    number: player.jerseyNumber != null || player.shirtNumber != null ? String(player.jerseyNumber ?? player.shirtNumber) : "",
+    seasons
+  };
+}
 
 // culers-fcb.ts
 var FCB_API2 = "https://api-fcb.pulselive.com/football";
@@ -3066,7 +3094,7 @@ function fromFallback() {
     photo: p.photo,
     birthDate: p.birthDate || "",
     group: "atletic",
-    statsAvailable: false
+    statsAvailable: Boolean(p.sofaId)
   }));
 }
 async function fetchAtleticLive() {
@@ -3083,7 +3111,7 @@ async function fetchAtleticLive() {
       photo: p.id ? `https://img.sofascore.com/api/v1/player/${p.id}/image` : "",
       birthDate: p.birthDate,
       group: "atletic",
-      statsAvailable: false
+      statsAvailable: Boolean(p.id)
     }))
   );
 }
@@ -3113,6 +3141,100 @@ async function fetchLaMasiaHub(firstTeamSquad) {
     fetchedAt: (/* @__PURE__ */ new Date()).toISOString(),
     source: live?.length ? "La Masia \u2014 first-team academy filter + Barcelona Atl\xE8tic (SofaScore)" : "La Masia \u2014 first-team academy filter + Barcelona Atl\xE8tic snapshot fallback",
     note: live?.length ? void 0 : "Live Atl\xE8tic feed unavailable here \u2014 showing the latest cached Bar\xE7a Atl\xE8tic snapshot."
+  };
+}
+var SOFA_STAT_LABELS = {
+  appearances: "Appearances",
+  minutesPlayed: "Minutes",
+  goals: "Goals",
+  assists: "Assists",
+  rating: "Avg rating",
+  yellowCards: "Yellow cards",
+  redCards: "Red cards",
+  totalShots: "Shots",
+  shotsOnTarget: "Shots on target",
+  keyPasses: "Key passes",
+  accuratePassesPercentage: "Pass %",
+  tackles: "Tackles",
+  interceptions: "Interceptions",
+  successfulDribbles: "Dribbles",
+  aerialDuelsWon: "Aerials won",
+  saves: "Saves",
+  cleanSheet: "Clean sheets",
+  goalsConceded: "Goals conceded"
+};
+var SEASON_KEYS = [
+  "appearances",
+  "minutesPlayed",
+  "goals",
+  "assists",
+  "rating",
+  "totalShots",
+  "shotsOnTarget",
+  "keyPasses",
+  "accuratePassesPercentage",
+  "tackles",
+  "interceptions",
+  "successfulDribbles",
+  "aerialDuelsWon",
+  "yellowCards",
+  "redCards",
+  "saves",
+  "cleanSheet",
+  "goalsConceded"
+];
+function preferSeasonIndex(seasons) {
+  const primera = seasons.findIndex((s) => /primera\s*feder/i.test(s.competition));
+  if (primera >= 0) return primera;
+  return 0;
+}
+function rowsFromStats(stats) {
+  return SEASON_KEYS.filter((key) => stats[key] != null).map((key) => {
+    const raw = stats[key];
+    const value = key === "rating" || key === "accuratePassesPercentage" ? Number(raw.toFixed(1)) : Math.round(raw);
+    return {
+      key,
+      label: SOFA_STAT_LABELS[key] ?? key,
+      value,
+      available: true
+    };
+  });
+}
+async function fetchLaMasiaPlayerStats(sofaId) {
+  const pack = await sofaFetchPlayerStatistics(sofaId);
+  if (!pack || !pack.seasons.length) {
+    throw new Error("No SofaScore stats found for this player");
+  }
+  const seasonIdx = preferSeasonIndex(pack.seasons);
+  const latest = pack.seasons[seasonIdx];
+  const season = rowsFromStats(latest.statistics);
+  const totals = {};
+  for (const s of pack.seasons) {
+    for (const key of ["appearances", "minutesPlayed", "goals", "assists", "yellowCards", "redCards", "totalShots", "tackles", "saves", "cleanSheet"]) {
+      if (s.statistics[key] != null) totals[key] = (totals[key] ?? 0) + s.statistics[key];
+    }
+  }
+  const ratings = pack.seasons.map((s) => s.statistics.rating).filter((n) => typeof n === "number" && Number.isFinite(n));
+  if (ratings.length) {
+    totals.rating = ratings.reduce((a, b) => a + b, 0) / ratings.length;
+  }
+  const career = rowsFromStats(totals);
+  career.unshift({
+    key: "seasonsLogged",
+    label: "Seasons logged",
+    value: pack.seasons.length,
+    available: true
+  });
+  return {
+    fcbId: 0,
+    sofaId,
+    name: pack.name,
+    position: mapSofaPos(pack.position),
+    number: pack.number,
+    seasonLabel: `${latest.competition} \xB7 ${latest.year}`,
+    season,
+    career,
+    source: "SofaScore \u2014 Bar\xE7a Atl\xE8tic / youth competition stats (not FCB Opta)"
   };
 }
 
@@ -3429,6 +3551,11 @@ async function dispatchCulersApi(url, options = {}) {
     if (url.pathname === "/api/la-masia") {
       const squad = await fetchSquad();
       return jsonResult(await fetchLaMasiaHub(squad.players));
+    }
+    if (url.pathname === "/api/la-masia-player-stats") {
+      const sofaId = Number(url.searchParams.get("sofaId"));
+      if (!sofaId) return jsonResult({ error: "sofaId required" }, 400);
+      return jsonResult(await fetchLaMasiaPlayerStats(sofaId));
     }
     if (url.pathname === "/api/social") {
       return jsonResult(await fetchBarcaSocialHub());
