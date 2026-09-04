@@ -693,7 +693,7 @@ async function sofaFetchDirect(apiPath) {
   }
 }
 async function sofaFetch(apiPath) {
-  if (await isSofaScoreReady()) {
+  if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME && await isSofaScoreReady()) {
     const viaPython = await sofaFetchPython(apiPath);
     if (viaPython) return viaPython;
   }
@@ -2472,20 +2472,30 @@ var ROOT2 = path5.dirname(fileURLToPath2(import.meta.url));
 var PYTHON2 = path5.join(ROOT2, ".venv-sofascore", "bin", "python");
 var INSTAGRAM_SCRIPT = path5.join(ROOT2, "scripts", "instagram-scrape.py");
 var CACHE_DIR = path5.join(ROOT2, ".cache", "instagram");
+var IS_SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 var BARCA_X_HANDLE = "FCBarcelona";
 var BARCA_INSTAGRAM_USER = "fcbarcelona";
 function proxyInstagramImage(id) {
   return `/api/social/instagram/image?id=${encodeURIComponent(id)}`;
 }
 async function runInstagramScraper() {
+  if (IS_SERVERLESS) return null;
   return new Promise((resolve) => {
     const child = spawn2(PYTHON2, [INSTAGRAM_SCRIPT, BARCA_INSTAGRAM_USER], { cwd: ROOT2 });
     let stdout = "";
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL");
+      resolve(null);
+    }, 12e3);
     child.stdout.on("data", (chunk) => {
       stdout += String(chunk);
     });
-    child.on("error", () => resolve(null));
+    child.on("error", () => {
+      clearTimeout(timer);
+      resolve(null);
+    });
     child.on("close", (code) => {
+      clearTimeout(timer);
       if (code !== 0) {
         resolve(null);
         return;
@@ -2945,22 +2955,24 @@ var config = {
   maxDuration: 60,
   memory: 1024
 };
-async function handler(req) {
-  try {
-    const url = new URL(req.url);
-    const result = await dispatchCulersApi(url, { projectRoot: process.cwd() });
-    if (!result) {
-      return Response.json({ error: "Not found" }, { status: 404 });
+var vercel_api_entry_default = {
+  async fetch(request) {
+    try {
+      const url = new URL(request.url);
+      const result = await dispatchCulersApi(url, { projectRoot: process.cwd() });
+      if (!result) {
+        return Response.json({ error: "Not found" }, { status: 404 });
+      }
+      return new Response(result.body, {
+        status: result.status,
+        headers: result.headers
+      });
+    } catch (err) {
+      return Response.json({ error: String(err) }, { status: 500 });
     }
-    return new Response(result.body, {
-      status: result.status,
-      headers: result.headers
-    });
-  } catch (err) {
-    return Response.json({ error: String(err) }, { status: 500 });
   }
-}
+};
 export {
   config,
-  handler as default
+  vercel_api_entry_default as default
 };
