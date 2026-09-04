@@ -25,7 +25,7 @@ export async function fetchAll(): Promise<FetchPayload> {
 			throw new Error('Fetch timed out — lineup sources may be slow. Try again.');
 		}
 		throw new Error(
-			'Cannot reach Culers — start the dev server (npm run dev in culers/, port 5175).',
+			'Cannot reach Culers API — start npm run dev locally, or open the deployed Vercel site.',
 		);
 	} finally {
 		window.clearTimeout(timeout);

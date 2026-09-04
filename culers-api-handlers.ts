@@ -1,3 +1,5 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { syncHomeBackgroundManifest } from './culers-home-backgrounds.ts';
 import { buildLineup, computeStats } from './culers-lineup.ts';
 import { fetchFcbFixtures, fetchFcbLiveSnapshot, fetchFcbMatchSummary, fetchFcbFixturePreview, fetchFcbPlayerMatchStats, fetchFcbPlayerStats, fetchFcbSquad, fetchRecentBarcaFixture } from './culers-fcb.ts';
@@ -8,6 +10,17 @@ import { fetchFabrizioProfile, fetchFabrizioRomanoNews, fetchReshadProfile, fetc
 const BARCA_TEAM_ID = '133739';
 
 type Json = Record<string, unknown>;
+
+export type CulersApiResult = {
+	status: number;
+	headers: Record<string, string>;
+	body: string | Buffer;
+};
+
+export type CulersApiOptions = {
+	/** Project root for filesystem helpers (home backgrounds). Defaults to process.cwd(). */
+	projectRoot?: string;
+};
 
 async function fetchJson(url: string): Promise<Json | null> {
 	try {
@@ -273,7 +286,7 @@ async function fetchAll() {
 	try {
 		lineup = await fetchLineupForFixture(squad, fixtures, targetFixture?.id);
 	} catch {
-		lineup = await fetchLineupForFixture({ players: squad.players, coach: squad.coach }, [], undefined);
+		lineup = await fetchLineupForFixture(squad, [], undefined);
 	}
 
 	const stats = computeStats(fixtures);
@@ -301,12 +314,124 @@ async function fetchAll() {
 	};
 }
 
-function json(res: import('http').ServerResponse, body: unknown, status = 200) {
-	res.statusCode = status;
-	res.setHeader('Content-Type', 'application/json');
-	res.end(JSON.stringify(body));
+function jsonResult(body: unknown, status = 200): CulersApiResult {
+	return {
+		status,
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(body),
+	};
 }
 
+function listHomeBackgrounds(projectRoot: string): string[] {
+	try {
+		return syncHomeBackgroundManifest(projectRoot);
+	} catch {
+		try {
+			const manifestPath = path.join(projectRoot, 'public/backgrounds/home/manifest.json');
+			const raw = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as { images?: string[] };
+			return Array.isArray(raw.images) ? raw.images : [];
+		} catch {
+			return [];
+		}
+	}
+}
+
+/**
+ * Framework-agnostic API router used by Vite middleware and Vercel serverless.
+ * Returns null when the path is not an /api route.
+ */
+export async function dispatchCulersApi(
+	url: URL,
+	options: CulersApiOptions = {},
+): Promise<CulersApiResult | null> {
+	if (!url.pathname.startsWith('/api/')) return null;
+
+	const projectRoot = options.projectRoot ?? process.cwd();
+
+	try {
+		if (url.pathname === '/api/fetch-all') {
+			return jsonResult(await fetchAll());
+		}
+		if (url.pathname === '/api/fixtures') {
+			return jsonResult(await fetchFixtures());
+		}
+		if (url.pathname === '/api/news') {
+			return jsonResult(await fetchNews());
+		}
+		if (url.pathname === '/api/squad') {
+			return jsonResult(await fetchSquad());
+		}
+		if (url.pathname === '/api/live') {
+			return jsonResult(await fetchLive());
+		}
+		if (url.pathname === '/api/lineup') {
+			const squad = await fetchSquad();
+			const fixtures = await fetchFixtures();
+			const fixtureId = url.searchParams.get('fixtureId');
+			return jsonResult(await fetchLineupForFixture(squad, fixtures, fixtureId));
+		}
+		if (url.pathname === '/api/stats') {
+			const fixtures = await fetchFixtures();
+			return jsonResult(computeStats(fixtures));
+		}
+		if (url.pathname === '/api/player-stats') {
+			const fcbId = Number(url.searchParams.get('fcbId'));
+			if (!fcbId) return jsonResult({ error: 'fcbId required' }, 400);
+			return jsonResult(await fetchFcbPlayerStats(fcbId));
+		}
+		if (url.pathname === '/api/player-match-stats') {
+			const fcbId = Number(url.searchParams.get('fcbId'));
+			const fixtureId = url.searchParams.get('fixtureId');
+			if (!fcbId || !fixtureId) return jsonResult({ error: 'fcbId and fixtureId required' }, 400);
+			return jsonResult(await fetchFcbPlayerMatchStats(fcbId, fixtureId));
+		}
+		if (url.pathname === '/api/match-summary') {
+			const fixtureId = url.searchParams.get('fixtureId');
+			if (!fixtureId) return jsonResult({ error: 'fixtureId required' }, 400);
+			const fixtures = await fetchFcbFixtures();
+			const fixture = fixtures.find((f) => f.id === fixtureId);
+			if (fixture?.kind === 'upcoming') {
+				const liveFixture = fixtures.find((f) => f.kind === 'live');
+				return jsonResult(await fetchFcbFixturePreview(fixtureId, fixtures, liveFixture?.id ?? null));
+			}
+			return jsonResult(await fetchFcbMatchSummary(fixtureId));
+		}
+		if (url.pathname === '/api/social') {
+			return jsonResult(await fetchBarcaSocialHub());
+		}
+		if (url.pathname === '/api/social/instagram') {
+			return jsonResult(await fetchBarcaInstagramFeed());
+		}
+		if (url.pathname === '/api/social/instagram/image') {
+			const id = url.searchParams.get('id');
+			if (!id) return jsonResult({ error: 'id required' }, 400);
+			const image = await streamInstagramImage(id);
+			if (!image) return jsonResult({ error: 'Image not found' }, 404);
+			return {
+				status: 200,
+				headers: {
+					'Content-Type': image.contentType,
+					'Cache-Control': 'public, max-age=3600',
+				},
+				body: image.body,
+			};
+		}
+		if (url.pathname === '/api/social/x') {
+			return jsonResult(await fetchBarcaXFeed());
+		}
+		if (url.pathname === '/api/home-backgrounds') {
+			return jsonResult({
+				images: listHomeBackgrounds(projectRoot),
+				updatedAt: new Date().toISOString(),
+			});
+		}
+		return jsonResult({ error: 'Not found' }, 404);
+	} catch (err) {
+		return jsonResult({ error: String(err) }, 500);
+	}
+}
+
+/** Vite / Node IncomingMessage adapter — keeps local `npm run dev` unchanged. */
 export async function handleCulersApiRequest(
 	req: import('http').IncomingMessage,
 	res: import('http').ServerResponse,
@@ -314,116 +439,14 @@ export async function handleCulersApiRequest(
 ) {
 	if (!req.url?.startsWith('/api/')) return false;
 
-	try {
-		const url = new URL(req.url, 'http://localhost');
+	const url = new URL(req.url, 'http://localhost');
+	const result = await dispatchCulersApi(url, { projectRoot: server.config.root });
+	if (!result) return false;
 
-		if (url.pathname === '/api/fetch-all') {
-			json(res, await fetchAll());
-			return true;
-		}
-		if (url.pathname === '/api/fixtures') {
-			json(res, await fetchFixtures());
-			return true;
-		}
-		if (url.pathname === '/api/news') {
-			json(res, await fetchNews());
-			return true;
-		}
-		if (url.pathname === '/api/squad') {
-			json(res, await fetchSquad());
-			return true;
-		}
-		if (url.pathname === '/api/live') {
-			json(res, await fetchLive());
-			return true;
-		}
-		if (url.pathname === '/api/lineup') {
-			const squad = await fetchSquad();
-			const fixtures = await fetchFixtures();
-			const fixtureId = url.searchParams.get('fixtureId');
-			json(res, await fetchLineupForFixture(squad, fixtures, fixtureId));
-			return true;
-		}
-		if (url.pathname === '/api/stats') {
-			const fixtures = await fetchFixtures();
-			json(res, computeStats(fixtures));
-			return true;
-		}
-		if (url.pathname === '/api/player-stats') {
-			const fcbId = Number(url.searchParams.get('fcbId'));
-			if (!fcbId) {
-				json(res, { error: 'fcbId required' }, 400);
-				return true;
-			}
-			json(res, await fetchFcbPlayerStats(fcbId));
-			return true;
-		}
-		if (url.pathname === '/api/player-match-stats') {
-			const fcbId = Number(url.searchParams.get('fcbId'));
-			const fixtureId = url.searchParams.get('fixtureId');
-			if (!fcbId || !fixtureId) {
-				json(res, { error: 'fcbId and fixtureId required' }, 400);
-				return true;
-			}
-			json(res, await fetchFcbPlayerMatchStats(fcbId, fixtureId));
-			return true;
-		}
-		if (url.pathname === '/api/match-summary') {
-			const fixtureId = url.searchParams.get('fixtureId');
-			if (!fixtureId) {
-				json(res, { error: 'fixtureId required' }, 400);
-				return true;
-			}
-			const fixtures = await fetchFcbFixtures();
-			const fixture = fixtures.find((f) => f.id === fixtureId);
-			if (fixture?.kind === 'upcoming') {
-				const liveFixture = fixtures.find((f) => f.kind === 'live');
-				json(res, await fetchFcbFixturePreview(fixtureId, fixtures, liveFixture?.id ?? null));
-			} else {
-				json(res, await fetchFcbMatchSummary(fixtureId));
-			}
-			return true;
-		}
-		if (url.pathname === '/api/social') {
-			json(res, await fetchBarcaSocialHub());
-			return true;
-		}
-		if (url.pathname === '/api/social/instagram') {
-			json(res, await fetchBarcaInstagramFeed());
-			return true;
-		}
-		if (url.pathname === '/api/social/instagram/image') {
-			const id = url.searchParams.get('id');
-			if (!id) {
-				json(res, { error: 'id required' }, 400);
-				return true;
-			}
-			const image = await streamInstagramImage(id);
-			if (!image) {
-				json(res, { error: 'Image not found' }, 404);
-				return true;
-			}
-			res.statusCode = 200;
-			res.setHeader('Content-Type', image.contentType);
-			res.setHeader('Cache-Control', 'public, max-age=3600');
-			res.end(image.body);
-			return true;
-		}
-		if (url.pathname === '/api/social/x') {
-			json(res, await fetchBarcaXFeed());
-			return true;
-		}
-		if (url.pathname === '/api/home-backgrounds') {
-			json(res, {
-				images: syncHomeBackgroundManifest(server.config.root),
-				updatedAt: new Date().toISOString(),
-			});
-			return true;
-		}
-		json(res, { error: 'Not found' }, 404);
-		return true;
-	} catch (err) {
-		json(res, { error: String(err) }, 500);
-		return true;
+	res.statusCode = result.status;
+	for (const [key, value] of Object.entries(result.headers)) {
+		res.setHeader(key, value);
 	}
+	res.end(result.body);
+	return true;
 }
