@@ -19,6 +19,7 @@
 	},
 	"include": [
 		"vite.config.ts",
+		"api/**/*.ts",
 		"culers-fetch.ts",
 		"culers-api-handlers.ts",
 		"culers-lineup.ts",

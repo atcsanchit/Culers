@@ -347,7 +347,7 @@ export async function fetchFcbSquad(): Promise<{ players: FcbPlayer[]; coach: st
 	}
 
 	const lastById = new Map((lastMatch?.players ?? []).map((p) => [p.fcbId, p]));
-	const players = roster.map((p) => {
+	const players: FcbPlayer[] = roster.map((p) => {
 		const last = lastById.get(p.fcbId);
 		if (!last) return { ...p, inLastMatchXi: false, inLastMatchSquad: false };
 		return {
@@ -362,7 +362,11 @@ export async function fetchFcbSquad(): Promise<{ players: FcbPlayer[]; coach: st
 	// Include anyone from last match who is missing from the scraped first-team page
 	for (const last of lastMatch?.players ?? []) {
 		if (!players.some((p) => p.fcbId === last.fcbId)) {
-			players.push(last);
+			players.push({
+				...last,
+				inLastMatchXi: Boolean(last.inLastMatchXi),
+				inLastMatchSquad: Boolean(last.inLastMatchSquad),
+			});
 		}
 	}
 

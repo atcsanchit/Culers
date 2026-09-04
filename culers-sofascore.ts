@@ -153,7 +153,7 @@ function mapSofaPosition(code: string) {
 	}
 }
 
-async function sofaFetch(apiPath: string): Promise<Json | null> {
+async function sofaFetchPython(apiPath: string): Promise<Json | null> {
 	return new Promise((resolve) => {
 		const child = spawn(PYTHON, [SCRIPT, apiPath], { cwd: ROOT });
 		let stdout = '';
@@ -178,6 +178,32 @@ async function sofaFetch(apiPath: string): Promise<Json | null> {
 			}
 		});
 	});
+}
+
+/** Direct fetch fallback for serverless hosts (Vercel) where the Python venv is unavailable. */
+async function sofaFetchDirect(apiPath: string): Promise<Json | null> {
+	const path = apiPath.startsWith('/') ? apiPath : `/${apiPath}`;
+	try {
+		const res = await fetch(`https://api.sofascore.com/api/v1${path}`, {
+			headers: {
+				'User-Agent': 'Mozilla/5.0 (compatible; Culers/1.0)',
+				Accept: 'application/json',
+				Referer: 'https://www.sofascore.com/',
+			},
+		});
+		if (!res.ok) return null;
+		return (await res.json()) as Json;
+	} catch {
+		return null;
+	}
+}
+
+async function sofaFetch(apiPath: string): Promise<Json | null> {
+	if (await isSofaScoreReady()) {
+		const viaPython = await sofaFetchPython(apiPath);
+		if (viaPython) return viaPython;
+	}
+	return sofaFetchDirect(apiPath);
 }
 
 function parseEvent(raw: Json): SofaScoreEvent | null {
