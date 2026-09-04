@@ -6,7 +6,6 @@ type Props = {
 	goalSubPhase: GoalSubPhase | null;
 	pitchBanner: string | null;
 	pitchChants: readonly string[] | null;
-	goalMinute: number | null;
 };
 
 type Kit = 'barca' | 'white';
@@ -28,12 +27,32 @@ function PitchSprite({ kit, number }: { kit: Kit; number?: number }) {
 	);
 }
 
+function ChantLine({ line, lineIndex }: { line: string; lineIndex: number }) {
+	const chars = Array.from(line);
+	return (
+		<span
+			className="campnou-pitch-chant"
+			style={{ '--chant-i': lineIndex } as CSSProperties}
+		>
+			{chars.map((ch, i) => (
+				<em
+					key={`${lineIndex}-${i}`}
+					className="campnou-chant-letter"
+					style={{ '--letter-i': i } as CSSProperties}
+				>
+					{ch === ' ' ? '\u00a0' : ch}
+				</em>
+			))}
+		</span>
+	);
+}
+
 /** Top-down Camp Nou — full squads, keeper, trail, celebrate. */
-export function FetchCampNouScene({ goalSubPhase, pitchBanner, pitchChants, goalMinute }: Props) {
+export function FetchCampNouScene({ goalSubPhase, pitchBanner, pitchChants }: Props) {
 	const showCelebrate = goalSubPhase === 'celebrate';
-	const showScoreFx = goalSubPhase === 'score' || showCelebrate;
 	const showKeeper = goalSubPhase === 'approach' || goalSubPhase === 'score' || showCelebrate;
 	const showBanner = pitchBanner !== null || (pitchChants !== null && pitchChants.length > 0);
+	const isChants = Boolean(pitchChants?.length);
 
 	return (
 		<div className="campnou-aerial" aria-hidden>
@@ -117,19 +136,14 @@ export function FetchCampNouScene({ goalSubPhase, pitchBanner, pitchChants, goal
 					</div>
 					<div className="messi-ball" />
 
-					{showScoreFx && goalMinute != null && (
-						<div className="campnou-minute-flash" key={goalMinute}>
-							{goalMinute}&apos;
-						</div>
-					)}
-
 					{showBanner && (
-						<div className="campnou-pitch-banner" key={pitchBanner ?? 'chants'}>
-							{pitchBanner && <span>{pitchBanner}</span>}
-							{pitchChants?.map((line) => (
-								<span key={line} className="campnou-pitch-chant">
-									{line}
-								</span>
+						<div
+							className={`campnou-pitch-banner${isChants ? ' is-chants' : ''}${pitchBanner ? ' is-goal' : ''}`}
+							key={pitchBanner ?? 'chants'}
+						>
+							{pitchBanner && <span className="campnou-pitch-goal-call">{pitchBanner}</span>}
+							{pitchChants?.map((line, i) => (
+								<ChantLine key={line} line={line} lineIndex={i} />
 							))}
 						</div>
 					)}

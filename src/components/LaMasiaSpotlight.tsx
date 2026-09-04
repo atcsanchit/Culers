@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type MouseEvent } from 'react';
 import type { Player } from '../types';
+import type { PlayerOpenOrigin, PlayerStatsContext } from '../store/BarcaState';
 import {
+	alumniSpotlightToPlayer,
 	findSquadMatch,
 	LA_MASIA_SPOTLIGHTS,
 	laMasiaIndexForDate,
@@ -12,12 +14,13 @@ const ROTATE_MS = 9000;
 
 type Props = {
 	squad: Player[];
-	onOpenPlayer?: (player: Player) => void;
+	onOpenPlayer?: (player: Player, origin?: PlayerOpenOrigin, context?: PlayerStatsContext) => void;
 };
 
 export function LaMasiaSpotlight({ squad, onOpenPlayer }: Props) {
 	const start = useMemo(() => laMasiaIndexForDate(new Date()), []);
 	const [idx, setIdx] = useState(start);
+	const [alumniPhotoOk, setAlumniPhotoOk] = useState(false);
 
 	useEffect(() => {
 		if (LA_MASIA_SPOTLIGHTS.length <= 1) return;
@@ -29,9 +32,33 @@ export function LaMasiaSpotlight({ squad, onOpenPlayer }: Props) {
 
 	const spotlight = LA_MASIA_SPOTLIGHTS[idx]!;
 	const fromSquad = findSquadMatch(spotlight, squad);
+	const isAlumni = spotlight.status === 'alumni';
+	const record = spotlight.barcaRecord;
+	const alumniPhoto = isAlumni ? spotlight.photoUrl?.trim() : '';
+	const canOpen =
+		Boolean(onOpenPlayer) &&
+		(Boolean(fromSquad) || (isAlumni && Boolean(record)));
 
-	const open = () => {
-		if (fromSquad && onOpenPlayer) onOpenPlayer(fromSquad);
+	useEffect(() => {
+		setAlumniPhotoOk(false);
+	}, [spotlight.id, alumniPhoto]);
+
+	const open = (e: MouseEvent) => {
+		if (!onOpenPlayer || !canOpen) return;
+		const origin = { x: e.clientX, y: e.clientY };
+		if (isAlumni && record) {
+			onOpenPlayer(alumniSpotlightToPlayer(spotlight), origin, {
+				mode: 'legend',
+				years: record.years,
+				legacy: record.legacy,
+				generation: spotlight.generation,
+				stats: record.stats,
+			});
+			return;
+		}
+		if (fromSquad) {
+			onOpenPlayer(fromSquad, origin, { mode: 'career', initialTab: 'career' });
+		}
 	};
 
 	const go = (delta: number) => {
@@ -63,34 +90,76 @@ export function LaMasiaSpotlight({ squad, onOpenPlayer }: Props) {
 				</button>
 			</div>
 
-			<button
-				type="button"
-				className={`la-masia-spotlight ${fromSquad ? 'is-clickable' : ''}`}
-				onClick={open}
-				disabled={!fromSquad}
-			>
+			<div className={`la-masia-spotlight${canOpen ? ' is-clickable' : ''}${isAlumni ? ' is-alumni' : ''}`}>
 				<img src={BARCA_CREST} alt="" className="fixture-crest-watermark" aria-hidden />
-				<div className="la-masia-photo">
-					{fromSquad ? (
-						<PlayerAvatar player={fromSquad} size="lg" />
-					) : (
-						<div className="la-masia-crest-fallback" aria-hidden>
-							<img src={BARCA_CREST} alt="" />
+				<button
+					type="button"
+					className="la-masia-spotlight-main"
+					onClick={open}
+					disabled={!canOpen}
+				>
+					<div className="la-masia-photo">
+						{fromSquad ? (
+							<PlayerAvatar player={fromSquad} size="lg" />
+						) : alumniPhoto ? (
+							<>
+								<img
+									src={alumniPhoto}
+									alt=""
+									className={`la-masia-alumni-photo${alumniPhotoOk ? '' : ' is-loading'}`}
+									onLoad={() => setAlumniPhotoOk(true)}
+									onError={() => setAlumniPhotoOk(false)}
+								/>
+								{!alumniPhotoOk && (
+									<div className="la-masia-crest-fallback" aria-hidden>
+										<img src={BARCA_CREST} alt="" />
+									</div>
+								)}
+							</>
+						) : (
+							<div className="la-masia-crest-fallback" aria-hidden>
+								<img src={BARCA_CREST} alt="" />
+							</div>
+						)}
+					</div>
+					<div className="la-masia-copy">
+						<span className="culture-tag">{spotlight.generation}</span>
+						{isAlumni && <span className="la-masia-alumni-pill">Barça legend</span>}
+						<strong className="culture-title">
+							{fromSquad?.number ? `#${fromSquad.number} ` : ''}
+							{spotlight.name}
+						</strong>
+						<span className="muted la-masia-pos">{fromSquad?.position || spotlight.position}</span>
+						<p className="culture-blurb">{spotlight.bio}</p>
+						<span className="la-masia-debut muted">{spotlight.debutNote}</span>
+						{canOpen && (
+							<span className="la-masia-cta">
+								{isAlumni ? 'View club record →' : 'View Barça career →'}
+							</span>
+						)}
+					</div>
+				</button>
+
+				{record && (
+					<div className="la-masia-record-card">
+						<div className="la-masia-record-head">
+							<span className="rivalry-h2h-label">
+								{isAlumni ? 'Barça club record' : 'Barça career so far'}
+							</span>
+							<span className="muted">{record.years}</span>
 						</div>
-					)}
-				</div>
-				<div className="la-masia-copy">
-					<span className="culture-tag">{spotlight.generation}</span>
-					<strong className="culture-title">
-						{fromSquad?.number ? `#${fromSquad.number} ` : ''}
-						{spotlight.name}
-					</strong>
-					<span className="muted la-masia-pos">{fromSquad?.position || spotlight.position}</span>
-					<p className="culture-blurb">{spotlight.bio}</p>
-					<span className="la-masia-debut muted">{spotlight.debutNote}</span>
-					{fromSquad && <span className="la-masia-cta">View squad stats →</span>}
-				</div>
-			</button>
+						<div className="la-masia-record-grid">
+							{record.stats.map((s) => (
+								<div key={s.label}>
+									<strong>{s.value}</strong>
+									<span>{s.label}</span>
+								</div>
+							))}
+						</div>
+						<p className="la-masia-record-legacy">{record.legacy}</p>
+					</div>
+				)}
+			</div>
 		</div>
 	);
 }

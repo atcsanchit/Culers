@@ -141,7 +141,7 @@ export function HomePage() {
 				<OnThisDayCard />
 				<LaMasiaSpotlight
 					squad={data.squad.players}
-					onOpenPlayer={(player) => openPlayerStats(player)}
+					onOpenPlayer={(player, origin, context) => openPlayerStats(player, origin, context)}
 				/>
 			</div>
 

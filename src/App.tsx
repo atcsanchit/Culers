@@ -14,17 +14,41 @@ import { SquadHubPage } from './components/SquadHubPage';
 import { PlayerRatingsForm } from './components/PlayerRatingsForm';
 import { PlayerStatsModal } from './components/PlayerStatsModal';
 import { MatchSummaryModal } from './components/MatchSummaryModal';
+import { OnThisDayModal } from './components/OnThisDayModal';
 import { SocialDock } from './components/SocialDock';
 import { SocialFeedModal } from './components/SocialFeedModal';
 import { DATA_SOURCES } from './lib/sources';
 import { useRivalryMode } from './hooks/useRivalryMode';
+import { ON_THIS_DAY } from './data/onThisDay';
 import type { SocialPlatformId } from './types';
 
 function Body() {
-	const { tab, data, selectedPlayer, playerOpenOrigin, playerStatsContext, closePlayerStats, selectedMatchSummary, closeMatchSummary } = useBarca();
+	const {
+		tab,
+		data,
+		selectedPlayer,
+		playerOpenOrigin,
+		playerStatsContext,
+		closePlayerStats,
+		selectedMatchSummary,
+		closeMatchSummary,
+		selectedOnThisDay,
+		selectedOnThisDayExact,
+		closeOnThisDay,
+		openOnThisDay,
+	} = useBarca();
 	const [socialPlatform, setSocialPlatform] = useState<SocialPlatformId | null>(null);
 	const liveMatch = data?.live.live ? data.live.match : null;
 	const rivalry = useRivalryMode(data?.fixtures, liveMatch);
+
+	const onThisDayIdx = selectedOnThisDay
+		? ON_THIS_DAY.findIndex(
+				(e) =>
+					e.md === selectedOnThisDay.md &&
+					e.year === selectedOnThisDay.year &&
+					e.title === selectedOnThisDay.title,
+			)
+		: -1;
 
 	return (
 		<FetchAnimationProvider>
@@ -63,6 +87,22 @@ function Body() {
 				key={selectedMatchSummary?.id ?? 'summary-modal-closed'}
 				fixture={selectedMatchSummary}
 				onClose={closeMatchSummary}
+			/>
+			<OnThisDayModal
+				key={selectedOnThisDay ? `${selectedOnThisDay.md}-${selectedOnThisDay.year}` : 'otd-closed'}
+				event={selectedOnThisDay}
+				exact={selectedOnThisDayExact}
+				onClose={closeOnThisDay}
+				onPrev={() => {
+					if (onThisDayIdx < 0) return;
+					const next = ON_THIS_DAY[(onThisDayIdx - 1 + ON_THIS_DAY.length) % ON_THIS_DAY.length]!;
+					openOnThisDay(next, false);
+				}}
+				onNext={() => {
+					if (onThisDayIdx < 0) return;
+					const next = ON_THIS_DAY[(onThisDayIdx + 1) % ON_THIS_DAY.length]!;
+					openOnThisDay(next, false);
+				}}
 			/>
 			<SocialFeedModal platform={socialPlatform} onClose={() => setSocialPlatform(null)} />
 			<SocialDock onOpenFeed={setSocialPlatform} />

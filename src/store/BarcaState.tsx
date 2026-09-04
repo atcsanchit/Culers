@@ -19,12 +19,26 @@ import type {
 	PlayerRating,
 	Tab,
 } from '../types';
+import type { OnThisDayEvent } from '../data/onThisDay';
 
 export type PlayerOpenOrigin = { x: number; y: number };
 
+export type LegendClubStat = {
+	label: string;
+	value: string;
+};
+
 export type PlayerStatsContext =
-	| { mode: 'career' }
-	| { mode: 'live'; fixtureId: string };
+	| { mode: 'career'; initialTab?: 'season' | 'career' }
+	| { mode: 'live'; fixtureId: string }
+	/** Static club-record card for La Masia alumni (no live API). */
+	| {
+			mode: 'legend';
+			years: string;
+			legacy: string;
+			generation: string;
+			stats: LegendClubStat[];
+	  };
 
 type State = {
 	tab: Tab;
@@ -32,6 +46,8 @@ type State = {
 	ratings: Record<string, MatchRatings>;
 	selectedMatchId: string | null;
 	selectedMatchSummary: Fixture | null;
+	selectedOnThisDay: OnThisDayEvent | null;
+	selectedOnThisDayExact: boolean;
 	selectedPlayer: Player | null;
 	playerOpenOrigin: PlayerOpenOrigin | null;
 	playerStatsContext: PlayerStatsContext;
@@ -56,6 +72,8 @@ type Actions = {
 	closePlayerStats: () => void;
 	openMatchSummary: (fixture: Fixture) => void;
 	closeMatchSummary: () => void;
+	openOnThisDay: (event: OnThisDayEvent, exact?: boolean) => void;
+	closeOnThisDay: () => void;
 	openFixture: (fixture: Fixture) => void;
 };
 
@@ -71,6 +89,8 @@ export function BarcaProvider({ children }: { children: ReactNode }) {
 	const [ratings, setRatings] = useState<Record<string, MatchRatings>>(() => loadRatings());
 	const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
 	const [selectedMatchSummary, setSelectedMatchSummary] = useState<Fixture | null>(null);
+	const [selectedOnThisDay, setSelectedOnThisDay] = useState<OnThisDayEvent | null>(null);
+	const [selectedOnThisDayExact, setSelectedOnThisDayExact] = useState(false);
 	const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
 	const [playerOpenOrigin, setPlayerOpenOrigin] = useState<PlayerOpenOrigin | null>(null);
 	const [playerStatsContext, setPlayerStatsContext] = useState<PlayerStatsContext>({ mode: 'career' });
@@ -213,6 +233,8 @@ export function BarcaProvider({ children }: { children: ReactNode }) {
 			ratings,
 			selectedMatchId,
 			selectedMatchSummary,
+			selectedOnThisDay,
+			selectedOnThisDayExact,
 			selectedPlayer,
 			playerOpenOrigin,
 			playerStatsContext,
@@ -245,6 +267,14 @@ export function BarcaProvider({ children }: { children: ReactNode }) {
 			closeMatchSummary: () => {
 				setSelectedMatchSummary(null);
 			},
+			openOnThisDay: (event: OnThisDayEvent, exact = false) => {
+				setSelectedOnThisDay(event);
+				setSelectedOnThisDayExact(exact);
+			},
+			closeOnThisDay: () => {
+				setSelectedOnThisDay(null);
+				setSelectedOnThisDayExact(false);
+			},
 			openFixture: (fixture: Fixture) => {
 				if (isFixtureLive(fixture)) {
 					setSelectedMatchId(fixture.id);
@@ -260,6 +290,8 @@ export function BarcaProvider({ children }: { children: ReactNode }) {
 			ratings,
 			selectedMatchId,
 			selectedMatchSummary,
+			selectedOnThisDay,
+			selectedOnThisDayExact,
 			selectedPlayer,
 			playerOpenOrigin,
 			playerStatsContext,

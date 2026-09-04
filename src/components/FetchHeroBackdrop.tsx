@@ -3,7 +3,7 @@ import { FetchCampNouScene } from './FetchCampNouScene';
 
 /** Full-width Camp Nou animation behind the home hero. */
 export function FetchHeroBackdrop() {
-	const { isActive, isGoal, goalSubPhase, sceneClass, caption, pitchBanner, pitchChants, goalMinute } =
+	const { isActive, isGoal, goalSubPhase, sceneClass, caption, pitchBanner, pitchChants } =
 		useFetchAnimationState();
 
 	if (!isActive) return null;
@@ -19,7 +19,6 @@ export function FetchHeroBackdrop() {
 				goalSubPhase={goalSubPhase}
 				pitchBanner={pitchBanner}
 				pitchChants={pitchChants}
-				goalMinute={goalMinute}
 			/>
 			<div className="fetch-hero-caption">
 				<p className="fetch-overlay-title">{caption.title}</p>

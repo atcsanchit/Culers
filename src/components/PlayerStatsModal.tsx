@@ -18,13 +18,17 @@ function statsSignature(stats: { key: string; value: number | string }[]) {
 
 export function PlayerStatsModal({ player, origin, statsContext, onClose }: Props) {
 	const isLiveMatch = statsContext.mode === 'live';
+	const isLegend = statsContext.mode === 'legend';
 	const liveFixtureId = isLiveMatch ? statsContext.fixtureId : null;
+	const initialCareerTab =
+		isLegend ||
+		(statsContext.mode === 'career' && (statsContext.initialTab ?? 'career') === 'career');
 
 	const [stats, setStats] = useState<PlayerStats | null>(null);
 	const [liveStats, setLiveStats] = useState<PlayerMatchStats | null>(null);
 	const [initialLoading, setInitialLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const [tab, setTab] = useState<'season' | 'career'>('season');
+	const [tab, setTab] = useState<'season' | 'career'>(initialCareerTab ? 'career' : 'season');
 	const [photoOk, setPhotoOk] = useState(false);
 	const pollRef = useRef<number | null>(null);
 	const { motion, requestClose } = useProfileMotion(player?.id ?? null, onClose);
@@ -33,9 +37,9 @@ export function PlayerStatsModal({ player, origin, statsContext, onClose }: Prop
 
 	useEffect(() => {
 		if (!player) return;
-		setTab('season');
+		setTab(initialCareerTab ? 'career' : 'season');
 		setPhotoOk(false);
-	}, [player?.id]);
+	}, [player?.id, initialCareerTab]);
 
 	useEffect(() => {
 		if (!player) return;
@@ -93,8 +97,12 @@ export function PlayerStatsModal({ player, origin, statsContext, onClose }: Prop
 	}, [player?.fcbId, player?.id, liveFixtureId]);
 
 	useEffect(() => {
-		if (!player || isLiveMatch) {
+		if (!player || isLiveMatch || isLegend) {
 			setStats(null);
+			if (isLegend) {
+				setInitialLoading(false);
+				setError(null);
+			}
 			return;
 		}
 		if (player.fcbId) {
@@ -121,15 +129,27 @@ export function PlayerStatsModal({ player, origin, statsContext, onClose }: Prop
 		setStats(null);
 		setError('No stats ID — fetch latest to link this player.');
 		setInitialLoading(false);
-	}, [player?.fcbId, player?.sofaId, player?.id, isLiveMatch]);
+	}, [player?.fcbId, player?.sofaId, player?.id, isLiveMatch, isLegend]);
 
 	if (!player) return null;
 
+	const legendRows =
+		isLegend
+			? statsContext.stats.map((s) => ({
+					key: s.label,
+					label: s.label,
+					value: s.value,
+					available: true,
+				}))
+			: [];
+
 	const rows = isLiveMatch
 		? (liveStats?.stats ?? [])
-		: tab === 'season'
-			? (stats?.season ?? [])
-			: (stats?.career ?? []);
+		: isLegend
+			? legendRows
+			: tab === 'season'
+				? (stats?.season ?? [])
+				: (stats?.career ?? []);
 	const showPhoto = Boolean(photo && photoOk);
 	const compactPhoto = Boolean(player.sofaId && !player.fcbId);
 	const ox = origin ? (origin.x / window.innerWidth) * 100 : 22;
@@ -176,8 +196,9 @@ export function PlayerStatsModal({ player, origin, statsContext, onClose }: Prop
 						{player.number && <span className="hero-num">#{player.number}</span>}
 						<h2>{player.name}</h2>
 						<p className="muted">
-							{player.position}
-							{player.nationality ? ` · ${player.nationality}` : ''}
+							{isLegend
+								? `${player.position}${statsContext.generation ? ` · ${statsContext.generation}` : ''}`
+								: `${player.position}${player.nationality ? ` · ${player.nationality}` : ''}`}
 						</p>
 					</div>
 				</div>
@@ -189,6 +210,12 @@ export function PlayerStatsModal({ player, origin, statsContext, onClose }: Prop
 								<span className="pulse" /> Live match vs {liveStats?.opponent ?? '…'}
 							</button>
 							{liveStats?.clock && <span className="live-match-clock">{liveStats.clock}</span>}
+						</div>
+					) : isLegend ? (
+						<div className="stats-tabs">
+							<button type="button" className="active">
+								Barça club record · {statsContext.years}
+							</button>
 						</div>
 					) : (
 						<div className="stats-tabs">
@@ -229,12 +256,21 @@ export function PlayerStatsModal({ player, origin, statsContext, onClose }: Prop
 						</div>
 					)}
 
+					{isLegend && (
+						<p className="la-masia-legend-blurb">{statsContext.legacy}</p>
+					)}
+
 					{isLiveMatch && liveStats?.fetchedAt && (
 						<p className="stats-source muted">
 							Updated {formatDateTime(liveStats.fetchedAt)} IST · refreshes every 10s
 						</p>
 					)}
-					{!isLiveMatch && stats?.source && <p className="stats-source muted">{stats.source}</p>}
+					{isLegend && (
+						<p className="stats-source muted">
+							{statsContext.generation} · curated club record
+						</p>
+					)}
+					{!isLiveMatch && !isLegend && stats?.source && <p className="stats-source muted">{stats.source}</p>}
 					{isLiveMatch && liveStats?.source && !liveStats.fetchedAt && (
 						<p className="stats-source muted">{liveStats.source}</p>
 					)}
