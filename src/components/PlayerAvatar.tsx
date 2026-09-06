@@ -37,7 +37,7 @@ export function PlayerAvatar({ player, className = '', imgClassName = '', size =
 		<img
 			src={src}
 			alt=""
-			className={imgClassName || className}
+			className={`player-avatar-img ${size}${imgClassName ? ` ${imgClassName}` : ''}${className ? ` ${className}` : ''}`}
 			loading="lazy"
 			onError={() => setFailed(true)}
 		/>

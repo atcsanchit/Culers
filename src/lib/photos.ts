@@ -20,6 +20,7 @@ const KNOWN_TEAM_CRESTS: Record<string, string> = {
 	espanyol: 'https://r2.thesportsdb.com/images/media/team/badge/867nzz1681703222.png',
 	'athletic club': 'https://r2.thesportsdb.com/images/media/team/badge/68w7fe1639408210.png',
 	'athletic bilbao': 'https://r2.thesportsdb.com/images/media/team/badge/68w7fe1639408210.png',
+	feyenoord: 'https://r2.thesportsdb.com/images/media/team/badge/uturtx1473534803.png',
 };
 
 function normalizeTeamCrestKey(name: string) {
