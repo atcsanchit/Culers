@@ -9162,6 +9162,112 @@ a {
 	color: rgba(255, 255, 255, 0.84);
 }
 
+.next-briefing-watch-board {
+	margin-bottom: 0.9rem;
+	padding: 0.7rem 0.75rem 0.75rem;
+	border-radius: 12px;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	background: rgba(0, 0, 0, 0.22);
+}
+
+.next-briefing-watch-board-head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 0.5rem;
+	margin-bottom: 0.55rem;
+}
+
+.next-briefing-watch-source {
+	font-size: 0.68rem;
+}
+
+.next-briefing-watch-cols {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 0.65rem;
+}
+
+.next-briefing-watch-team {
+	display: block;
+	margin-bottom: 0.35rem;
+	font-size: 0.68rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--gold-soft);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.next-briefing-watch-col ul {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 0.3rem;
+}
+
+.next-briefing-watch-col li {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 0.4rem;
+	padding: 0.35rem 0.4rem;
+	border-radius: 8px;
+	background: rgba(255, 255, 255, 0.04);
+}
+
+.next-briefing-watch-name {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 0.25rem 0.35rem;
+	min-width: 0;
+	font-size: 0.78rem;
+}
+
+.next-briefing-watch-name em {
+	font-style: normal;
+	color: var(--muted);
+	font-size: 0.7rem;
+}
+
+.next-briefing-watch-name strong {
+	font-weight: 650;
+}
+
+.next-briefing-watch-name .muted {
+	font-size: 0.68rem;
+}
+
+.next-briefing-watch-metrics {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 0.05rem;
+	flex-shrink: 0;
+}
+
+.next-briefing-watch-metrics strong {
+	font-family: var(--display);
+	font-size: 0.92rem;
+	color: var(--gold);
+	line-height: 1;
+}
+
+.next-briefing-watch-metrics span {
+	font-size: 0.62rem;
+	letter-spacing: 0.04em;
+	color: var(--muted);
+}
+
+@media (max-width: 720px) {
+	.next-briefing-watch-cols {
+		grid-template-columns: 1fr;
+	}
+}
+
 .next-briefing-prediction {
 	margin-bottom: 0.95rem;
 	padding: 0.75rem 0.85rem;

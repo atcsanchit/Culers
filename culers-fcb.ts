@@ -1,6 +1,6 @@
 import { fetchTeamBadge, normalizeTeamKey } from './culers-team-badges.ts';
 import { fetchStadiumBackground } from './culers-stadium-photos.ts';
-import { fetchSofaScorePreviewMatch, resolveSofaScoreTeamId } from './culers-sofascore.ts';
+import { fetchSofaScorePreviewMatch, fetchSofaScorePlayersToWatch, resolveSofaScoreTeamId, SOFASCORE_BARCA_TEAM_ID } from './culers-sofascore.ts';
 
 const FCB_API = 'https://api-fcb.pulselive.com/football';
 const FCB_ORIGIN = 'https://www.fcbarcelona.com';
@@ -1217,6 +1217,18 @@ export async function fetchFcbFixturePreview(
 		awayTeam,
 	});
 
+	const barcaWatchId = SOFASCORE_BARCA_TEAM_ID;
+	const oppWatchId = opponentSofaId;
+	const [barcaWatch, oppWatch] = await Promise.all([
+		fetchSofaScorePlayersToWatch(barcaWatchId, 2, 3).catch(() => []),
+		oppWatchId ? fetchSofaScorePlayersToWatch(oppWatchId, 2, 3).catch(() => []) : Promise.resolve([]),
+	]);
+	const playersToWatch = {
+		home: isBarcaHome ? barcaWatch : oppWatch,
+		away: isBarcaHome ? oppWatch : barcaWatch,
+		source: 'SofaScore avg rating · last 2 matches',
+	};
+
 	return {
 		fixtureId: targetFixtureId,
 		preview: true,
@@ -1243,6 +1255,7 @@ export async function fetchFcbFixturePreview(
 		previewAwayEvents,
 		previewHomeMatchTeams,
 		previewAwayMatchTeams,
+		playersToWatch,
 		source: 'Preview — Opta stats from each team’s latest match (Barça uses live data when a match is in progress). Opponent stats via SofaScore when not on FCB feed.',
 	};
 }
