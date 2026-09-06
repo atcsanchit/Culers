@@ -11,12 +11,15 @@ import { RecentFormCarousel } from './RecentFormCarousel';
 import { OnThisDayCard } from './OnThisDayCard';
 import { LaMasiaSpotlight } from './LaMasiaSpotlight';
 import { RivalryModePanel } from './RivalryModePanel';
+import { NextMatchBriefing } from './NextMatchBriefing';
+import { HeroSpotlight } from './HeroSpotlight';
 import { useRivalryMode } from '../hooks/useRivalryMode';
-import { matchRivalry } from '../lib/rivalry';
-import { BARCA_CREST } from '../lib/photos';
+import { getNextUpcoming, heroMatchHeadline } from '../lib/matchBriefing';
+import { fixtureKickoffMs, matchRivalry } from '../lib/rivalry';
+import { pickOnThisDay } from '../data/onThisDay';
 
 export function HomePage() {
-	const { data, setTab, goLive, openFixture, openPlayerStats } = useBarca();
+	const { data, setTab, goLive, openFixture, openPlayerStats, openOnThisDay } = useBarca();
 	const { isActive: fetchAnimActive } = useFetchAnimationState();
 	const liveMatch = data?.live.live ? data.live.match : null;
 	const { active: rivalry } = useRivalryMode(data?.fixtures, liveMatch ?? null);
@@ -34,23 +37,40 @@ export function HomePage() {
 		);
 	}
 
-	const next = data.fixtures.find((f) => f.kind === 'upcoming');
+	const next = getNextUpcoming(data.fixtures);
+	const hasBriefing = Boolean(next);
 	const todayNews = data.news.slice(0, 4);
-	const nextIsRivalry = next ? matchRivalry(next.opponent) : null;
+	const nextRivalry = next ? matchRivalry(next.opponent) : null;
+	const heroRivalry = nextRivalry && next
+		? { rivalry: nextRivalry, fixture: next, phase: 'upcoming' as const }
+		: null;
+	const showRivalryPanel = Boolean(rivalry && (rivalry.phase === 'live' || rivalry.phase === 'recent'));
+	const otd = pickOnThisDay(new Date());
+	const nextKick = next ? fixtureKickoffMs(next) : null;
+	const matchHeadline =
+		heroRivalry ? 'Rivalry mode' : nextKick != null ? heroMatchHeadline(nextKick) : 'Més que un club';
 
 	return (
 		<section className="home-page">
 			<div
-				className={`hero home-hero${fetchAnimActive ? ' is-fetch-active' : ''}${rivalry ? ' has-rivalry' : ''}`}
+				className={`hero home-hero${fetchAnimActive ? ' is-fetch-active' : ''}${heroRivalry ? ' has-rivalry' : ''}`}
 			>
 				<FetchHeroBackdrop />
 				<div className="hero-text">
-					<span className="eyebrow">{rivalry ? rivalry.rivalry.name : 'Visca el Barça'}</span>
-					<h2>{rivalry ? 'Rivalry mode' : 'Més que un club'}</h2>
+					<span className="eyebrow">
+						{heroRivalry
+							? heroRivalry.rivalry.name
+							: next
+								? `${next.isHome ? 'vs' : '@'} ${next.opponent}`
+								: 'Visca el Barça'}
+					</span>
+					<h2>{matchHeadline}</h2>
 					<p>
-						{rivalry
-							? rivalry.rivalry.tagline
-							: 'Fixtures, live matchday, squad intel & Barça news — synced on demand.'}
+						{heroRivalry
+							? heroRivalry.rivalry.tagline
+							: next
+								? `${next.competition} · ${next.isHome ? 'Spotify Camp Nou' : next.venue}`
+								: 'Fixtures, live matchday, squad intel & Barça news — synced on demand.'}
 					</p>
 					<div className="hero-actions">
 						{data.live.live && (
@@ -67,22 +87,28 @@ export function HomePage() {
 					</div>
 				</div>
 				<div className="hero-stats hero-stats-row">
-					<div className="stat-card glass-stat">
-						<strong>{data.fixtures.length}</strong>
-						<span>Fixtures</span>
-					</div>
-					<div className="stat-card glass-stat">
-						<strong>{data.news.length}</strong>
-						<span>News</span>
-					</div>
-					<div className="stat-card glass-stat">
-						<strong>{data.squad.players.length}</strong>
-						<span>Squad</span>
-					</div>
+					<HeroSpotlight
+						news={data.news}
+						next={next}
+						rivalry={rivalry}
+						onOpenFixture={openFixture}
+						onOpenNews={() => setTab('news')}
+						onOpenOnThisDay={() => openOnThisDay(otd.event, otd.exact)}
+					/>
 				</div>
 			</div>
 
-			{rivalry && (
+			{hasBriefing && (
+				<NextMatchBriefing
+					fixtures={data.fixtures}
+					squad={data.squad.players}
+					onOpenFixture={openFixture}
+					onGoMatchDay={() => setTab('match')}
+					onOpenPlayer={(player, origin, context) => openPlayerStats(player, origin, context)}
+				/>
+			)}
+
+			{showRivalryPanel && rivalry && (
 				<RivalryModePanel
 					ctx={rivalry}
 					fixtures={data.fixtures}
@@ -101,41 +127,27 @@ export function HomePage() {
 				</div>
 			)}
 
-			<div className="home-grid">
-				<div className="home-block glass-panel match-spotlight">
-					<span className="panel-label">Next up</span>
-					<h3>Next match</h3>
-					{next ? (
-						<button
-							type="button"
-							className={`fixture-spotlight${nextIsRivalry ? ` is-rivalry rivalry-row-${nextIsRivalry.id}` : ''}`}
-							onClick={() => openFixture(next)}
-						>
-							<img src={BARCA_CREST} alt="" className="fixture-crest-watermark" aria-hidden />
-							<div className="fixture-spotlight-main">
-								<span className="comp-badge">{next.competition}</span>
-								{nextIsRivalry && <span className="rivalry-chip">{nextIsRivalry.shortLabel}</span>}
-								<strong className="fixture-opponent">vs {next.opponent}</strong>
-								<span className="fixture-when">{formatFixtureWhen(next.date, next.time)}</span>
-								<span className="fixture-venue">{next.isHome ? 'Spotify Camp Nou' : next.venue}</span>
-							</div>
-						</button>
-					) : (
+			{/* Fallback only when no upcoming briefing — avoid duplicating next match + form */}
+			{!hasBriefing && (
+				<div className="home-grid">
+					<div className="home-block glass-panel match-spotlight">
+						<span className="panel-label">Next up</span>
+						<h3>Next match</h3>
 						<p className="muted">No upcoming fixture loaded.</p>
-					)}
+					</div>
+					<div className="home-block glass-panel match-spotlight">
+						<span className="panel-label">Form</span>
+						<h3>Recent results</h3>
+						<RecentFormCarousel
+							fixtures={data.fixtures}
+							onSelect={(id) => {
+								const fixture = data.fixtures.find((f) => f.id === id);
+								if (fixture) openFixture(fixture);
+							}}
+						/>
+					</div>
 				</div>
-				<div className="home-block glass-panel match-spotlight">
-					<span className="panel-label">Form</span>
-					<h3>Recent results</h3>
-					<RecentFormCarousel
-						fixtures={data.fixtures}
-						onSelect={(id) => {
-							const fixture = data.fixtures.find((f) => f.id === id);
-							if (fixture) openFixture(fixture);
-						}}
-					/>
-				</div>
-			</div>
+			)}
 
 			<div className="home-grid culture-grid">
 				<OnThisDayCard />
