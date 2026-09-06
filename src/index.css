@@ -2402,6 +2402,41 @@ a {
 	flex-shrink: 0;
 }
 
+/* Real photos must share the same size boxes as placeholders (otherwise intrinsic PNGs blow up the layout). */
+.player-avatar-img {
+	display: block;
+	flex-shrink: 0;
+	object-fit: cover;
+	object-position: top center;
+	border-radius: 12px;
+	background: rgba(0, 0, 0, 0.2);
+}
+
+.player-avatar-img.sm {
+	width: 40px;
+	height: 40px;
+	border-radius: 10px;
+}
+
+.player-avatar-img.md {
+	width: 64px;
+	height: 64px;
+}
+
+.player-avatar-img.lg {
+	width: 72px;
+	height: 72px;
+	border-radius: 16px;
+}
+
+.next-briefing-watch .player-avatar-img,
+.next-briefing-watch .player-placeholder {
+	width: 40px;
+	height: 40px;
+	border-radius: 10px;
+	flex-shrink: 0;
+}
+
 .pitch-player .pitch-avatar,
 .pitch-player .player-placeholder.sm {
 	width: 100%;
