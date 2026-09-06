@@ -122,14 +122,20 @@ export type PlayerStats = {
 };
 
 export type PlayerMatchStats = {
-	fcbId: number;
+	fcbId?: number;
+	sofaId?: number;
 	fixtureId: string;
 	name: string;
 	position: string;
 	number: string;
 	opponent: string;
 	clock?: string;
+	rating?: number;
 	stats: StatRow[];
+	/** Compact list for FotMob-style “Top stats” panel */
+	topStats?: StatRow[];
+	/** Optional pitch heatmap points 0–100 */
+	heatmap?: { x: number; y: number }[];
 	fetchedAt: string;
 	source: string;
 };
@@ -139,6 +145,53 @@ export type MatchLineupPlayer = {
 	name: string;
 	number: string;
 	position: string;
+};
+
+export type RatedPitchPlayer = {
+	id: string;
+	sofaId: number;
+	name: string;
+	number: string;
+	position: string;
+	rating: number | null;
+	goals: number;
+	assists: number;
+	yellow: number;
+	red: number;
+	minutes: number;
+	subOn: number | null;
+	subOff: number | null;
+	isCaptain: boolean;
+	isMotm: boolean;
+	substitute: boolean;
+	/** 0–100 within team half */
+	x: number;
+	y: number;
+	photo?: string;
+};
+
+export type MatchRatingsSide = {
+	teamName: string;
+	teamId: number;
+	isBarca: boolean;
+	formation: string;
+	avgRating: number | null;
+	starters: RatedPitchPlayer[];
+	bench: RatedPitchPlayer[];
+};
+
+export type MatchRatingsBoard = {
+	fixtureId: string;
+	sofaEventId: number;
+	homeTeam: string;
+	awayTeam: string;
+	homeScore: number | null;
+	awayScore: number | null;
+	clock?: string;
+	status: string;
+	home: MatchRatingsSide;
+	away: MatchRatingsSide;
+	source: string;
 };
 
 export type WatchPlayer = {

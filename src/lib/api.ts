@@ -1,4 +1,4 @@
-import type { FetchPayload, InstagramFeed, LaMasiaHub, LineupData, LiveData, MatchSummary, PlayerMatchStats, PlayerStats, SocialHubData, XFeed } from '../types';
+import type { FetchPayload, InstagramFeed, LaMasiaHub, LineupData, LiveData, MatchRatingsBoard, MatchSummary, PlayerMatchStats, PlayerStats, SocialHubData, XFeed } from '../types';
 
 export const LIVE_POLL_MS = 10_000;
 
@@ -44,11 +44,24 @@ export async function fetchLive(): Promise<LiveData> {
 	return res.json();
 }
 
-export async function fetchPlayerMatchStats(fcbId: number, fixtureId: string): Promise<PlayerMatchStats> {
-	const res = await fetch(
-		`/api/player-match-stats?fcbId=${fcbId}&fixtureId=${encodeURIComponent(fixtureId)}`,
-	);
+export async function fetchPlayerMatchStats(options: {
+	fixtureId: string;
+	fcbId?: number;
+	sofaId?: number;
+	playerName?: string;
+}): Promise<PlayerMatchStats> {
+	const params = new URLSearchParams({ fixtureId: options.fixtureId });
+	if (options.fcbId) params.set('fcbId', String(options.fcbId));
+	if (options.sofaId) params.set('sofaId', String(options.sofaId));
+	if (options.playerName) params.set('playerName', options.playerName);
+	const res = await fetch(`/api/player-match-stats?${params}`);
 	if (!res.ok) throw new Error('Failed to fetch live match player stats');
+	return res.json();
+}
+
+export async function fetchMatchRatings(fixtureId: string): Promise<MatchRatingsBoard> {
+	const res = await fetch(`/api/match-ratings?fixtureId=${encodeURIComponent(fixtureId)}`);
+	if (!res.ok) throw new Error('Failed to fetch match ratings');
 	return res.json();
 }
 

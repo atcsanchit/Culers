@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useBarca, useSelectedFixture } from '../store/BarcaState';
-import { fetchLineup, isFinished, formatDateTime, formatFixtureWhen } from '../lib/api';
+import { fetchLineup, isFinished, isLiveStatus, formatDateTime, formatFixtureWhen } from '../lib/api';
 import { Scoreboard } from './Scoreboard';
 import { LiveGraphic } from './LiveGraphic';
 import { PitchLineup } from './PitchLineup';
+import { MatchRatingsPitch } from './MatchRatingsPitch';
 import { FetchButton } from './FetchButton';
-import type { LineupData } from '../types';
+import type { LineupData, RatedPitchPlayer } from '../types';
 
 export function MatchPage() {
 	const {
@@ -36,13 +37,69 @@ export function MatchPage() {
 	const isViewingLive = Boolean(liveMatch && fixture?.id === liveMatch.id);
 	const showLiveGraphic = isViewingLive && livePolling;
 	const matchOptions = data.fixtures.slice(0, 30);
+	const showRatingsPitch = Boolean(
+		fixture &&
+			(fixture.kind === 'live' ||
+				isLiveStatus(fixture.status) ||
+				isFinished(fixture.status) ||
+				fixture.kind === 'past'),
+	);
 
-	const handlePlayerClick = (player: Parameters<typeof openPlayerStats>[0], origin?: Parameters<typeof openPlayerStats>[1]) => {
-		if (fixture && isViewingLive && player.fcbId) {
-			openPlayerStats(player, origin, { mode: 'live', fixtureId: fixture.id });
+	const handlePlayerClick = (
+		player: Parameters<typeof openPlayerStats>[0],
+		origin?: Parameters<typeof openPlayerStats>[1],
+	) => {
+		const sofaFromId = /^sofa-(\d+)$/i.exec(player.id);
+		const sofaId = player.sofaId ?? (sofaFromId ? Number(sofaFromId[1]) : undefined);
+		const fromSquad = data.squad.players.find(
+			(p) =>
+				(sofaId && p.sofaId === sofaId) ||
+				(player.fcbId && p.fcbId === player.fcbId) ||
+				p.id === player.id ||
+				p.name.toLowerCase() === player.name.toLowerCase(),
+		);
+		const merged = {
+			...(fromSquad ?? player),
+			...player,
+			fcbId: player.fcbId ?? fromSquad?.fcbId,
+			sofaId: sofaId ?? fromSquad?.sofaId,
+			photo: player.photo || fromSquad?.photo || '',
+		};
+
+		if (fixture && (isViewingLive || isFinished(fixture.status) || fixture.kind === 'past')) {
+			openPlayerStats(merged, origin, {
+				mode: isViewingLive ? 'live' : 'match',
+				fixtureId: fixture.id,
+			});
 			return;
 		}
-		openPlayerStats(player, origin);
+		openPlayerStats(merged, origin);
+	};
+
+	const handleRatedPlayerClick = (rated: RatedPitchPlayer, origin: { x: number; y: number }, fixtureId: string) => {
+		const fromSquad = data.squad.players.find(
+			(p) =>
+				(rated.sofaId && p.sofaId === rated.sofaId) ||
+				p.name.toLowerCase() === rated.name.toLowerCase() ||
+				(p.number &&
+					rated.number &&
+					p.number === rated.number &&
+					p.name.includes(rated.name.split(' ').slice(-1)[0]!)),
+		);
+		openPlayerStats(
+			fromSquad ?? {
+				id: rated.id,
+				name: rated.name,
+				position: rated.position,
+				number: rated.number,
+				nationality: '',
+				photo: rated.photo ?? '',
+				birthDate: '',
+				sofaId: rated.sofaId,
+			},
+			origin,
+			{ mode: isViewingLive ? 'live' : 'match', fixtureId },
+		);
 	};
 
 	const [lineup, setLineup] = useState<LineupData>(data.lineup);
@@ -76,7 +133,6 @@ export function MatchPage() {
 		void refreshLiveScore();
 	}, [fixture?.id, refreshLiveScore]);
 
-	// Refresh official lineup every live poll while viewing the live fixture
 	useEffect(() => {
 		if (!isViewingLive || !fixture?.id || !livePolling) return;
 		let cancelled = false;
@@ -96,8 +152,8 @@ export function MatchPage() {
 				<h2>Match day</h2>
 				<p>
 					{liveMatch
-						? 'Select the live fixture for real-time score, events, and lineups — updates every 10 seconds.'
-						: 'Live scoreboard, pitch lineup, and squad — hover players on the pitch for details.'}
+						? 'Select the live fixture for real-time score, XI, and ratings — updates every 10 seconds.'
+						: 'Scoreboard, confirmed XI, and SofaScore ratings — tap a player for match stats.'}
 				</p>
 			</div>
 
@@ -167,8 +223,8 @@ export function MatchPage() {
 						<LiveGraphic
 							events={data.live.events}
 							clock={data.live.clock}
-							homeScore={fixture.isHome ? fixture.homeScore : fixture.awayScore}
-							awayScore={fixture.isHome ? fixture.awayScore : fixture.homeScore}
+							homeScore={fixture.homeScore}
+							awayScore={fixture.awayScore}
 							homeLabel={fixture.isHome ? 'Barcelona' : fixture.opponent}
 							awayLabel={fixture.isHome ? fixture.opponent : 'Barcelona'}
 						/>
@@ -195,6 +251,17 @@ export function MatchPage() {
 				/>
 			)}
 			{lineupLoading && <p className="muted fetch-meta">Refreshing lineup from SofaScore…</p>}
+
+			{showRatingsPitch && fixture && (
+				<details className="match-ratings-details">
+					<summary>Both-teams SofaScore ratings</summary>
+					<MatchRatingsPitch
+						fixtureId={fixture.id}
+						pollKey={isViewingLive ? lastLiveAt : fixture.id}
+						onPlayerClick={handleRatedPlayerClick}
+					/>
+				</details>
+			)}
 		</section>
 	);
 }
