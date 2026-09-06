@@ -10,7 +10,7 @@ import {
 import { PlayerAvatar } from './PlayerAvatar';
 import { BARCA_CREST } from '../lib/photos';
 
-const ROTATE_MS = 9000;
+const ROTATE_MS = 7000;
 
 type Props = {
 	squad: Player[];

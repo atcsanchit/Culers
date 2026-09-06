@@ -9,19 +9,49 @@ export const CAMP_NOU_BG = '/backgrounds/player/camp-nou-grass.jpg';
 /** Home slideshow reads public/backgrounds/home/manifest.json (auto-generated from any images in that folder). */
 export const HOME_BACKGROUNDS_MANIFEST = '/backgrounds/home/manifest.json';
 
-export function isBarcaTeamName(name: string) {
-	const k = name
+/** Stable TheSportsDB badge URLs for frequent opponents (img hotlink OK). */
+const KNOWN_TEAM_CRESTS: Record<string, string> = {
+	valencia: 'https://r2.thesportsdb.com/images/media/team/badge/dm8l6o1655594864.png',
+	'valencia cf': 'https://r2.thesportsdb.com/images/media/team/badge/dm8l6o1655594864.png',
+	sevilla: 'https://r2.thesportsdb.com/images/media/team/badge/vpsqqx1473502977.png',
+	'real madrid': 'https://r2.thesportsdb.com/images/media/team/badge/vwvwrw1473502969.png',
+	'atletico madrid': 'https://r2.thesportsdb.com/images/media/team/badge/0ulh3q1719984315.png',
+	'atlético madrid': 'https://r2.thesportsdb.com/images/media/team/badge/0ulh3q1719984315.png',
+	espanyol: 'https://r2.thesportsdb.com/images/media/team/badge/867nzz1681703222.png',
+	'athletic club': 'https://r2.thesportsdb.com/images/media/team/badge/68w7fe1639408210.png',
+	'athletic bilbao': 'https://r2.thesportsdb.com/images/media/team/badge/68w7fe1639408210.png',
+};
+
+function normalizeTeamCrestKey(name: string) {
+	return name
 		.normalize('NFD')
 		.replace(/[\u0300-\u036f]/g, '')
 		.toLowerCase()
 		.replace(/^fc\s+/i, '')
+		.replace(/[^a-z0-9\s]/g, ' ')
+		.replace(/\s+/g, ' ')
 		.trim();
+}
+
+export function isBarcaTeamName(name: string) {
+	const k = normalizeTeamCrestKey(name);
 	return k === 'barcelona' || k === 'barça' || k === 'barca';
+}
+
+export function knownTeamCrest(teamName: string): string {
+	const key = normalizeTeamCrestKey(teamName);
+	if (KNOWN_TEAM_CRESTS[key]) return KNOWN_TEAM_CRESTS[key]!;
+	// Soft match: "Valencia CF" already normalized; also try first token for "Valencia ..."
+	const first = key.split(' ')[0] ?? '';
+	if (first && KNOWN_TEAM_CRESTS[first]) return KNOWN_TEAM_CRESTS[first]!;
+	return '';
 }
 
 export function teamCrestSrc(teamName: string, remoteUrl: string) {
 	if (isBarcaTeamName(teamName)) return BARCA_CREST;
-	return remoteUrl?.trim() || '';
+	const remote = remoteUrl?.trim() || '';
+	if (remote) return remote;
+	return knownTeamCrest(teamName);
 }
 
 /** Only return a verified photo URL — never invent or substitute another person. */

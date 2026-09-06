@@ -59,3 +59,31 @@ export function loadLastFetch(): import('../types').FetchPayload | null {
 export function saveLastFetch(data: import('../types').FetchPayload) {
 	localStorage.setItem('culers-last-fetch', JSON.stringify(data));
 }
+
+const PREDICTION_KEY = 'culers-match-predictions';
+
+export type MatchPrediction = {
+	fixtureId: string;
+	barcaGoals: number;
+	oppGoals: number;
+	savedAt: string;
+};
+
+export function loadMatchPredictions(): Record<string, MatchPrediction> {
+	try {
+		const raw = localStorage.getItem(PREDICTION_KEY);
+		return raw ? JSON.parse(raw) : {};
+	} catch {
+		return {};
+	}
+}
+
+export function loadMatchPrediction(fixtureId: string): MatchPrediction | null {
+	return loadMatchPredictions()[fixtureId] ?? null;
+}
+
+export function saveMatchPrediction(prediction: MatchPrediction) {
+	const all = loadMatchPredictions();
+	all[prediction.fixtureId] = prediction;
+	localStorage.setItem(PREDICTION_KEY, JSON.stringify(all));
+}
