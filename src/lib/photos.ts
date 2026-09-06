@@ -49,9 +49,10 @@ export function knownTeamCrest(teamName: string): string {
 
 export function teamCrestSrc(teamName: string, remoteUrl: string) {
 	if (isBarcaTeamName(teamName)) return BARCA_CREST;
-	const remote = remoteUrl?.trim() || '';
-	if (remote) return remote;
-	return knownTeamCrest(teamName);
+	// Prefer known CDN badges — API remotes often fail hotlink / CORS in the browser.
+	const known = knownTeamCrest(teamName);
+	if (known) return known;
+	return remoteUrl?.trim() || '';
 }
 
 /** Only return a verified photo URL — never invent or substitute another person. */

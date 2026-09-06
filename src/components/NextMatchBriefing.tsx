@@ -3,6 +3,7 @@ import type { Fixture, MatchSummary, Player } from '../types';
 import type { PlayerOpenOrigin, PlayerStatsContext } from '../store/BarcaState';
 import { fetchMatchSummary, formatFixtureWhen } from '../lib/api';
 import {
+	barcaPlayersToWatchFromRatings,
 	briefingPhase,
 	computeOpponentH2H,
 	getNextUpcoming,
@@ -10,9 +11,11 @@ import {
 	playerToWatch,
 	stakesLine,
 	watchChecklist,
+	watchPlayerKeyStat,
 } from '../lib/matchBriefing';
 import { countdownParts, fixtureKickoffMs, matchRivalry } from '../lib/rivalry';
-import { loadMatchPrediction, saveMatchPrediction } from '../lib/storage';
+import { loadMatchPrediction, loadRatings, saveMatchPrediction } from '../lib/storage';
+import type { WatchPlayer } from '../types';
 import {
 	BARCA_CREST,
 	CAMP_NOU_BG,
@@ -53,9 +56,14 @@ function TeamCrest({
 		<>
 			{src ? (
 				<img
+					key={src}
 					src={src}
 					alt=""
 					className={`next-briefing-crest${ok ? '' : ' is-loading'}`}
+					ref={(el) => {
+						// Cached images can skip onLoad; treat already-decoded as loaded.
+						if (el?.complete && el.naturalWidth > 0) onOk();
+					}}
 					onLoad={onOk}
 					onError={onFail}
 				/>
@@ -109,11 +117,36 @@ export function NextMatchBriefing({ fixtures, squad, onOpenFixture, onGoMatchDay
 		[fixtures, fixture],
 	);
 	const form = useMemo(() => lastForm(fixtures, 5), [fixtures]);
-	const watch = useMemo(() => playerToWatch(squad), [squad]);
+	const spotlightWatch = useMemo(() => playerToWatch(squad), [squad]);
 	const checklist = useMemo(
 		() => (fixture && phase === 'near' ? watchChecklist(fixture, rivalry) : []),
 		[fixture, phase, rivalry],
 	);
+
+	const localRatings = useMemo(() => loadRatings(), [fixture?.id]);
+	const localBarcaWatch = useMemo(
+		() => barcaPlayersToWatchFromRatings(fixtures, localRatings, squad, 2, 3),
+		[fixtures, localRatings, squad],
+	);
+
+	const watchPack = summary?.playersToWatch;
+	const homeWatch: WatchPlayer[] = useMemo(() => {
+		if (!fixture) return [];
+		if (fixture.isHome && localBarcaWatch?.length) return localBarcaWatch;
+		return watchPack?.home ?? [];
+	}, [fixture, watchPack, localBarcaWatch]);
+	const awayWatch: WatchPlayer[] = useMemo(() => {
+		if (!fixture) return [];
+		if (!fixture.isHome && localBarcaWatch?.length) return localBarcaWatch;
+		return watchPack?.away ?? [];
+	}, [fixture, watchPack, localBarcaWatch]);
+	const showPlayersWatch = phase === 'near' && (homeWatch.length > 0 || awayWatch.length > 0);
+	const watchSource =
+		localBarcaWatch?.length && fixture
+			? fixture.isHome
+				? 'Barça: your ratings · Opp: SofaScore · last 2'
+				: 'Opp: SofaScore · Barça: your ratings · last 2'
+			: watchPack?.source ?? 'SofaScore avg rating · last 2 matches';
 
 	const [barcaGoals, setBarcaGoals] = useState(2);
 	const [oppGoals, setOppGoals] = useState(1);
@@ -159,8 +192,8 @@ export function NextMatchBriefing({ fixtures, squad, onOpenFixture, onGoMatchDay
 	const setAwayGoals = (n: number) => (homeIsBarca ? setOppGoals(n) : setBarcaGoals(n));
 
 	const openWatch = (e: MouseEvent) => {
-		if (!watch || !onOpenPlayer) return;
-		onOpenPlayer(watch, { x: e.clientX, y: e.clientY }, { mode: 'career', initialTab: 'career' });
+		if (!spotlightWatch || !onOpenPlayer) return;
+		onOpenPlayer(spotlightWatch, { x: e.clientX, y: e.clientY }, { mode: 'career', initialTab: 'career' });
 	};
 
 	const lockPrediction = () => {
@@ -343,22 +376,22 @@ export function NextMatchBriefing({ fixtures, squad, onOpenFixture, onGoMatchDay
 					</div>
 				)}
 
-				{phase === 'far' && watch && (
+				{phase === 'far' && spotlightWatch && (
 					<button type="button" className="next-briefing-watch" onClick={openWatch} disabled={!onOpenPlayer}>
-						{playerPhotoSrc(watch) ? (
-							<PlayerAvatar player={watch} size="sm" />
+						{playerPhotoSrc(spotlightWatch) ? (
+							<PlayerAvatar player={spotlightWatch} size="sm" />
 						) : (
 							<span className="next-briefing-watch-fallback" aria-hidden>
-								{playerInitials(watch.name)}
+								{playerInitials(spotlightWatch.name)}
 							</span>
 						)}
 						<span className="next-briefing-watch-copy">
 							<span className="rivalry-h2h-label">Player to watch</span>
 							<strong>
-								{watch.number ? `#${watch.number} ` : ''}
-								{watch.name}
+								{spotlightWatch.number ? `#${spotlightWatch.number} ` : ''}
+								{spotlightWatch.name}
 							</strong>
-							<span className="muted">{watch.position}</span>
+							<span className="muted">{spotlightWatch.position}</span>
 						</span>
 						<span className="next-briefing-watch-cta">Career →</span>
 					</button>
@@ -372,6 +405,73 @@ export function NextMatchBriefing({ fixtures, squad, onOpenFixture, onGoMatchDay
 								<li key={item}>{item}</li>
 							))}
 						</ul>
+					</div>
+				)}
+
+				{showPlayersWatch && (
+					<div className="next-briefing-watch-board">
+						<div className="next-briefing-watch-board-head">
+							<span className="rivalry-h2h-label">Players to watch</span>
+							<span className="muted next-briefing-watch-source">{watchSource}</span>
+						</div>
+						<div className="next-briefing-watch-cols">
+							<div className="next-briefing-watch-col">
+								<span className="next-briefing-watch-team">{homeTeam}</span>
+								{homeWatch.length ? (
+									<ul>
+										{homeWatch.map((p) => {
+											const key = watchPlayerKeyStat(p);
+											return (
+												<li key={`h-${p.id}`}>
+													<span className="next-briefing-watch-name">
+														{p.number ? <em>#{p.number}</em> : null}
+														<strong>{p.name.split(' ').slice(-1)[0]}</strong>
+														<span className="muted">{p.position}</span>
+													</span>
+													<span className="next-briefing-watch-metrics">
+														<strong>{p.avgRating.toFixed(1)}</strong>
+														<span>
+															{key.value}
+															{key.label}
+														</span>
+													</span>
+												</li>
+											);
+										})}
+									</ul>
+								) : (
+									<p className="muted">No ratings yet</p>
+								)}
+							</div>
+							<div className="next-briefing-watch-col">
+								<span className="next-briefing-watch-team">{awayTeam}</span>
+								{awayWatch.length ? (
+									<ul>
+										{awayWatch.map((p) => {
+											const key = watchPlayerKeyStat(p);
+											return (
+												<li key={`a-${p.id}`}>
+													<span className="next-briefing-watch-name">
+														{p.number ? <em>#{p.number}</em> : null}
+														<strong>{p.name.split(' ').slice(-1)[0]}</strong>
+														<span className="muted">{p.position}</span>
+													</span>
+													<span className="next-briefing-watch-metrics">
+														<strong>{p.avgRating.toFixed(1)}</strong>
+														<span>
+															{key.value}
+															{key.label}
+														</span>
+													</span>
+												</li>
+											);
+										})}
+									</ul>
+								) : (
+									<p className="muted">No ratings yet</p>
+								)}
+							</div>
+						</div>
 					</div>
 				)}
 

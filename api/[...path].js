@@ -756,6 +756,7 @@ function parseEvent(raw) {
     id: Number(raw.id ?? 0),
     date: eventDate(raw),
     time: kickoff ? kickoff.toISOString().slice(11, 19) : "",
+    startTimestamp: Number.isFinite(ts) ? ts : 0,
     homeTeam,
     awayTeam,
     homeTeamId,
@@ -794,6 +795,9 @@ function scoreEvent(event, opponent, date) {
 async function listTeamEventsForTeam(teamId, kind, page = 0) {
   const data = await sofaFetch(`/team/${teamId}/events/${kind}/${page}`);
   const events = (data?.events ?? []).map(parseEvent).filter(Boolean);
+  if (kind === "last") {
+    return [...events].sort((a, b) => (b.startTimestamp || 0) - (a.startTimestamp || 0));
+  }
   return events;
 }
 async function listTeamEvents(kind, page = 0) {
@@ -881,6 +885,68 @@ async function findSofaScoreTeamLastFinishedEvent(teamId, options) {
   }
   const pick = best?.event ?? finished[0] ?? null;
   return pick ? withTeamPerspective(pick, teamId) : null;
+}
+function readSofaStat(stats, ...keys) {
+  if (!stats) return 0;
+  for (const key of keys) {
+    const n = Number(stats[key]);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return 0;
+}
+async function fetchSofaScorePlayersToWatch(teamId, lastN = 2, limit = 3) {
+  const last = await listTeamEventsForTeam(teamId, "last");
+  const finished = last.filter((e) => e.statusType === "finished" || e.statusType === "closed").slice(0, Math.max(1, lastN));
+  const byId = /* @__PURE__ */ new Map();
+  await Promise.all(
+    finished.map(async (event) => {
+      const lineupsRaw = await sofaFetch(`/event/${event.id}/lineups`);
+      if (!lineupsRaw) return;
+      const homeSide = lineupsRaw.home;
+      const awaySide = lineupsRaw.away;
+      const teamIsHome = event.homeTeamId === teamId;
+      const teamSide = teamIsHome ? homeSide : awaySide;
+      for (const row of teamSide?.players ?? []) {
+        const playerMeta = row.player;
+        if (!playerMeta) continue;
+        const stats = row.statistics;
+        const rating = Number(stats?.rating ?? 0);
+        if (!Number.isFinite(rating) || rating <= 0) continue;
+        const id = String(playerMeta.id ?? playerMeta.slug ?? playerMeta.name ?? "");
+        if (!id) continue;
+        const name = String(playerMeta.name ?? "Unknown");
+        const position = mapSofaPosition(String(row.position ?? playerMeta.position ?? ""));
+        const number = String(row.jerseyNumber ?? playerMeta.jerseyNumber ?? "");
+        const goals = readSofaStat(stats, "goals", "goal");
+        const assists = readSofaStat(stats, "goalAssist", "assists", "assist");
+        const cur = byId.get(id) ?? {
+          id,
+          name,
+          position,
+          number,
+          ratings: [],
+          goals: 0,
+          assists: 0
+        };
+        cur.ratings.push(rating);
+        cur.goals += goals;
+        cur.assists += assists;
+        if (!cur.position && position) cur.position = position;
+        if (!cur.number && number) cur.number = number;
+        byId.set(id, cur);
+      }
+    })
+  );
+  return [...byId.values()].map((p) => ({
+    id: p.id,
+    name: p.name,
+    position: p.position || "Player",
+    number: p.number,
+    avgRating: Math.round(p.ratings.reduce((a, b) => a + b, 0) / p.ratings.length * 10) / 10,
+    matches: p.ratings.length,
+    goals: p.goals,
+    assists: p.assists
+  })).sort((a, b) => b.avgRating - a.avgRating || b.goals - a.goals || b.assists - a.assists).slice(0, limit);
 }
 var SOFA_STAT_MAP = {
   ballPossession: "possession_percentage",
@@ -1970,6 +2036,17 @@ async function fetchFcbFixturePreview(targetFixtureId, allFixtures, liveBarcaFix
     homeTeam,
     awayTeam
   });
+  const barcaWatchId = SOFASCORE_BARCA_TEAM_ID;
+  const oppWatchId = opponentSofaId;
+  const [barcaWatch, oppWatch] = await Promise.all([
+    fetchSofaScorePlayersToWatch(barcaWatchId, 2, 3).catch(() => []),
+    oppWatchId ? fetchSofaScorePlayersToWatch(oppWatchId, 2, 3).catch(() => []) : Promise.resolve([])
+  ]);
+  const playersToWatch = {
+    home: isBarcaHome ? barcaWatch : oppWatch,
+    away: isBarcaHome ? oppWatch : barcaWatch,
+    source: "SofaScore avg rating \xB7 last 2 matches"
+  };
   return {
     fixtureId: targetFixtureId,
     preview: true,
@@ -1996,6 +2073,7 @@ async function fetchFcbFixturePreview(targetFixtureId, allFixtures, liveBarcaFix
     previewAwayEvents,
     previewHomeMatchTeams,
     previewAwayMatchTeams,
+    playersToWatch,
     source: "Preview \u2014 Opta stats from each team\u2019s latest match (Bar\xE7a uses live data when a match is in progress). Opponent stats via SofaScore when not on FCB feed."
   };
 }

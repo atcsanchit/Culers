@@ -91,6 +91,8 @@ export type SofaScoreEvent = {
 	id: number;
 	date: string;
 	time: string;
+	/** Unix seconds — used to order "last" events (SofaScore pages are oldest-first). */
+	startTimestamp: number;
 	homeTeam: string;
 	awayTeam: string;
 	homeTeamId: number;
@@ -262,6 +264,7 @@ function parseEvent(raw: Json): SofaScoreEvent | null {
 		id: Number(raw.id ?? 0),
 		date: eventDate(raw),
 		time: kickoff ? kickoff.toISOString().slice(11, 19) : '',
+		startTimestamp: Number.isFinite(ts) ? ts : 0,
 		homeTeam,
 		awayTeam,
 		homeTeamId,
@@ -304,6 +307,10 @@ function scoreEvent(event: SofaScoreEvent, opponent?: string, date?: string) {
 async function listTeamEventsForTeam(teamId: number, kind: 'next' | 'last', page = 0) {
 	const data = await sofaFetch(`/team/${teamId}/events/${kind}/${page}`);
 	const events = ((data?.events as Json[]) ?? []).map(parseEvent).filter(Boolean) as SofaScoreEvent[];
+	// SofaScore returns `last` pages oldest→newest; callers expect most-recent first.
+	if (kind === 'last') {
+		return [...events].sort((a, b) => (b.startTimestamp || 0) - (a.startTimestamp || 0));
+	}
 	return events;
 }
 
@@ -438,6 +445,106 @@ export async function findSofaScoreTeamLastFinishedEvent(
 
 	const pick = best?.event ?? finished[0] ?? null;
 	return pick ? withTeamPerspective(pick, teamId) : null;
+}
+
+export type SofaWatchPlayer = {
+	id: string;
+	name: string;
+	position: string;
+	number: string;
+	avgRating: number;
+	matches: number;
+	goals: number;
+	assists: number;
+};
+
+type PlayerAgg = {
+	id: string;
+	name: string;
+	position: string;
+	number: string;
+	ratings: number[];
+	goals: number;
+	assists: number;
+};
+
+function readSofaStat(stats: Json | undefined, ...keys: string[]) {
+	if (!stats) return 0;
+	for (const key of keys) {
+		const n = Number(stats[key]);
+		if (Number.isFinite(n) && n > 0) return n;
+	}
+	return 0;
+}
+
+/** Top players by average SofaScore match rating across the last N finished games. */
+export async function fetchSofaScorePlayersToWatch(
+	teamId: number,
+	lastN = 2,
+	limit = 3,
+): Promise<SofaWatchPlayer[]> {
+	const last = await listTeamEventsForTeam(teamId, 'last');
+	const finished = last
+		.filter((e) => e.statusType === 'finished' || e.statusType === 'closed')
+		.slice(0, Math.max(1, lastN));
+
+	const byId = new Map<string, PlayerAgg>();
+
+	await Promise.all(
+		finished.map(async (event) => {
+			const lineupsRaw = await sofaFetch(`/event/${event.id}/lineups`);
+			if (!lineupsRaw) return;
+			const homeSide = lineupsRaw.home as Json | undefined;
+			const awaySide = lineupsRaw.away as Json | undefined;
+			const teamIsHome = event.homeTeamId === teamId;
+			const teamSide = teamIsHome ? homeSide : awaySide;
+			for (const row of (teamSide?.players as Json[]) ?? []) {
+				const playerMeta = row.player as Json | undefined;
+				if (!playerMeta) continue;
+				const stats = row.statistics as Json | undefined;
+				const rating = Number(stats?.rating ?? 0);
+				if (!Number.isFinite(rating) || rating <= 0) continue;
+
+				const id = String(playerMeta.id ?? playerMeta.slug ?? playerMeta.name ?? '');
+				if (!id) continue;
+				const name = String(playerMeta.name ?? 'Unknown');
+				const position = mapSofaPosition(String(row.position ?? playerMeta.position ?? ''));
+				const number = String(row.jerseyNumber ?? playerMeta.jerseyNumber ?? '');
+				const goals = readSofaStat(stats, 'goals', 'goal');
+				const assists = readSofaStat(stats, 'goalAssist', 'assists', 'assist');
+
+				const cur = byId.get(id) ?? {
+					id,
+					name,
+					position,
+					number,
+					ratings: [],
+					goals: 0,
+					assists: 0,
+				};
+				cur.ratings.push(rating);
+				cur.goals += goals;
+				cur.assists += assists;
+				if (!cur.position && position) cur.position = position;
+				if (!cur.number && number) cur.number = number;
+				byId.set(id, cur);
+			}
+		}),
+	);
+
+	return [...byId.values()]
+		.map((p) => ({
+			id: p.id,
+			name: p.name,
+			position: p.position || 'Player',
+			number: p.number,
+			avgRating: Math.round((p.ratings.reduce((a, b) => a + b, 0) / p.ratings.length) * 10) / 10,
+			matches: p.ratings.length,
+			goals: p.goals,
+			assists: p.assists,
+		}))
+		.sort((a, b) => b.avgRating - a.avgRating || b.goals - a.goals || b.assists - a.assists)
+		.slice(0, limit);
 }
 
 const SOFA_STAT_MAP: Record<string, string> = {

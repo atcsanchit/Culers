@@ -141,6 +141,17 @@ export type MatchLineupPlayer = {
 	position: string;
 };
 
+export type WatchPlayer = {
+	id: string;
+	name: string;
+	position: string;
+	number: string;
+	avgRating: number;
+	matches: number;
+	goals: number;
+	assists: number;
+};
+
 export type MatchEvent = {
 	minute: string;
 	type: 'goal' | 'yellow' | 'red' | 'sub';
@@ -182,6 +193,12 @@ export type MatchSummary = {
 	/** Labels for preview event panels (actual last-match team names) */
 	previewHomeMatchTeams?: { home: string; away: string };
 	previewAwayMatchTeams?: { home: string; away: string };
+	/** Top form players by avg rating across last 2 matches (preview) */
+	playersToWatch?: {
+		home: WatchPlayer[];
+		away: WatchPlayer[];
+		source?: string;
+	};
 };
 
 export type PlayerRating = {

@@ -1,5 +1,5 @@
 import { LA_MASIA_SPOTLIGHTS, findSquadMatch } from '../data/laMasiaSpotlight';
-import type { Fixture, Player } from '../types';
+import type { Fixture, MatchRatings, Player, WatchPlayer } from '../types';
 import { barcaScore, opponentScore, resultLabel } from './api';
 import { fixtureKickoffMs, matchRivalry, normalizeRivalryKey, type RivalryH2H } from './rivalry';
 import type { RivalryDef } from '../data/rivalries';
@@ -158,4 +158,71 @@ export function playerToWatch(squad: Player[]): Player | null {
 
 	const withPhoto = squad.filter((p) => p.photo?.trim());
 	return withPhoto.find(attacky) ?? withPhoto[0] ?? squad.find(attacky) ?? squad[0] ?? null;
+}
+
+/**
+ * Top Barça players by average of your local post-match ratings across the last N finished fixtures.
+ * Returns null when fewer than 2 rated matches are available.
+ */
+export function barcaPlayersToWatchFromRatings(
+	fixtures: Fixture[],
+	ratings: Record<string, MatchRatings>,
+	squad: Player[],
+	lastN = 2,
+	limit = 3,
+): WatchPlayer[] | null {
+	const past = fixtures
+		.filter((f) => f.kind === 'past')
+		.sort((a, b) => (fixtureKickoffMs(b) ?? 0) - (fixtureKickoffMs(a) ?? 0))
+		.slice(0, Math.max(2, lastN));
+
+	const rated = past
+		.map((f) => ratings[f.id])
+		.filter((r): r is MatchRatings => Boolean(r?.players?.length));
+
+	if (rated.length < 2) return null;
+
+	const byId = new Map<
+		string,
+		{ id: string; name: string; position: string; number: string; ratings: number[] }
+	>();
+
+	for (const match of rated.slice(0, lastN)) {
+		for (const p of match.players) {
+			if (!(p.rating > 0)) continue;
+			const squadPlayer = squad.find((s) => s.id === p.playerId);
+			const cur = byId.get(p.playerId) ?? {
+				id: p.playerId,
+				name: p.name,
+				position: p.position || squadPlayer?.position || 'Player',
+				number: squadPlayer?.number ?? '',
+				ratings: [],
+			};
+			cur.ratings.push(p.rating);
+			byId.set(p.playerId, cur);
+		}
+	}
+
+	const ranked = [...byId.values()]
+		.filter((p) => p.ratings.length >= 1)
+		.map((p) => ({
+			id: p.id,
+			name: p.name,
+			position: p.position,
+			number: p.number,
+			avgRating: Math.round((p.ratings.reduce((a, b) => a + b, 0) / p.ratings.length) * 10) / 10,
+			matches: p.ratings.length,
+			goals: 0,
+			assists: 0,
+		}))
+		.sort((a, b) => b.avgRating - a.avgRating)
+		.slice(0, limit);
+
+	return ranked.length ? ranked : null;
+}
+
+export function watchPlayerKeyStat(p: WatchPlayer): { label: string; value: string } {
+	if (p.goals > 0) return { label: 'G', value: String(p.goals) };
+	if (p.assists > 0) return { label: 'A', value: String(p.assists) };
+	return { label: 'M', value: String(p.matches) };
 }
