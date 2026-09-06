@@ -1,22 +1,25 @@
 import { useEffect, useState } from 'react';
-import type { Fixture, MatchSummary } from '../types';
+import type { Fixture, MatchSummary, RatedPitchPlayer } from '../types';
 import { fetchMatchSummary, formatDate, formatTime, isFixtureLive } from '../lib/api';
 import { useProfileMotion } from '../lib/motion';
 import { CAMP_NOU_BG, teamCrestSrc, teamInitials } from '../lib/photos';
+import { useBarca } from '../store/BarcaState';
 import { MatchSummaryContent, MatchSummarySkeleton } from './MatchSummaryContent';
+import { MatchRatingsPitch } from './MatchRatingsPitch';
 
 type Props = {
 	fixture: Fixture | null;
 	onClose: () => void;
 };
 
-type Tab = 'stats' | 'events' | 'lineups';
+type Tab = 'stats' | 'events' | 'lineups' | 'ratings';
 
 function crestFor(teamName: string, url: string) {
 	return teamCrestSrc(teamName, url);
 }
 
 export function MatchSummaryModal({ fixture, onClose }: Props) {
+	const { openPlayerStats, data } = useBarca();
 	const [summary, setSummary] = useState<MatchSummary | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -163,6 +166,15 @@ export function MatchSummaryModal({ fixture, onClose }: Props) {
 						<button type="button" className={tab === 'lineups' ? 'active' : ''} onClick={() => setTab('lineups')}>
 							Lineups
 						</button>
+						{!isPreview && (
+							<button
+								type="button"
+								className={tab === 'ratings' ? 'active' : ''}
+								onClick={() => setTab('ratings')}
+							>
+								Ratings
+							</button>
+						)}
 					</div>
 
 					{loading && (
@@ -173,12 +185,39 @@ export function MatchSummaryModal({ fixture, onClose }: Props) {
 					)}
 					{error && <p className="fetch-error">{error}</p>}
 
-					{!loading && !error && summary && (
+					{!loading && !error && tab === 'ratings' && fixture && (
+						<MatchRatingsPitch
+							fixtureId={fixture.id}
+							onPlayerClick={(rated: RatedPitchPlayer, origin) => {
+								const fromSquad = data?.squad.players.find(
+									(p) =>
+										(rated.sofaId && p.sofaId === rated.sofaId) ||
+										p.name.toLowerCase() === rated.name.toLowerCase(),
+								);
+								openPlayerStats(
+									fromSquad ?? {
+										id: rated.id,
+										name: rated.name,
+										position: rated.position,
+										number: rated.number,
+										nationality: '',
+										photo: rated.photo ?? '',
+										birthDate: '',
+										sofaId: rated.sofaId,
+									},
+									origin,
+									{ mode: 'match', fixtureId: fixture.id },
+								);
+							}}
+						/>
+					)}
+
+					{!loading && !error && summary && tab !== 'ratings' && (
 						<MatchSummaryContent
 							summary={summary}
 							homeTeam={homeTeam}
 							awayTeam={awayTeam}
-							tab={tab}
+							tab={tab as 'stats' | 'events' | 'lineups'}
 							motion={motion}
 						/>
 					)}

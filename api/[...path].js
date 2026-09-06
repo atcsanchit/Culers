@@ -851,12 +851,21 @@ async function fetchSofaScoreBarcaLineup(eventId, squad) {
     const playerMeta = row.player;
     if (!playerMeta) continue;
     const sofaName = String(playerMeta.name ?? "");
+    const sofaId = Number(playerMeta.id ?? 0) || void 0;
     const fromSquad = squadMatch(squad, sofaName);
-    const mapped = fromSquad ?? {
-      id: `sofa-${playerMeta.id ?? sofaName}`,
+    const position = mapSofaPosition(String(row.position ?? playerMeta.position ?? ""));
+    const number = String(row.jerseyNumber ?? playerMeta.jerseyNumber ?? "");
+    const mapped = fromSquad ? {
+      ...fromSquad,
+      sofaId: sofaId ?? fromSquad.sofaId,
+      position: position || fromSquad.position,
+      number: number || fromSquad.number
+    } : {
+      id: sofaId ? `sofa-${sofaId}` : `sofa-${sofaName}`,
+      sofaId,
       name: sofaName,
-      position: mapSofaPosition(String(row.position ?? playerMeta.position ?? "")),
-      number: String(row.jerseyNumber ?? playerMeta.jerseyNumber ?? ""),
+      position,
+      number,
       nationality: String(playerMeta.country?.name ?? ""),
       photo: "",
       birthDate: ""
@@ -1089,6 +1098,309 @@ async function sofaFetchPlayerStatistics(sofaId) {
     seasons
   };
 }
+function formationSlots(formation) {
+  const parts = formation.split("-").map((n) => Number(n)).filter((n) => Number.isFinite(n) && n > 0);
+  const rows = parts.length ? parts : [4, 3, 3];
+  const slots = [{ x: 50, y: 94 }];
+  const depthStart = 78;
+  const depthEnd = 14;
+  const span = depthStart - depthEnd;
+  const step = rows.length > 1 ? span / (rows.length - 1) : 0;
+  rows.forEach((count, rowIdx) => {
+    const y = rows.length === 1 ? 46 : depthStart - rowIdx * step;
+    for (let i = 0; i < count; i++) {
+      const x = count === 1 ? 50 : 10 + i * 80 / (count - 1);
+      slots.push({ x, y });
+    }
+  });
+  while (slots.length < 11) slots.push({ x: 50, y: 20 });
+  return slots.slice(0, 11);
+}
+function positionRank(pos) {
+  const p = pos.toLowerCase();
+  if (p === "g" || p.includes("goal")) return 0;
+  if (p === "d" || p.includes("def")) return 1;
+  if (p === "m" || p.includes("mid")) return 2;
+  return 3;
+}
+function mapRatedPlayer(row, coords, motmId) {
+  const playerMeta = row.player;
+  if (!playerMeta) return null;
+  const sofaId = Number(playerMeta.id ?? 0);
+  if (!sofaId) return null;
+  const stats = row.statistics;
+  const ratingRaw = Number(stats?.rating ?? 0);
+  const rating = Number.isFinite(ratingRaw) && ratingRaw > 0 ? Math.round(ratingRaw * 10) / 10 : null;
+  const subOnRaw = Number(stats?.substitutionInTime ?? stats?.subInTime ?? NaN);
+  const subOffRaw = Number(stats?.substitutionOutTime ?? stats?.subOutTime ?? NaN);
+  return {
+    player: {
+      id: String(sofaId),
+      sofaId,
+      name: String(playerMeta.name ?? "Unknown"),
+      number: String(row.jerseyNumber ?? row.shirtNumber ?? playerMeta.jerseyNumber ?? ""),
+      position: mapSofaPosition(String(row.position ?? playerMeta.position ?? "")),
+      rating,
+      goals: readSofaStat(stats, "goals", "goal"),
+      assists: readSofaStat(stats, "goalAssist", "assists", "assist"),
+      yellow: readSofaStat(stats, "yellowCards", "yellowCard"),
+      red: readSofaStat(stats, "redCards", "redCard"),
+      minutes: readSofaStat(stats, "minutesPlayed", "minutes"),
+      subOn: Number.isFinite(subOnRaw) ? subOnRaw : null,
+      subOff: Number.isFinite(subOffRaw) ? subOffRaw : null,
+      isCaptain: Boolean(row.captain ?? playerMeta.captain),
+      isMotm: motmId != null && sofaId === motmId,
+      substitute: Boolean(row.substitute),
+      x: coords?.x ?? 50,
+      y: coords?.y ?? 50,
+      photo: String(playerMeta.photoUrl ?? "")
+    }
+  };
+}
+function sideFromLineup(side, teamName, teamId, motmId) {
+  const formation = String(side?.formation ?? "4-3-3");
+  const rows = side?.players ?? [];
+  const startersRaw = [...rows.filter((r) => !r.substitute)].sort((a, b) => {
+    const pa = String(a.position ?? a.player?.position ?? "");
+    const pb = String(b.position ?? b.player?.position ?? "");
+    const ra = positionRank(pa);
+    const rb = positionRank(pb);
+    if (ra !== rb) return ra - rb;
+    return Number(a.jerseyNumber ?? 0) - Number(b.jerseyNumber ?? 0);
+  });
+  const benchRaw = rows.filter((r) => r.substitute);
+  const slots = formationSlots(formation);
+  const starters = startersRaw.map((row, i) => mapRatedPlayer(row, slots[i] ?? { x: 50, y: 40 }, motmId)?.player).filter(Boolean);
+  const bench = benchRaw.map((row) => mapRatedPlayer(row, null, motmId)?.player).filter(Boolean);
+  const rated = starters.filter((p) => p.rating != null);
+  const avgRating = rated.length > 0 ? Math.round(rated.reduce((a, p) => a + p.rating, 0) / rated.length * 10) / 10 : null;
+  return {
+    teamName,
+    teamId,
+    isBarca: teamId === SOFASCORE_BARCA_TEAM_ID,
+    formation,
+    avgRating,
+    starters,
+    bench
+  };
+}
+async function fetchSofaScoreMatchRatings(options) {
+  const event = await findSofaScoreEvent({
+    opponent: options.opponent,
+    date: options.date,
+    prefer: options.prefer ?? "any"
+  });
+  if (!event) return null;
+  const [lineupsRaw, eventRaw] = await Promise.all([
+    sofaFetch(`/event/${event.id}/lineups`),
+    sofaFetch(`/event/${event.id}`)
+  ]);
+  if (!lineupsRaw) return null;
+  const homeSide = lineupsRaw.home;
+  const awaySide = lineupsRaw.away;
+  const bestPlayer = eventRaw?.bestPlayer ?? eventRaw?.event?.bestPlayer ?? null;
+  const bestNested = bestPlayer?.player;
+  const motmId = Number(bestPlayer?.id ?? bestNested?.id ?? 0) || null;
+  const homeMapped = sideFromLineup(homeSide, event.homeTeam, event.homeTeamId, motmId);
+  const awayMapped = sideFromLineup(awaySide, event.awayTeam, event.awayTeamId, motmId);
+  if (!motmId) {
+    const all = [...homeMapped.starters, ...awayMapped.starters].filter((p) => p.rating != null);
+    const top = all.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))[0];
+    if (top) {
+      for (const p of [...homeMapped.starters, ...awayMapped.starters, ...homeMapped.bench, ...awayMapped.bench]) {
+        p.isMotm = p.sofaId === top.sofaId;
+      }
+    }
+  }
+  const eventNode = eventRaw?.event;
+  const statusNode = eventNode?.status;
+  const statusType = String(event.statusType ?? "");
+  const clock = String(statusNode?.description ?? "") || (statusType === "finished" || statusType === "closed" ? "FT" : void 0);
+  return {
+    fixtureId: options.fixtureId,
+    sofaEventId: event.id,
+    homeTeam: event.homeTeam,
+    awayTeam: event.awayTeam,
+    homeScore: event.homeScore,
+    awayScore: event.awayScore,
+    clock,
+    status: statusType || "unknown",
+    home: homeMapped,
+    away: awayMapped,
+    source: "SofaScore match ratings"
+  };
+}
+var MATCH_STAT_LABELS = {
+  minutesPlayed: "Minutes played",
+  goals: "Goals",
+  goalAssist: "Assists",
+  expectedGoals: "Expected goals (xG)",
+  expectedGoalsOnTarget: "Expected goals on target (xGOT)",
+  expectedAssists: "Expected assists (xA)",
+  accuratePass: "Accurate passes",
+  totalPass: "Passes",
+  keyPass: "Chances created",
+  onTargetScoringAttempt: "Shots on target",
+  shotOffTarget: "Shots off target",
+  totalShots: "Shots",
+  touches: "Touches",
+  totalTackle: "Tackles",
+  wonContest: "Dribbles won",
+  totalClearance: "Clearances",
+  saves: "Saves",
+  rating: "Rating",
+  duelWon: "Duels won",
+  aerialWon: "Aerials won",
+  interceptionWon: "Interceptions",
+  fouls: "Fouls",
+  wasFouled: "Fouled",
+  dispossessed: "Dispossessed",
+  possessionLostCtrl: "Possession lost"
+};
+function buildMatchStatRows(stats) {
+  if (!stats) return { stats: [], topStats: [], rating: void 0 };
+  const ratingRaw = Number(stats.rating ?? 0);
+  const rating = Number.isFinite(ratingRaw) && ratingRaw > 0 ? Math.round(ratingRaw * 10) / 10 : void 0;
+  const preferred = [
+    "minutesPlayed",
+    "goals",
+    "goalAssist",
+    "expectedGoals",
+    "expectedGoalsOnTarget",
+    "expectedAssists",
+    "accuratePass",
+    "totalPass",
+    "keyPass",
+    "onTargetScoringAttempt",
+    "shotOffTarget",
+    "totalShots",
+    "touches",
+    "totalTackle",
+    "wonContest",
+    "totalClearance",
+    "saves",
+    "duelWon",
+    "aerialWon",
+    "interceptionWon"
+  ];
+  const rows = [];
+  for (const key of preferred) {
+    if (stats[key] == null) continue;
+    const n = Number(stats[key]);
+    if (!Number.isFinite(n)) continue;
+    let value = n;
+    if (key === "accuratePass" && stats.totalPass != null) {
+      const total = Number(stats.totalPass);
+      const pct = total > 0 ? Math.round(n / total * 100) : 0;
+      value = `${n}/${total} (${pct}%)`;
+    } else if (key === "expectedGoals" || key === "expectedGoalsOnTarget" || key === "expectedAssists") {
+      value = Math.round(n * 100) / 100;
+    } else {
+      value = Math.round(n * 10) / 10 === Math.round(n) ? Math.round(n) : Math.round(n * 10) / 10;
+    }
+    rows.push({
+      key,
+      label: MATCH_STAT_LABELS[key] ?? key,
+      value,
+      available: true
+    });
+  }
+  if (rating != null) {
+    rows.unshift({ key: "rating", label: "Rating", value: rating, available: true });
+  }
+  const xg = Number(stats.expectedGoals ?? 0);
+  const xa = Number(stats.expectedAssists ?? 0);
+  if (Number.isFinite(xg) || Number.isFinite(xa)) {
+    const sum = (Number.isFinite(xg) ? xg : 0) + (Number.isFinite(xa) ? xa : 0);
+    rows.splice(
+      Math.min(6, rows.length),
+      0,
+      {
+        key: "xgxa",
+        label: "xG + xA",
+        value: Math.round(sum * 100) / 100,
+        available: sum > 0
+      }
+    );
+  }
+  return { stats: rows, topStats: rows.filter((r) => r.key !== "rating"), rating };
+}
+function nameMatchScore(candidate, target) {
+  const full = normalizeName(candidate);
+  const want = normalizeName(target);
+  if (!full || !want) return 0;
+  if (full === want) return 100;
+  if (want.includes(full) || full.includes(want)) return 80;
+  const parts = full.split(" ").filter(Boolean);
+  const last = parts[parts.length - 1];
+  if (last && last.length > 3 && want.includes(last)) return 60;
+  if (parts.some((p) => p.length > 3 && want.includes(p))) return 40;
+  return 0;
+}
+function findLineupPlayerRow(lineupsRaw, options) {
+  const sides = [lineupsRaw.home, lineupsRaw.away];
+  let best = null;
+  for (const side of sides) {
+    for (const row of side?.players ?? []) {
+      const playerMeta = row.player;
+      const id = Number(playerMeta?.id ?? 0);
+      if (options.sofaId && id === options.sofaId) {
+        return { row, sofaId: id };
+      }
+      if (!options.playerName || !id) continue;
+      const score = nameMatchScore(String(playerMeta?.name ?? ""), options.playerName);
+      if (score > 0 && (!best || score > best.score)) best = { row, sofaId: id, score };
+    }
+  }
+  return best ? { row: best.row, sofaId: best.sofaId } : null;
+}
+async function fetchSofaScorePlayerMatchStats(options) {
+  if (!options.sofaId && !options.playerName) return null;
+  const event = await findSofaScoreEvent({
+    opponent: options.opponent,
+    date: options.date,
+    prefer: "any"
+  });
+  if (!event) return null;
+  const lineupsRaw = await sofaFetch(`/event/${event.id}/lineups`);
+  if (!lineupsRaw) return null;
+  const found = findLineupPlayerRow(lineupsRaw, {
+    sofaId: options.sofaId,
+    playerName: options.playerName
+  });
+  if (!found) return null;
+  const playerMeta = found.row.player;
+  const stats = found.row.statistics;
+  const built = buildMatchStatRows(stats);
+  const sofaId = found.sofaId;
+  let heatmap;
+  try {
+    const heatRaw = await sofaFetch(`/event/${event.id}/player/${sofaId}/heatmap`);
+    const points = heatRaw?.heatmap ?? [];
+    if (points.length) {
+      heatmap = points.map((p) => ({
+        x: Number(p.x ?? 0),
+        y: Number(p.y ?? 0)
+      })).filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+    }
+  } catch {
+  }
+  return {
+    sofaId,
+    fixtureId: options.fixtureId,
+    name: String(playerMeta.name ?? options.playerName ?? ""),
+    position: mapSofaPosition(String(found.row.position ?? playerMeta.position ?? "")),
+    number: String(found.row.jerseyNumber ?? playerMeta.jerseyNumber ?? ""),
+    opponent: event.opponent || (event.isHome ? event.awayTeam : event.homeTeam),
+    clock: event.statusType === "finished" || event.statusType === "closed" ? "FT" : void 0,
+    rating: built.rating,
+    stats: built.stats,
+    topStats: built.topStats,
+    heatmap,
+    fetchedAt: (/* @__PURE__ */ new Date()).toISOString(),
+    source: "SofaScore match ratings"
+  };
+}
 
 // culers-fcb.ts
 var FCB_API2 = "https://api-fcb.pulselive.com/football";
@@ -1172,6 +1484,11 @@ async function fetchFcbFixtures() {
   }
   const byId = new Map(all.map((f) => [f.id, f]));
   return [...byId.values()].filter((f) => f.competition === "La Liga" || f.competition === "UEFA Champions League").sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+}
+async function fetchFcbFixtureById(fixtureId) {
+  const detail = await fcbFetch(`/fixtures/${fixtureId}?altIds=true`);
+  if (!detail) return null;
+  return normalizeFcbFixture(detail);
 }
 async function fetchRecentBarcaFixture() {
   const fixtures = await fetchFcbFixtures();
@@ -1588,7 +1905,7 @@ async function fetchFcbPlayerStats(fcbId) {
     source: "FC Barcelona official \u2014 Bar\xE7a-only stats (api-fcb.pulselive.com / Opta)"
   };
 }
-var MATCH_STAT_LABELS = {
+var MATCH_STAT_LABELS2 = {
   possession_percentage: "Possession %",
   total_scoring_att: "Shots",
   ontarget_scoring_att: "Shots on target",
@@ -1603,7 +1920,7 @@ var MATCH_STAT_LABELS = {
   touches: "Touches",
   saves: "Saves"
 };
-var MATCH_STAT_KEYS = Object.keys(MATCH_STAT_LABELS);
+var MATCH_STAT_KEYS = Object.keys(MATCH_STAT_LABELS2);
 function lineupPlayerFromRow(raw) {
   const info = raw.info ?? {};
   const posInfo = info.positionInfo;
@@ -1739,7 +2056,7 @@ async function fetchFcbMatchSummary(fixtureId) {
     }
     return {
       key,
-      label: MATCH_STAT_LABELS[key] ?? key,
+      label: MATCH_STAT_LABELS2[key] ?? key,
       value,
       available: has
     };
@@ -1878,7 +2195,7 @@ function buildCompareStats(homeStats, awayStats) {
     }
     return {
       key,
-      label: MATCH_STAT_LABELS[key] ?? key,
+      label: MATCH_STAT_LABELS2[key] ?? key,
       value,
       available: has
     };
@@ -3610,10 +3927,44 @@ async function dispatchCulersApi(url, options = {}) {
       return jsonResult(await fetchFcbPlayerStats(fcbId));
     }
     if (url.pathname === "/api/player-match-stats") {
-      const fcbId = Number(url.searchParams.get("fcbId"));
+      const fcbId = Number(url.searchParams.get("fcbId") || 0);
+      const sofaId = Number(url.searchParams.get("sofaId") || 0);
+      const playerName = String(url.searchParams.get("playerName") || "").trim();
       const fixtureId = url.searchParams.get("fixtureId");
-      if (!fcbId || !fixtureId) return jsonResult({ error: "fcbId and fixtureId required" }, 400);
-      return jsonResult(await fetchFcbPlayerMatchStats(fcbId, fixtureId));
+      if (!fixtureId || !fcbId && !sofaId && !playerName) {
+        return jsonResult({ error: "fixtureId and fcbId, sofaId, or playerName required" }, 400);
+      }
+      const fixture = (await fetchFcbFixtures()).find((f) => f.id === fixtureId) ?? await fetchFcbFixtureById(fixtureId);
+      if (sofaId || playerName) {
+        const sofaStats = await fetchSofaScorePlayerMatchStats({
+          fixtureId,
+          sofaId: sofaId || void 0,
+          playerName: playerName || void 0,
+          opponent: fixture?.opponent,
+          date: fixture?.date
+        });
+        if (sofaStats) return jsonResult({ ...sofaStats, fcbId: fcbId || void 0 });
+      }
+      if (fcbId) {
+        return jsonResult(await fetchFcbPlayerMatchStats(fcbId, fixtureId));
+      }
+      return jsonResult({ error: "Match stats not found" }, 404);
+    }
+    if (url.pathname === "/api/match-ratings") {
+      const fixtureId = url.searchParams.get("fixtureId");
+      if (!fixtureId) return jsonResult({ error: "fixtureId required" }, 400);
+      const fixtures = await fetchFcbFixtures();
+      const fixture = fixtures.find((f) => f.id === fixtureId) ?? await fetchFcbFixtureById(fixtureId);
+      if (!fixture) return jsonResult({ error: "Fixture not found" }, 404);
+      const prefer = fixture.kind === "live" ? "any" : fixture.kind === "past" ? "finished" : "upcoming";
+      const board = await fetchSofaScoreMatchRatings({
+        fixtureId,
+        opponent: fixture.opponent,
+        date: fixture.date,
+        prefer
+      });
+      if (!board) return jsonResult({ error: "Ratings unavailable for this fixture" }, 404);
+      return jsonResult(board);
     }
     if (url.pathname === "/api/match-summary") {
       const fixtureId = url.searchParams.get("fixtureId");

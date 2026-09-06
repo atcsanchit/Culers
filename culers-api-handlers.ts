@@ -2,11 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { syncHomeBackgroundManifest } from './culers-home-backgrounds.ts';
 import { buildLineup, computeStats } from './culers-lineup.ts';
-import { fetchFcbFixtures, fetchFcbLiveSnapshot, fetchFcbMatchSummary, fetchFcbFixturePreview, fetchFcbPlayerMatchStats, fetchFcbPlayerStats, fetchFcbSquad, fetchRecentBarcaFixture } from './culers-fcb.ts';
+import { fetchFcbFixtures, fetchFcbLiveSnapshot, fetchFcbMatchSummary, fetchFcbFixturePreview, fetchFcbPlayerMatchStats, fetchFcbPlayerStats, fetchFcbSquad, fetchRecentBarcaFixture, fetchFcbFixtureById } from './culers-fcb.ts';
 import { enrichPlayerPhotos } from './culers-photos.ts';
 import { fetchBarcaInstagramFeed, fetchBarcaSocialHub, fetchBarcaXFeed, streamInstagramImage } from './culers-social.ts';
 import { fetchFabrizioProfile, fetchFabrizioRomanoNews, fetchReshadProfile, fetchReshadRahmanNews } from './culers-twitter.ts';
 import { fetchLaMasiaHub, fetchLaMasiaPlayerStats } from './culers-lamasia.ts';
+import { fetchSofaScoreMatchRatings, fetchSofaScorePlayerMatchStats } from './culers-sofascore.ts';
 
 const BARCA_TEAM_ID = '133739';
 
@@ -381,10 +382,45 @@ export async function dispatchCulersApi(
 			return jsonResult(await fetchFcbPlayerStats(fcbId));
 		}
 		if (url.pathname === '/api/player-match-stats') {
-			const fcbId = Number(url.searchParams.get('fcbId'));
+			const fcbId = Number(url.searchParams.get('fcbId') || 0);
+			const sofaId = Number(url.searchParams.get('sofaId') || 0);
+			const playerName = String(url.searchParams.get('playerName') || '').trim();
 			const fixtureId = url.searchParams.get('fixtureId');
-			if (!fcbId || !fixtureId) return jsonResult({ error: 'fcbId and fixtureId required' }, 400);
-			return jsonResult(await fetchFcbPlayerMatchStats(fcbId, fixtureId));
+			if (!fixtureId || (!fcbId && !sofaId && !playerName)) {
+				return jsonResult({ error: 'fixtureId and fcbId, sofaId, or playerName required' }, 400);
+			}
+			const fixture = (await fetchFcbFixtures()).find((f) => f.id === fixtureId) ?? (await fetchFcbFixtureById(fixtureId));
+			if (sofaId || playerName) {
+				const sofaStats = await fetchSofaScorePlayerMatchStats({
+					fixtureId,
+					sofaId: sofaId || undefined,
+					playerName: playerName || undefined,
+					opponent: fixture?.opponent,
+					date: fixture?.date,
+				});
+				if (sofaStats) return jsonResult({ ...sofaStats, fcbId: fcbId || undefined });
+			}
+			if (fcbId) {
+				return jsonResult(await fetchFcbPlayerMatchStats(fcbId, fixtureId));
+			}
+			return jsonResult({ error: 'Match stats not found' }, 404);
+		}
+		if (url.pathname === '/api/match-ratings') {
+			const fixtureId = url.searchParams.get('fixtureId');
+			if (!fixtureId) return jsonResult({ error: 'fixtureId required' }, 400);
+			const fixtures = await fetchFcbFixtures();
+			const fixture = fixtures.find((f) => f.id === fixtureId) ?? (await fetchFcbFixtureById(fixtureId));
+			if (!fixture) return jsonResult({ error: 'Fixture not found' }, 404);
+			const prefer =
+				fixture.kind === 'live' ? ('any' as const) : fixture.kind === 'past' ? ('finished' as const) : ('upcoming' as const);
+			const board = await fetchSofaScoreMatchRatings({
+				fixtureId,
+				opponent: fixture.opponent,
+				date: fixture.date,
+				prefer,
+			});
+			if (!board) return jsonResult({ error: 'Ratings unavailable for this fixture' }, 404);
+			return jsonResult(board);
 		}
 		if (url.pathname === '/api/match-summary') {
 			const fixtureId = url.searchParams.get('fixtureId');

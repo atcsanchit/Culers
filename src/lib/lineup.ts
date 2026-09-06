@@ -81,10 +81,46 @@ export const SLOT_DEFAULTS: Record<PitchSlot, string[]> = {
 	CDM: ['rodri', 'casado', 'bernal', 'de jong'],
 	LCM: ['pedri', 'fermin', 'olmo', 'de jong'],
 	RCM: ['pedri', 'fermin', 'casado', 'olmo'],
-	LW: ['raphinha', 'rashford', 'torres'],
-	ST: ['lewandowski', 'adeyemi', 'torres'],
-	RW: ['yamal', 'raphinha', 'bardghji', 'rashford'],
+	/** Current attack: Gordon left, Raphinha central, Yamal right */
+	LW: ['gordon', 'raphinha', 'rashford', 'torres'],
+	ST: ['lewandowski', 'raphinha', 'adeyemi', 'jesus', 'ferrer', 'torres'],
+	RW: ['yamal', 'bardghji', 'raphinha', 'rashford', 'gordon'],
 };
+
+/**
+ * SofaScore lineups only expose G/D/M/F — enrich with known Barça roles so pitch
+ * placement matches how the XI actually lines up.
+ */
+export function inferDetailedPosition(name: string, coarsePosition = ''): string {
+	const n = normalizeName(name);
+	const coarse = coarsePosition.toLowerCase();
+
+	if (/joan garcia|ter stegen|szczesny|pena|livakovic/.test(n)) return 'Goalkeeper';
+	if (/yamal/.test(n)) return 'Right winger';
+	if (/gordon/.test(n)) return 'Left winger';
+	if (/raphinha/.test(n)) return 'Centre striker';
+	if (/lewandowski|adeyemi|\bjesus\b/.test(n)) return 'Centre striker';
+	if (/rashford/.test(n)) return 'Left winger';
+	if (/balde|gerard martin|\bmartin\b/.test(n)) return 'Left full back';
+	if (/espart|cancelo/.test(n)) return 'Right full back';
+	if (/kounde/.test(n)) return 'Right full back';
+	if (/cubarsi|christensen|araujo/.test(n)) return 'Central defender';
+	if (/eric garcia/.test(n)) return 'Central defender';
+	if (/rodri|casado|bernal/.test(n)) return 'Defensive midfield';
+	if (/pedri|fermin|olmo|de jong|gavi/.test(n)) return 'Central midfield';
+
+	if (coarse.includes('goal') || coarse === 'g') return 'Goalkeeper';
+	if (coarse.includes('def') || coarse === 'd') return 'Central defender';
+	if (coarse.includes('mid') || coarse === 'm') return 'Central midfield';
+	if (coarse.includes('forward') || coarse === 'f' || coarse.includes('att')) return 'Centre striker';
+	return coarsePosition || 'Unknown';
+}
+
+export function formationKeyFromString(formation: string): FormationKey {
+	const f = formation.trim();
+	if (f === '4-2-3-1' || f === '4-1-2-3') return f;
+	return '4-3-3';
+}
 
 export function normalizeName(name: string) {
 	return name
@@ -186,11 +222,15 @@ export function assignToFormation(players: Player[], formation: FormationKey = '
 	const slots = FORMATIONS[formation] ?? FORMATION_433;
 	const used = new Set<string>();
 	const result: PitchPlayer[] = [];
+	const enriched = players.map((p) => ({
+		...p,
+		position: inferDetailedPosition(p.name, p.position),
+	}));
 
 	for (const { slot, x, y } of slots) {
 		let best: { player: Player; score: number } | null = null;
 
-		for (const player of players) {
+		for (const player of enriched) {
 			if (used.has(player.id)) continue;
 			const score = slotFitScore(player.position, slot, player.name) + defaultBoost(slot, player.name);
 			if (score <= 0) continue;
@@ -198,7 +238,7 @@ export function assignToFormation(players: Player[], formation: FormationKey = '
 		}
 
 		if (!best) {
-			for (const player of players) {
+			for (const player of enriched) {
 				if (used.has(player.id)) continue;
 				const score = defaultBoost(slot, player.name);
 				if (score > 0 && (!best || score > best.score)) best = { player, score };
@@ -206,7 +246,7 @@ export function assignToFormation(players: Player[], formation: FormationKey = '
 		}
 
 		if (!best) {
-			const fallback = players.find((p) => !used.has(p.id));
+			const fallback = enriched.find((p) => !used.has(p.id));
 			if (!fallback) break;
 			best = { player: fallback, score: 0 };
 		}

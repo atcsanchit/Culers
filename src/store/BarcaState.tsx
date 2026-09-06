@@ -30,6 +30,7 @@ export type LegendClubStat = {
 
 export type PlayerStatsContext =
 	| { mode: 'career'; initialTab?: 'season' | 'career' }
+	| { mode: 'match'; fixtureId: string }
 	| { mode: 'live'; fixtureId: string }
 	/** Static club-record card for La Masia alumni (no live API). */
 	| {

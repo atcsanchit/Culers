@@ -9360,16 +9360,366 @@ a {
 	gap: 0.55rem;
 }
 
+
+
+.match-ratings-details {
+	margin: 1rem 0 1.5rem;
+	border-radius: 14px;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	background: rgba(0, 0, 0, 0.28);
+	padding: 0.35rem 0.75rem 0.75rem;
+}
+
+.match-ratings-details > summary {
+	cursor: pointer;
+	list-style: none;
+	padding: 0.65rem 0.25rem;
+	font-size: 0.82rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--gold-soft, #e8c56a);
+}
+
+.match-ratings-details > summary::-webkit-details-marker {
+	display: none;
+}
+
+.match-ratings-details[open] > summary {
+	margin-bottom: 0.35rem;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ── Match ratings pitch (FotMob-style) ─────────────────────────────────── */
+
+.match-ratings-pitch {
+	margin: 1rem 0 1.25rem;
+	padding: 0.85rem;
+	border-radius: 16px;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	background: rgba(0, 0, 0, 0.35);
+}
+
+.mrp-status {
+	margin: 0.75rem 0;
+}
+
+.mrp-header {
+	display: grid;
+	grid-template-columns: 1fr auto 1fr;
+	gap: 0.75rem;
+	align-items: center;
+	margin-bottom: 0.75rem;
+}
+
+.mrp-team {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	min-width: 0;
+}
+
+.mrp-team.away {
+	justify-content: flex-end;
+	text-align: right;
+}
+
+.mrp-team strong {
+	display: block;
+	font-size: 0.88rem;
+	line-height: 1.2;
+}
+
+.mrp-team .muted {
+	font-size: 0.72rem;
+}
+
+.mrp-crest-wrap {
+	position: relative;
+	width: 36px;
+	height: 36px;
+	flex-shrink: 0;
+}
+
+.mrp-crest,
+.mrp-crest-fallback {
+	width: 36px;
+	height: 36px;
+	border-radius: 50%;
+	object-fit: contain;
+	background: rgba(255, 255, 255, 0.92);
+	padding: 3px;
+}
+
+.mrp-crest.is-loading {
+	opacity: 0;
+	position: absolute;
+}
+
+.mrp-crest-fallback {
+	display: grid;
+	place-items: center;
+	font-size: 0.75rem;
+	font-weight: 700;
+	color: #111;
+}
+
+.mrp-team-rating {
+	font-family: var(--display);
+	font-size: 0.95rem;
+	font-weight: 700;
+	padding: 0.2rem 0.55rem;
+	border-radius: 999px;
+	flex-shrink: 0;
+}
+
+.mrp-rating.elite,
+.mrp-team-rating.elite {
+	background: #1f8a4c;
+	color: #fff;
+}
+
+.mrp-rating.good,
+.mrp-team-rating.good {
+	background: #3d9b5f;
+	color: #fff;
+}
+
+.mrp-rating.ok,
+.mrp-team-rating.ok {
+	background: #c47a1a;
+	color: #fff;
+}
+
+.mrp-rating.poor,
+.mrp-team-rating.poor {
+	background: #b33a3a;
+	color: #fff;
+}
+
+.mrp-score {
+	text-align: center;
+}
+
+.mrp-clock {
+	display: block;
+	font-size: 0.68rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
+.mrp-score strong {
+	font-family: var(--display);
+	font-size: 1.35rem;
+}
+
+.mrp-field {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	min-height: 420px;
+	border-radius: 12px;
+	overflow: hidden;
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	background:
+		linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0 50%, transparent 50%),
+		repeating-linear-gradient(
+			0deg,
+			rgba(40, 120, 60, 0.55) 0 24px,
+			rgba(34, 100, 52, 0.55) 24px 48px
+		);
+	position: relative;
+}
+
+.mrp-half {
+	position: relative;
+	min-height: 420px;
+	padding: 0.35rem;
+}
+
+.mrp-half.home {
+	border-right: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.mrp-player {
+	position: absolute;
+	transform: translate(-50%, -50%);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 0.12rem;
+	width: 72px;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: #fff;
+	cursor: pointer;
+	z-index: 1;
+}
+
+.mrp-rating {
+	font-size: 0.68rem;
+	font-weight: 700;
+	padding: 0.1rem 0.35rem;
+	border-radius: 999px;
+	line-height: 1.2;
+}
+
+.mrp-avatar {
+	width: 28px;
+	height: 28px;
+	border-radius: 50%;
+	display: grid;
+	place-items: center;
+	font-size: 0.68rem;
+	font-weight: 700;
+	background: rgba(10, 20, 40, 0.85);
+	border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.mrp-name {
+	font-size: 0.62rem;
+	line-height: 1.15;
+	text-align: center;
+	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+	max-width: 70px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.mrp-icons {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 0.1rem;
+	min-height: 0.7rem;
+	font-size: 0.55rem;
+}
+
+.mrp-card {
+	width: 7px;
+	height: 10px;
+	border-radius: 1px;
+	display: inline-block;
+}
+
+.mrp-card.yellow {
+	background: #f5d90a;
+}
+
+.mrp-card.red {
+	background: #e23;
+}
+
+.mrp-sub {
+	font-size: 0.55rem;
+	opacity: 0.9;
+}
+
+.mrp-cap {
+	width: 12px;
+	height: 12px;
+	border-radius: 50%;
+	display: grid;
+	place-items: center;
+	font-size: 0.5rem;
+	font-weight: 800;
+	background: #222;
+	border: 1px solid #fff;
+}
+
+.mrp-source {
+	margin: 0.55rem 0 0;
+	font-size: 0.72rem;
+}
+
+.match-top-stats {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: grid;
+	gap: 0.35rem;
+}
+
+.match-top-stats li {
+	display: flex;
+	justify-content: space-between;
+	gap: 0.75rem;
+	padding: 0.35rem 0;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+	font-size: 0.88rem;
+}
+
+.match-top-stats .label {
+	color: rgba(255, 255, 255, 0.78);
+}
+
+.match-top-stats .value {
+	font-weight: 650;
+	color: #fff;
+}
+
+.player-match-rating-badge {
+	position: absolute;
+	top: 12%;
+	right: 8%;
+	z-index: 2;
+	font-family: var(--display);
+	font-size: 1.1rem;
+	font-weight: 700;
+	padding: 0.25rem 0.65rem;
+	border-radius: 999px;
+	background: #1f8a4c;
+	color: #fff;
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.player-match-heatmap {
+	position: relative;
+	width: 100%;
+	max-width: 220px;
+	aspect-ratio: 68 / 105;
+	margin: 0.5rem auto 0.85rem;
+	border-radius: 8px;
+	overflow: hidden;
+	background:
+		repeating-linear-gradient(
+			0deg,
+			rgba(40, 120, 60, 0.7) 0 12px,
+			rgba(34, 100, 52, 0.7) 12px 24px
+		);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.player-match-heatmap span {
+	position: absolute;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: radial-gradient(circle, rgba(255, 220, 80, 0.95), rgba(255, 80, 40, 0.15));
+	transform: translate(-50%, -50%);
+	pointer-events: none;
+}
+
 @media (max-width: 720px) {
-	.next-briefing-stats {
+	.mrp-header {
 		grid-template-columns: 1fr;
+		text-align: center;
 	}
 
-	.next-briefing-h2h-grid {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+	.mrp-team,
+	.mrp-team.away {
+		justify-content: center;
+		text-align: center;
 	}
 
-	.next-briefing-when {
-		max-width: 8.5rem;
+	.mrp-field,
+	.mrp-half {
+		min-height: 340px;
+	}
+
+	.mrp-player {
+		width: 58px;
 	}
 }
+

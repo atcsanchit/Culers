@@ -9,6 +9,7 @@ type Json = Record<string, unknown>;
 type RawPlayer = {
 	id: string;
 	fcbId?: number;
+	sofaId?: number;
 	name: string;
 	position: string;
 	number: string;

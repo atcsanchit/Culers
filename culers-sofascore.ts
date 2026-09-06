@@ -79,6 +79,7 @@ type Json = Record<string, unknown>;
 type RawPlayer = {
 	id: string;
 	fcbId?: number;
+	sofaId?: number;
 	name: string;
 	position: string;
 	number: string;
@@ -400,18 +401,27 @@ export async function fetchSofaScoreBarcaLineup(
 		const playerMeta = row.player as Json | undefined;
 		if (!playerMeta) continue;
 		const sofaName = String(playerMeta.name ?? '');
+		const sofaId = Number(playerMeta.id ?? 0) || undefined;
 		const fromSquad = squadMatch(squad, sofaName);
-		const mapped: RawPlayer =
-			fromSquad ??
-			({
-				id: `sofa-${playerMeta.id ?? sofaName}`,
-				name: sofaName,
-				position: mapSofaPosition(String(row.position ?? playerMeta.position ?? '')),
-				number: String(row.jerseyNumber ?? playerMeta.jerseyNumber ?? ''),
-				nationality: String((playerMeta.country as Json | undefined)?.name ?? ''),
-				photo: '',
-				birthDate: '',
-			} satisfies RawPlayer);
+		const position = mapSofaPosition(String(row.position ?? playerMeta.position ?? ''));
+		const number = String(row.jerseyNumber ?? playerMeta.jerseyNumber ?? '');
+		const mapped: RawPlayer = fromSquad
+			? {
+					...fromSquad,
+					sofaId: sofaId ?? fromSquad.sofaId,
+					position: position || fromSquad.position,
+					number: number || fromSquad.number,
+				}
+			: {
+					id: sofaId ? `sofa-${sofaId}` : `sofa-${sofaName}`,
+					sofaId,
+					name: sofaName,
+					position,
+					number,
+					nationality: String((playerMeta.country as Json | undefined)?.name ?? ''),
+					photo: '',
+					birthDate: '',
+				};
 
 		if (row.substitute) bench.push(mapped);
 		else starters.push(mapped);
@@ -744,3 +754,438 @@ export async function sofaFetchPlayerStatistics(sofaId: number): Promise<{
 		seasons,
 	};
 }
+
+// ── Match ratings board (FotMob-style pitch) ───────────────────────────────
+
+function formationSlots(formation: string): Array<{ x: number; y: number }> {
+	/** x = width across pitch (top→bottom on side-by-side half), y = depth (own goal → attack). */
+	const parts = formation
+		.split('-')
+		.map((n) => Number(n))
+		.filter((n) => Number.isFinite(n) && n > 0);
+	const rows = parts.length ? parts : [4, 3, 3];
+	const slots: Array<{ x: number; y: number }> = [{ x: 50, y: 94 }];
+	const depthStart = 78;
+	const depthEnd = 14;
+	const span = depthStart - depthEnd;
+	const step = rows.length > 1 ? span / (rows.length - 1) : 0;
+
+	rows.forEach((count, rowIdx) => {
+		const y = rows.length === 1 ? 46 : depthStart - rowIdx * step;
+		for (let i = 0; i < count; i++) {
+			const x = count === 1 ? 50 : 10 + (i * 80) / (count - 1);
+			slots.push({ x, y });
+		}
+	});
+	while (slots.length < 11) slots.push({ x: 50, y: 20 });
+	return slots.slice(0, 11);
+}
+
+function positionRank(pos: string) {
+	const p = pos.toLowerCase();
+	if (p === 'g' || p.includes('goal')) return 0;
+	if (p === 'd' || p.includes('def')) return 1;
+	if (p === 'm' || p.includes('mid')) return 2;
+	return 3;
+}
+
+function mapRatedPlayer(
+	row: Json,
+	coords: { x: number; y: number } | null,
+	motmId: number | null,
+): {
+	player: {
+		id: string;
+		sofaId: number;
+		name: string;
+		number: string;
+		position: string;
+		rating: number | null;
+		goals: number;
+		assists: number;
+		yellow: number;
+		red: number;
+		minutes: number;
+		subOn: number | null;
+		subOff: number | null;
+		isCaptain: boolean;
+		isMotm: boolean;
+		substitute: boolean;
+		x: number;
+		y: number;
+		photo?: string;
+	};
+} | null {
+	const playerMeta = row.player as Json | undefined;
+	if (!playerMeta) return null;
+	const sofaId = Number(playerMeta.id ?? 0);
+	if (!sofaId) return null;
+	const stats = row.statistics as Json | undefined;
+	const ratingRaw = Number(stats?.rating ?? 0);
+	const rating = Number.isFinite(ratingRaw) && ratingRaw > 0 ? Math.round(ratingRaw * 10) / 10 : null;
+	const subOnRaw = Number(stats?.substitutionInTime ?? stats?.subInTime ?? NaN);
+	const subOffRaw = Number(stats?.substitutionOutTime ?? stats?.subOutTime ?? NaN);
+	return {
+		player: {
+			id: String(sofaId),
+			sofaId,
+			name: String(playerMeta.name ?? 'Unknown'),
+			number: String(row.jerseyNumber ?? row.shirtNumber ?? playerMeta.jerseyNumber ?? ''),
+			position: mapSofaPosition(String(row.position ?? playerMeta.position ?? '')),
+			rating,
+			goals: readSofaStat(stats, 'goals', 'goal'),
+			assists: readSofaStat(stats, 'goalAssist', 'assists', 'assist'),
+			yellow: readSofaStat(stats, 'yellowCards', 'yellowCard'),
+			red: readSofaStat(stats, 'redCards', 'redCard'),
+			minutes: readSofaStat(stats, 'minutesPlayed', 'minutes'),
+			subOn: Number.isFinite(subOnRaw) ? subOnRaw : null,
+			subOff: Number.isFinite(subOffRaw) ? subOffRaw : null,
+			isCaptain: Boolean(row.captain ?? playerMeta.captain),
+			isMotm: motmId != null && sofaId === motmId,
+			substitute: Boolean(row.substitute),
+			x: coords?.x ?? 50,
+			y: coords?.y ?? 50,
+			photo: String(playerMeta.photoUrl ?? ''),
+		},
+	};
+}
+
+function sideFromLineup(
+	side: Json | undefined,
+	teamName: string,
+	teamId: number,
+	motmId: number | null,
+) {
+	const formation = String(side?.formation ?? '4-3-3');
+	const rows = (side?.players as Json[]) ?? [];
+	const startersRaw = [...rows.filter((r) => !r.substitute)].sort((a, b) => {
+		const pa = String(a.position ?? (a.player as Json | undefined)?.position ?? '');
+		const pb = String(b.position ?? (b.player as Json | undefined)?.position ?? '');
+		const ra = positionRank(pa);
+		const rb = positionRank(pb);
+		if (ra !== rb) return ra - rb;
+		return Number(a.jerseyNumber ?? 0) - Number(b.jerseyNumber ?? 0);
+	});
+	const benchRaw = rows.filter((r) => r.substitute);
+	const slots = formationSlots(formation);
+
+	const starters = startersRaw
+		.map((row, i) => mapRatedPlayer(row, slots[i] ?? { x: 50, y: 40 }, motmId)?.player)
+		.filter(Boolean) as NonNullable<ReturnType<typeof mapRatedPlayer>>['player'][];
+
+	const bench = benchRaw
+		.map((row) => mapRatedPlayer(row, null, motmId)?.player)
+		.filter(Boolean) as NonNullable<ReturnType<typeof mapRatedPlayer>>['player'][];
+
+	const rated = starters.filter((p) => p.rating != null) as Array<{ rating: number }>;
+	const avgRating =
+		rated.length > 0
+			? Math.round((rated.reduce((a, p) => a + p.rating, 0) / rated.length) * 10) / 10
+			: null;
+
+	return {
+		teamName,
+		teamId,
+		isBarca: teamId === SOFASCORE_BARCA_TEAM_ID,
+		formation,
+		avgRating,
+		starters,
+		bench,
+	};
+}
+
+export async function fetchSofaScoreMatchRatings(options: {
+	fixtureId: string;
+	opponent?: string;
+	date?: string;
+	prefer?: 'upcoming' | 'finished' | 'any';
+}): Promise<{
+	fixtureId: string;
+	sofaEventId: number;
+	homeTeam: string;
+	awayTeam: string;
+	homeScore: number | null;
+	awayScore: number | null;
+	clock?: string;
+	status: string;
+	home: ReturnType<typeof sideFromLineup>;
+	away: ReturnType<typeof sideFromLineup>;
+	source: string;
+} | null> {
+	const event = await findSofaScoreEvent({
+		opponent: options.opponent,
+		date: options.date,
+		prefer: options.prefer ?? 'any',
+	});
+	if (!event) return null;
+
+	const [lineupsRaw, eventRaw] = await Promise.all([
+		sofaFetch(`/event/${event.id}/lineups`),
+		sofaFetch(`/event/${event.id}`),
+	]);
+	if (!lineupsRaw) return null;
+
+	const homeSide = lineupsRaw.home as Json | undefined;
+	const awaySide = lineupsRaw.away as Json | undefined;
+	const bestPlayer =
+		(eventRaw?.bestPlayer as Json | undefined) ??
+		((eventRaw?.event as Json | undefined)?.bestPlayer as Json | undefined) ??
+		null;
+	const bestNested = bestPlayer?.player as Json | undefined;
+	const motmId =
+		Number(bestPlayer?.id ?? bestNested?.id ?? 0) || null;
+
+	// Mark MOTM as highest rating if API doesn't expose bestPlayer
+	const homeMapped = sideFromLineup(homeSide, event.homeTeam, event.homeTeamId, motmId);
+	const awayMapped = sideFromLineup(awaySide, event.awayTeam, event.awayTeamId, motmId);
+	if (!motmId) {
+		const all = [...homeMapped.starters, ...awayMapped.starters].filter((p) => p.rating != null);
+		const top = all.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))[0];
+		if (top) {
+			for (const p of [...homeMapped.starters, ...awayMapped.starters, ...homeMapped.bench, ...awayMapped.bench]) {
+				p.isMotm = p.sofaId === top.sofaId;
+			}
+		}
+	}
+
+	const eventNode = eventRaw?.event as Json | undefined;
+	const statusNode = eventNode?.status as Json | undefined;
+	const statusType = String(event.statusType ?? '');
+	const clock =
+		String(statusNode?.description ?? '') ||
+		(statusType === 'finished' || statusType === 'closed' ? 'FT' : undefined);
+
+	return {
+		fixtureId: options.fixtureId,
+		sofaEventId: event.id,
+		homeTeam: event.homeTeam,
+		awayTeam: event.awayTeam,
+		homeScore: event.homeScore,
+		awayScore: event.awayScore,
+		clock,
+		status: statusType || 'unknown',
+		home: homeMapped,
+		away: awayMapped,
+		source: 'SofaScore match ratings',
+	};
+}
+
+const MATCH_STAT_LABELS: Record<string, string> = {
+	minutesPlayed: 'Minutes played',
+	goals: 'Goals',
+	goalAssist: 'Assists',
+	expectedGoals: 'Expected goals (xG)',
+	expectedGoalsOnTarget: 'Expected goals on target (xGOT)',
+	expectedAssists: 'Expected assists (xA)',
+	accuratePass: 'Accurate passes',
+	totalPass: 'Passes',
+	keyPass: 'Chances created',
+	onTargetScoringAttempt: 'Shots on target',
+	shotOffTarget: 'Shots off target',
+	totalShots: 'Shots',
+	touches: 'Touches',
+	totalTackle: 'Tackles',
+	wonContest: 'Dribbles won',
+	totalClearance: 'Clearances',
+	saves: 'Saves',
+	rating: 'Rating',
+	duelWon: 'Duels won',
+	aerialWon: 'Aerials won',
+	interceptionWon: 'Interceptions',
+	fouls: 'Fouls',
+	wasFouled: 'Fouled',
+	dispossessed: 'Dispossessed',
+	possessionLostCtrl: 'Possession lost',
+};
+
+function buildMatchStatRows(stats: Json | undefined): {
+	stats: Array<{ key: string; label: string; value: number | string; available: boolean }>;
+	topStats: Array<{ key: string; label: string; value: number | string; available: boolean }>;
+	rating: number | undefined;
+} {
+	if (!stats) return { stats: [], topStats: [], rating: undefined };
+	const ratingRaw = Number(stats.rating ?? 0);
+	const rating = Number.isFinite(ratingRaw) && ratingRaw > 0 ? Math.round(ratingRaw * 10) / 10 : undefined;
+
+	const preferred = [
+		'minutesPlayed',
+		'goals',
+		'goalAssist',
+		'expectedGoals',
+		'expectedGoalsOnTarget',
+		'expectedAssists',
+		'accuratePass',
+		'totalPass',
+		'keyPass',
+		'onTargetScoringAttempt',
+		'shotOffTarget',
+		'totalShots',
+		'touches',
+		'totalTackle',
+		'wonContest',
+		'totalClearance',
+		'saves',
+		'duelWon',
+		'aerialWon',
+		'interceptionWon',
+	];
+
+	const rows: Array<{ key: string; label: string; value: number | string; available: boolean }> = [];
+	for (const key of preferred) {
+		if (stats[key] == null) continue;
+		const n = Number(stats[key]);
+		if (!Number.isFinite(n)) continue;
+		let value: number | string = n;
+		if (key === 'accuratePass' && stats.totalPass != null) {
+			const total = Number(stats.totalPass);
+			const pct = total > 0 ? Math.round((n / total) * 100) : 0;
+			value = `${n}/${total} (${pct}%)`;
+		} else if (key === 'expectedGoals' || key === 'expectedGoalsOnTarget' || key === 'expectedAssists') {
+			value = Math.round(n * 100) / 100;
+		} else {
+			value = Math.round(n * 10) / 10 === Math.round(n) ? Math.round(n) : Math.round(n * 10) / 10;
+		}
+		rows.push({
+			key,
+			label: MATCH_STAT_LABELS[key] ?? key,
+			value,
+			available: true,
+		});
+	}
+
+	if (rating != null) {
+		rows.unshift({ key: 'rating', label: 'Rating', value: rating, available: true });
+	}
+
+	const xg = Number(stats.expectedGoals ?? 0);
+	const xa = Number(stats.expectedAssists ?? 0);
+	if (Number.isFinite(xg) || Number.isFinite(xa)) {
+		const sum = (Number.isFinite(xg) ? xg : 0) + (Number.isFinite(xa) ? xa : 0);
+		rows.splice(
+			Math.min(6, rows.length),
+			0,
+			{
+				key: 'xgxa',
+				label: 'xG + xA',
+				value: Math.round(sum * 100) / 100,
+				available: sum > 0,
+			},
+		);
+	}
+
+	return { stats: rows, topStats: rows.filter((r) => r.key !== 'rating'), rating };
+}
+
+function nameMatchScore(candidate: string, target: string) {
+	const full = normalizeName(candidate);
+	const want = normalizeName(target);
+	if (!full || !want) return 0;
+	if (full === want) return 100;
+	if (want.includes(full) || full.includes(want)) return 80;
+	const parts = full.split(' ').filter(Boolean);
+	const last = parts[parts.length - 1];
+	if (last && last.length > 3 && want.includes(last)) return 60;
+	if (parts.some((p) => p.length > 3 && want.includes(p))) return 40;
+	return 0;
+}
+
+function findLineupPlayerRow(
+	lineupsRaw: Json,
+	options: { sofaId?: number; playerName?: string },
+): { row: Json; sofaId: number } | null {
+	const sides = [lineupsRaw.home, lineupsRaw.away] as (Json | undefined)[];
+	let best: { row: Json; sofaId: number; score: number } | null = null;
+
+	for (const side of sides) {
+		for (const row of (side?.players as Json[]) ?? []) {
+			const playerMeta = row.player as Json | undefined;
+			const id = Number(playerMeta?.id ?? 0);
+			if (options.sofaId && id === options.sofaId) {
+				return { row, sofaId: id };
+			}
+			if (!options.playerName || !id) continue;
+			const score = nameMatchScore(String(playerMeta?.name ?? ''), options.playerName);
+			if (score > 0 && (!best || score > best.score)) best = { row, sofaId: id, score };
+		}
+	}
+
+	return best ? { row: best.row, sofaId: best.sofaId } : null;
+}
+
+export async function fetchSofaScorePlayerMatchStats(options: {
+	fixtureId: string;
+	sofaId?: number;
+	playerName?: string;
+	opponent?: string;
+	date?: string;
+}): Promise<{
+	sofaId: number;
+	fixtureId: string;
+	name: string;
+	position: string;
+	number: string;
+	opponent: string;
+	clock?: string;
+	rating?: number;
+	stats: Array<{ key: string; label: string; value: number | string; available: boolean }>;
+	topStats: Array<{ key: string; label: string; value: number | string; available: boolean }>;
+	heatmap?: { x: number; y: number }[];
+	fetchedAt: string;
+	source: string;
+} | null> {
+	if (!options.sofaId && !options.playerName) return null;
+
+	const event = await findSofaScoreEvent({
+		opponent: options.opponent,
+		date: options.date,
+		prefer: 'any',
+	});
+	if (!event) return null;
+
+	const lineupsRaw = await sofaFetch(`/event/${event.id}/lineups`);
+	if (!lineupsRaw) return null;
+
+	const found = findLineupPlayerRow(lineupsRaw, {
+		sofaId: options.sofaId,
+		playerName: options.playerName,
+	});
+	if (!found) return null;
+
+	const playerMeta = found.row.player as Json;
+	const stats = found.row.statistics as Json | undefined;
+	const built = buildMatchStatRows(stats);
+	const sofaId = found.sofaId;
+
+	let heatmap: { x: number; y: number }[] | undefined;
+	try {
+		const heatRaw = await sofaFetch(`/event/${event.id}/player/${sofaId}/heatmap`);
+		const points = (heatRaw?.heatmap as Json[]) ?? [];
+		if (points.length) {
+			heatmap = points
+				.map((p) => ({
+					x: Number(p.x ?? 0),
+					y: Number(p.y ?? 0),
+				}))
+				.filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+		}
+	} catch {
+		/* optional */
+	}
+
+	return {
+		sofaId,
+		fixtureId: options.fixtureId,
+		name: String(playerMeta.name ?? options.playerName ?? ''),
+		position: mapSofaPosition(String(found.row.position ?? playerMeta.position ?? '')),
+		number: String(found.row.jerseyNumber ?? playerMeta.jerseyNumber ?? ''),
+		opponent: event.opponent || (event.isHome ? event.awayTeam : event.homeTeam),
+		clock: event.statusType === 'finished' || event.statusType === 'closed' ? 'FT' : undefined,
+		rating: built.rating,
+		stats: built.stats,
+		topStats: built.topStats,
+		heatmap,
+		fetchedAt: new Date().toISOString(),
+		source: 'SofaScore match ratings',
+	};
+}
+
