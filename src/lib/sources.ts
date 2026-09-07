@@ -16,6 +16,11 @@ export const DATA_SOURCES = {
 	squad: [
 		{ id: 'fcb-official-squad', label: 'FC Barcelona official squad (PulseLive)', endpoint: '/api/squad' },
 	],
+	transfers: [
+		{ id: 'transferroom', label: 'TransferRoom — intel, blog, window tracker, xTV', url: 'https://www.transferroom.com/' },
+		{ id: 'wiki-season', label: 'Wikipedia — current Barça season transfers', url: 'https://en.wikipedia.org/wiki/2026–27_FC_Barcelona_season' },
+		{ id: 'sofascore-values', label: 'SofaScore proposed market values', endpoint: '/api/transfers' },
+	],
 	social: [
 		{ id: 'sofascore-lineup', label: 'SofaScore — confirmed lineups', url: 'https://www.sofascore.com/team/football/fc-barcelona/2817' },
 		{ id: 'fcb-instagram', label: '@fcbarcelona on Instagram', endpoint: '/api/social/instagram' },

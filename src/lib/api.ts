@@ -1,4 +1,4 @@
-import type { FetchPayload, InstagramFeed, LaMasiaHub, LineupData, LiveData, MatchRatingsBoard, MatchSummary, PlayerMatchStats, PlayerStats, SocialHubData, XFeed } from '../types';
+import type { FetchPayload, InstagramFeed, LaMasiaHub, LineupData, LiveData, MatchRatingsBoard, MatchSummary, PlayerMatchStats, PlayerStats, SocialHubData, TransfersHub, XFeed } from '../types';
 
 export const LIVE_POLL_MS = 10_000;
 
@@ -87,6 +87,12 @@ export async function fetchLineup(fixtureId?: string): Promise<LineupData> {
 export async function fetchLaMasia(): Promise<LaMasiaHub> {
 	const res = await fetch('/api/la-masia');
 	if (!res.ok) throw new Error('Failed to fetch La Masia squad');
+	return res.json();
+}
+
+export async function fetchTransfers(): Promise<TransfersHub> {
+	const res = await fetch('/api/transfers');
+	if (!res.ok) throw new Error('Failed to fetch transfer centre');
 	return res.json();
 }
 

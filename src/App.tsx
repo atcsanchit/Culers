@@ -11,6 +11,7 @@ import { NewsPage } from './components/NewsPage';
 import { FootballNewsPage } from './components/FootballNewsPage';
 import { MatchPage } from './components/MatchPage';
 import { SquadHubPage } from './components/SquadHubPage';
+import { TransfersPage } from './components/TransfersPage';
 import { PlayerRatingsForm } from './components/PlayerRatingsForm';
 import { PlayerStatsModal } from './components/PlayerStatsModal';
 import { MatchSummaryModal } from './components/MatchSummaryModal';
@@ -74,6 +75,7 @@ function Body() {
 				{tab === 'football-news' && <FootballNewsPage />}
 				{tab === 'match' && <MatchPage />}
 				{tab === 'squad' && <SquadHubPage />}
+				{tab === 'transfers' && <TransfersPage />}
 				{tab === 'ratings' && <PlayerRatingsForm />}
 			</main>
 			<PlayerStatsModal

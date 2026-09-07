@@ -74,6 +74,81 @@ export type LaMasiaHub = {
 	note?: string;
 };
 
+export type TransferDeal = {
+	player: string;
+	position: string;
+	club: string;
+	type: string;
+	fee: string;
+	date: string;
+	window: 'summer' | 'winter' | 'unknown';
+	direction: 'in' | 'out';
+};
+
+export type TransferRecord = {
+	player: string;
+	club: string;
+	fee: string;
+	year: string;
+	direction: 'in' | 'out';
+};
+
+export type TransferIntel = {
+	id?: string;
+	title: string;
+	url: string;
+	snippet: string;
+	pubDate?: string;
+	image?: string;
+	tags?: string[];
+	source: string;
+};
+
+export type SquadMarketValue = {
+	name: string;
+	position: string;
+	number: string;
+	nationality: string;
+	valueEur: number;
+	valueLabel: string;
+	sofaId: number;
+};
+
+export type TransferRumorHeat = 'here-we-go' | 'hot' | 'watch' | 'denied';
+export type TransferRumorLean = 'in' | 'out' | 'other';
+
+export type TransferRumor = {
+	title: string;
+	url: string;
+	text: string;
+	pubDate?: string;
+	source: string;
+	handle?: string;
+	heat: TransferRumorHeat;
+	heatLabel: string;
+	lean: TransferRumorLean;
+	media?: NewsMedia[];
+};
+
+export type TransfersHub = {
+	season: string;
+	seasonPage: string;
+	windowNote: string;
+	arrivals: TransferDeal[];
+	departures: TransferDeal[];
+	intel: TransferIntel[];
+	rumors: TransferRumor[];
+	recordsIn: TransferRecord[];
+	recordsOut: TransferRecord[];
+	values: SquadMarketValue[];
+	squadValueTotalEur: number;
+	squadValueTotalLabel: string;
+	links: { home: string; tracker: string; blog: string; xtv: string; api: string };
+	sources: string[];
+	fetchedAt: string;
+	note: string;
+};
+
 export type TimelineEvent = {
 	minute: string;
 	type: string;
@@ -105,6 +180,7 @@ export type FetchPayload = {
 	live: LiveData;
 	lineup: LineupData;
 	stats: TeamStats;
+	transfers?: TransfersHub;
 	sources: string[];
 };
 
@@ -270,7 +346,7 @@ export type MatchRatings = {
 	updatedAt: string;
 };
 
-export type Tab = 'home' | 'fixtures' | 'news' | 'football-news' | 'match' | 'squad' | 'ratings';
+export type Tab = 'home' | 'fixtures' | 'news' | 'football-news' | 'match' | 'squad' | 'transfers' | 'ratings';
 
 export type SocialPlatformId = 'instagram' | 'x';
 
