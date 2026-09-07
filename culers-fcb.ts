@@ -925,33 +925,25 @@ function normalizeFcbFixtureForTeam(raw: Json, teamId: number): TeamMatchRef {
 	};
 }
 
-async function fetchLastFinishedMatchForTeam(teamId: number, excludeFixtureId?: string) {
-	let page = 0;
-	let pages = 1;
+function finishedRefsFromFixtures(rows: Json[], teamId: number, excludeFixtureId?: string) {
 	const finished: TeamMatchRef[] = [];
-
-	while (page < pages) {
-		const data = await fcbFetch(
-			`/fixtures?teams=${teamId}&compSeasons=${CURRENT_COMP_SEASONS}&pageSize=100&page=${page}&altIds=true`,
-		);
-		if (!data) break;
-		pages = Number((data.pageInfo as Json)?.numPages ?? 1);
-		for (const raw of (data.content as Json[]) ?? []) {
-			if (String(raw.status ?? '') !== 'C') continue;
-			const ref = normalizeFcbFixtureForTeam(raw, teamId);
-			if (excludeFixtureId && ref.id === excludeFixtureId) continue;
-			finished.push(ref);
-		}
-		page++;
+	for (const raw of rows) {
+		if (String(raw.status ?? '') !== 'C') continue;
+		const ref = normalizeFcbFixtureForTeam(raw, teamId);
+		if (excludeFixtureId && ref.id === excludeFixtureId) continue;
+		finished.push(ref);
 	}
+	return finished;
+}
 
-	const sorted = finished.sort((a, b) => {
+async function pickMatchWithStats(refs: TeamMatchRef[], teamId: number) {
+	const sorted = [...refs].sort((a, b) => {
 		const ad = new Date(`${a.date}T${a.time || '12:00:00'}`).getTime();
 		const bd = new Date(`${b.date}T${b.time || '12:00:00'}`).getTime();
 		return bd - ad;
 	});
 
-	for (const ref of sorted) {
+	for (const ref of sorted.slice(0, 8)) {
 		const stats = await teamStatsForFixture(ref.id, teamId);
 		if (Object.keys(stats).length > 0) {
 			return { ref, stats };
@@ -960,6 +952,44 @@ async function fetchLastFinishedMatchForTeam(teamId: number, excludeFixtureId?: 
 
 	const fallback = sorted[0] ?? null;
 	return fallback ? { ref: fallback, stats: await teamStatsForFixture(fallback.id, teamId) } : null;
+}
+
+async function fetchFinishedInCompSeasons(teamId: number, excludeFixtureId?: string) {
+	let page = 0;
+	let pages = 1;
+	const seasonal: TeamMatchRef[] = [];
+
+	while (page < pages) {
+		const data = await fcbFetch(
+			`/fixtures?teams=${teamId}&compSeasons=${CURRENT_COMP_SEASONS}&pageSize=100&page=${page}&altIds=true`,
+		);
+		if (!data) break;
+		pages = Number((data.pageInfo as Json)?.numPages ?? 1);
+		seasonal.push(...finishedRefsFromFixtures((data.content as Json[]) ?? [], teamId, excludeFixtureId));
+		page++;
+	}
+
+	return pickMatchWithStats(seasonal, teamId);
+}
+
+async function fetchFinishedFromNewestPages(teamId: number, excludeFixtureId?: string) {
+	const probe = await fcbFetch(`/fixtures?teams=${teamId}&pageSize=40&page=0&altIds=true`);
+	const numPages = Math.max(1, Number((probe?.pageInfo as Json | undefined)?.numPages ?? 1));
+	const newestPages = [...new Set([numPages - 1, Math.max(0, numPages - 2)])];
+	const recent: TeamMatchRef[] = [];
+	for (const p of newestPages) {
+		const data =
+			p === 0 ? probe : await fcbFetch(`/fixtures?teams=${teamId}&pageSize=40&page=${p}&altIds=true`);
+		recent.push(...finishedRefsFromFixtures((data?.content as Json[]) ?? [], teamId, excludeFixtureId));
+	}
+	return pickMatchWithStats(recent, teamId);
+}
+
+async function fetchLastFinishedMatchForTeam(teamId: number, excludeFixtureId?: string) {
+	return (
+		(await fetchFinishedInCompSeasons(teamId, excludeFixtureId)) ??
+		(await fetchFinishedFromNewestPages(teamId, excludeFixtureId))
+	);
 }
 
 function barcaFixtureToRef(fixture: FcbFixture): TeamMatchRef {
@@ -1003,6 +1033,19 @@ async function teamStatsForFixture(fixtureId: string, teamId: number) {
 	const statsRaw = await fcbFetch(`/stats/match/${fixtureId}?altIds=true`);
 	const rows = ((statsRaw?.data as Json | undefined)?.[String(teamId)] as Json | undefined)?.M as Json[] | undefined;
 	return statMapFromMatchData(rows ?? []);
+}
+
+function buildBarcaOnlyStats(barcaStats: Record<string, number>) {
+	return MATCH_STAT_KEYS.map((key) => {
+		const value = barcaStats[key];
+		const has = value != null;
+		return {
+			key,
+			label: MATCH_STAT_LABELS[key] ?? key,
+			value: has ? value : '—',
+			available: has,
+		};
+	});
 }
 
 function buildCompareStats(homeStats: Record<string, number>, awayStats: Record<string, number>) {
@@ -1103,49 +1146,55 @@ export async function fetchFcbFixturePreview(
 		}
 	}
 
-	if (!opponentTeamId) {
-		throw new Error('Could not resolve opponent team id');
-	}
-
 	const opponentName = isBarcaHome ? awayTeam : homeTeam;
 	const opponentSofaId = resolveSofaScoreTeamId(opponentName);
 
-	const [oppFetched, barcaStats, barcaExtras] = await Promise.all([
-		fetchLastFinishedMatchForTeam(opponentTeamId, targetFixtureId),
-		barcaRef ? teamStatsForFixture(barcaRef.id, barcaTeamId) : Promise.resolve({}),
+	let barcaStats: Record<string, number> = {};
+	let barcaExtras: Awaited<ReturnType<typeof fetchFcbMatchExtras>> = null;
+	let oppSeasonal: Awaited<ReturnType<typeof fetchFinishedInCompSeasons>> = null;
+
+	const [seasonalOpp, fcbBarcaStats, fcbBarcaExtras] = await Promise.all([
+		opponentTeamId ? fetchFinishedInCompSeasons(opponentTeamId, targetFixtureId) : Promise.resolve(null),
+		barcaRef ? teamStatsForFixture(barcaRef.id, barcaTeamId) : Promise.resolve({} as Record<string, number>),
 		barcaRef ? fetchFcbMatchExtras(barcaRef.id) : Promise.resolve(null),
 	]);
+	oppSeasonal = seasonalOpp;
+	barcaStats = fcbBarcaStats;
+	barcaExtras = fcbBarcaExtras;
 
-	const oppSofa =
-		opponentSofaId && oppFetched?.ref
-			? await fetchSofaScorePreviewMatch(opponentSofaId, {
-					opponent: oppFetched.ref.opponent,
-					date: oppFetched.ref.date,
-				})
-			: opponentSofaId
-				? await fetchSofaScorePreviewMatch(opponentSofaId)
-				: null;
-
-	let oppRef = oppFetched?.ref ?? null;
-	if (!oppRef && oppSofa) {
-		oppRef = sofaPreviewToTeamRef(oppSofa);
+	if (!barcaRef || !statsHaveValues(barcaStats)) {
+		const sofaBarca = await fetchSofaScorePreviewMatch(SOFASCORE_BARCA_TEAM_ID).catch(() => null);
+		if (sofaBarca) {
+			if (!barcaRef) barcaRef = sofaPreviewToTeamRef(sofaBarca);
+			if (!statsHaveValues(barcaStats) && sofaBarca.stats) barcaStats = sofaBarca.stats;
+			if (!barcaExtras && sofaBarca.events.length) {
+				barcaExtras = {
+					homeTeam: sofaBarca.homeTeam,
+					awayTeam: sofaBarca.awayTeam,
+					homeTeamId: sofaBarca.isHome ? barcaTeamId : 0,
+					awayTeamId: sofaBarca.isHome ? 0 : barcaTeamId,
+					events: sofaBarca.events,
+					lineups: sofaBarca.isHome
+						? { home: sofaBarca.lineups, away: { starters: [], subs: [] } }
+						: { home: { starters: [], subs: [] }, away: sofaBarca.lineups },
+				};
+			}
+		}
 	}
 
-	if (!barcaRef) {
-		throw new Error('Not enough recent matches to build a preview');
-	}
-	if (!oppRef && !oppSofa) {
-		throw new Error('Not enough recent matches to build a preview');
-	}
-
+	const oppSofa = opponentSofaId ? await fetchSofaScorePreviewMatch(opponentSofaId).catch(() => null) : null;
+	const oppFetched = oppSeasonal;
+	let oppRef = oppFetched?.ref ?? (oppSofa ? sofaPreviewToTeamRef(oppSofa) : null);
 	const oppStatsFromFcb = oppFetched?.stats ?? {};
-
-	let resolvedOppStats =
+	const resolvedOppStats =
 		oppSofa?.stats && statsHaveValues(oppSofa.stats)
 			? oppSofa.stats
 			: statsHaveValues(oppStatsFromFcb)
 				? oppStatsFromFcb
 				: {};
+	const oppHasXi = Boolean(oppSofa?.lineups.starters.length);
+	const oppHasEvents = Boolean(oppSofa?.events.length);
+	const previewBarcaOnly = !statsHaveValues(resolvedOppStats) && !oppHasXi && !oppHasEvents;
 
 	const barcaSideTeamId = barcaTeamId;
 	const oppSideTeamId = opponentTeamId;
@@ -1172,7 +1221,7 @@ export async function fetchFcbFixturePreview(
 		}
 	}
 
-	if (oppSofa) {
+	if (!previewBarcaOnly && oppSofa) {
 		const oppLineup = oppSofa.lineups;
 		const oppEvents = oppSofa.events;
 		const oppMatchTeams = { home: oppSofa.homeTeam, away: oppSofa.awayTeam };
@@ -1185,7 +1234,7 @@ export async function fetchFcbFixturePreview(
 			previewHomeEvents = oppEvents;
 			previewHomeMatchTeams = oppMatchTeams;
 		}
-	} else if (oppRef && statsHaveValues(resolvedOppStats)) {
+	} else if (!previewBarcaOnly && oppRef && statsHaveValues(resolvedOppStats)) {
 		const oppExtras = await fetchFcbMatchExtras(oppRef.id);
 		if (oppExtras) {
 			const oppLineup = teamLineupFromExtras(oppExtras, oppSideTeamId);
@@ -1202,11 +1251,14 @@ export async function fetchFcbFixturePreview(
 		}
 	}
 
-	const homeStats = isBarcaHome ? barcaStats : resolvedOppStats;
-	const awayStats = isBarcaHome ? resolvedOppStats : barcaStats;
-	const oppRefForLabel = oppRef ?? (oppSofa ? sofaPreviewToTeamRef(oppSofa) : null);
-	const previewHomeNote = isBarcaHome ? referenceLabel(barcaRef, barcaLive) : oppRefForLabel ? referenceLabel(oppRefForLabel, false) : '';
-	const previewAwayNote = isBarcaHome ? (oppRefForLabel ? referenceLabel(oppRefForLabel, false) : '') : referenceLabel(barcaRef, barcaLive);
+	const barcaNote = barcaRef ? referenceLabel(barcaRef, barcaLive) : '';
+	const oppRefForLabel = previewBarcaOnly ? null : oppRef ?? (oppSofa ? sofaPreviewToTeamRef(oppSofa) : null);
+	const oppNote = oppRefForLabel ? referenceLabel(oppRefForLabel, false) : '';
+	const previewHomeNote = isBarcaHome ? barcaNote : oppNote;
+	const previewAwayNote = isBarcaHome ? oppNote : barcaNote;
+	const stats = previewBarcaOnly
+		? buildBarcaOnlyStats(barcaStats)
+		: buildCompareStats(isBarcaHome ? barcaStats : resolvedOppStats, isBarcaHome ? resolvedOppStats : barcaStats);
 
 	const backgroundImage = await fetchStadiumBackground({
 		fixtureId: targetFixtureId,
@@ -1217,21 +1269,23 @@ export async function fetchFcbFixturePreview(
 		awayTeam,
 	});
 
-	const barcaWatchId = SOFASCORE_BARCA_TEAM_ID;
-	const oppWatchId = opponentSofaId;
-	const [barcaWatch, oppWatch] = await Promise.all([
-		fetchSofaScorePlayersToWatch(barcaWatchId, 2, 3).catch(() => []),
-		oppWatchId ? fetchSofaScorePlayersToWatch(oppWatchId, 2, 3).catch(() => []) : Promise.resolve([]),
-	]);
+	const barcaWatch = await fetchSofaScorePlayersToWatch(SOFASCORE_BARCA_TEAM_ID, 2, 3).catch(() => []);
+	const oppWatch =
+		previewBarcaOnly || !opponentSofaId
+			? []
+			: await fetchSofaScorePlayersToWatch(opponentSofaId, 2, 3).catch(() => []);
 	const playersToWatch = {
 		home: isBarcaHome ? barcaWatch : oppWatch,
 		away: isBarcaHome ? oppWatch : barcaWatch,
-		source: 'SofaScore avg rating · last 2 matches',
+		source: previewBarcaOnly
+			? 'Barça last-match form only — opponent not on the official feed yet'
+			: 'SofaScore avg rating · last 2 matches',
 	};
 
 	return {
 		fixtureId: targetFixtureId,
 		preview: true,
+		previewBarcaOnly,
 		previewHomeNote,
 		previewAwayNote,
 		homeTeam,
@@ -1245,7 +1299,7 @@ export async function fetchFcbFixturePreview(
 		homeCrest: homeBadge,
 		awayCrest: awayBadge,
 		backgroundImage,
-		stats: buildCompareStats(homeStats, awayStats),
+		stats,
 		events: [],
 		lineups: {
 			home: homePreviewLineup,
@@ -1256,6 +1310,8 @@ export async function fetchFcbFixturePreview(
 		previewHomeMatchTeams,
 		previewAwayMatchTeams,
 		playersToWatch,
-		source: 'Preview — Opta stats from each team’s latest match (Barça uses live data when a match is in progress). Opponent stats via SofaScore when not on FCB feed.',
+		source: previewBarcaOnly
+			? `Preview — Barça last match from FC Barcelona official (Opta). ${opponentName} form is not on that feed yet.`
+			: 'Preview — Opta stats from each team’s latest match (Barça uses live data when a match is in progress). Opponent stats via SofaScore when not on FCB feed.',
 	};
 }

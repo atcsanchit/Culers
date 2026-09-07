@@ -205,6 +205,9 @@ export function MatchSummaryContent({
 	motion: ProfileMotion;
 }) {
 	const compareStats = summary.stats.map(parseCompareStat).filter(Boolean) as CompareStat[];
+	const barcaOnlyStats = summary.previewBarcaOnly
+		? summary.stats.filter((row) => row.available && row.value !== '—')
+		: [];
 	const homeAbbr = teamAbbr(homeTeam);
 	const awayAbbr = teamAbbr(awayTeam);
 
@@ -216,6 +219,11 @@ export function MatchSummaryContent({
 					<span className="vs-dot">vs</span>
 					<span className="team-pill away">{awayTeam}</span>
 				</div>
+				{summary.preview && summary.previewBarcaOnly && (
+					<p className="match-preview-fallback">
+						Showing Barça’s last match only. Opponent form is not on the official Opta feed yet.
+					</p>
+				)}
 				{summary.preview && (summary.previewHomeNote || summary.previewAwayNote) && (
 					<div className="match-preview-notes">
 						{summary.previewHomeNote && (
@@ -230,18 +238,42 @@ export function MatchSummaryContent({
 						)}
 					</div>
 				)}
-				<div className="match-stat-compare-list">
-					{compareStats.map((stat, i) => (
-						<StatCompareBar
-							key={stat.key}
-							stat={stat}
-							homeAbbr={homeAbbr}
-							awayAbbr={awayAbbr}
-							motion={motion}
-							index={i}
-						/>
-					))}
-				</div>
+				{summary.previewBarcaOnly ? (
+					barcaOnlyStats.length ? (
+						<ul className="match-barca-only-stats">
+							{barcaOnlyStats.map((row) => (
+								<li key={row.key}>
+									<span>{row.label}</span>
+									<strong>
+										{row.value}
+										{row.key === 'possession_percentage' ? '%' : ''}
+									</strong>
+								</li>
+							))}
+						</ul>
+					) : (
+						<p className="muted">Barça’s last-match Opta sheet is not in yet.</p>
+					)
+				) : compareStats.length ? (
+					<div className="match-stat-compare-list">
+						{compareStats.map((stat, i) => (
+							<StatCompareBar
+								key={stat.key}
+								stat={stat}
+								homeAbbr={homeAbbr}
+								awayAbbr={awayAbbr}
+								motion={motion}
+								index={i}
+							/>
+						))}
+					</div>
+				) : (
+					<p className="muted">
+						{summary.preview
+							? 'Opta numbers from each team’s last match are not in yet — lineups and goals may still be on the other tabs.'
+							: 'Match stats are not published yet for this fixture.'}
+					</p>
+				)}
 			</div>
 		);
 	}
@@ -251,7 +283,13 @@ export function MatchSummaryContent({
 			const homeEvents = summary.previewHomeEvents ?? [];
 			const awayEvents = summary.previewAwayEvents ?? [];
 			if (!homeEvents.length && !awayEvents.length) {
-				return <p className="muted">No recent goals or cards found for either team.</p>;
+				return (
+					<p className="muted">
+						{summary.previewBarcaOnly
+							? 'No goals or cards from Barça’s last match yet.'
+							: 'No recent goals or cards found for either team.'}
+					</p>
+				);
 			}
 			return (
 				<div className="match-preview-split">
@@ -287,7 +325,13 @@ export function MatchSummaryContent({
 		const homeXi = summary.lineups.home.starters.length;
 		const awayXi = summary.lineups.away.starters.length;
 		if (!homeXi && !awayXi) {
-			return <p className="muted">No recent lineups found for either team.</p>;
+			return (
+				<p className="muted">
+					{summary.previewBarcaOnly
+						? 'No lineup from Barça’s last match yet.'
+						: 'No recent lineups found for either team.'}
+				</p>
+			);
 		}
 		return (
 			<div className="match-preview-split lineups">

@@ -451,10 +451,15 @@ export async function dispatchCulersApi(
 			const fixtureId = url.searchParams.get('fixtureId');
 			if (!fixtureId) return jsonResult({ error: 'fixtureId required' }, 400);
 			const fixtures = await fetchFcbFixtures();
-			const fixture = fixtures.find((f) => f.id === fixtureId);
+			const fixture = fixtures.find((f) => f.id === fixtureId) ?? (await fetchFcbFixtureById(fixtureId));
 			if (fixture?.kind === 'upcoming') {
-				const liveFixture = fixtures.find((f) => f.kind === 'live');
-				return jsonResult(await fetchFcbFixturePreview(fixtureId, fixtures, liveFixture?.id ?? null));
+				try {
+					const liveFixture = fixtures.find((f) => f.kind === 'live');
+					return jsonResult(await fetchFcbFixturePreview(fixtureId, fixtures, liveFixture?.id ?? null));
+				} catch (err) {
+					console.warn('[match-summary preview]', err);
+					return jsonResult(await fetchFcbMatchSummary(fixtureId));
+				}
 			}
 			return jsonResult(await fetchFcbMatchSummary(fixtureId));
 		}

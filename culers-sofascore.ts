@@ -156,28 +156,39 @@ function mapSofaPosition(code: string) {
 	}
 }
 
-async function sofaFetchPython(apiPath: string): Promise<Json | null> {
+async function sofaFetchPython(apiPath: string, timeoutMs = 10_000): Promise<Json | null> {
 	return new Promise((resolve) => {
 		const child = spawn(PYTHON, [SCRIPT, apiPath], { cwd: ROOT });
 		let stdout = '';
 		let stderr = '';
+		let settled = false;
+		const done = (value: Json | null) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timer);
+			resolve(value);
+		};
+		const timer = setTimeout(() => {
+			child.kill('SIGKILL');
+			done(null);
+		}, timeoutMs);
 		child.stdout.on('data', (chunk) => {
 			stdout += String(chunk);
 		});
 		child.stderr.on('data', (chunk) => {
 			stderr += String(chunk);
 		});
-		child.on('error', () => resolve(null));
+		child.on('error', () => done(null));
 		child.on('close', (code) => {
 			if (code !== 0) {
 				if (stderr) console.warn('[sofascore]', stderr.trim());
-				resolve(null);
+				done(null);
 				return;
 			}
 			try {
-				resolve(JSON.parse(stdout) as Json);
+				done(JSON.parse(stdout) as Json);
 			} catch {
-				resolve(null);
+				done(null);
 			}
 		});
 	});
@@ -193,6 +204,7 @@ async function sofaFetchDirect(apiPath: string): Promise<Json | null> {
 				Accept: 'application/json',
 				Referer: 'https://www.sofascore.com/',
 			},
+			signal: AbortSignal.timeout(10_000),
 		});
 		if (!res.ok) return null;
 		return (await res.json()) as Json;

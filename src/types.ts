@@ -314,6 +314,8 @@ export type MatchSummary = {
 	source: string;
 	/** Upcoming fixture preview — stats sourced from each team's last (or live) match */
 	preview?: boolean;
+	/** Opponent last-match data was unavailable; stats/events/XI are Barça only. */
+	previewBarcaOnly?: boolean;
 	previewHomeNote?: string;
 	previewAwayNote?: string;
 	/** Last-match goals/cards for preview (home = upcoming home side's last match) */
