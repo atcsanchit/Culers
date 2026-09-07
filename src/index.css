@@ -854,6 +854,17 @@ a {
 	margin-bottom: 0.65rem;
 }
 
+.la-masia-card .form-carousel-dots {
+	flex-wrap: wrap;
+	gap: 0.28rem;
+	row-gap: 0.3rem;
+}
+
+.la-masia-card .carousel-dot {
+	width: 6px;
+	height: 6px;
+}
+
 .la-masia-spotlight {
 	position: relative;
 	display: flex;
