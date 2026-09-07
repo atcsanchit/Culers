@@ -7,6 +7,7 @@ const MAIN_TABS: { id: Tab; label: string; icon: string }[] = [
 	{ id: 'news', label: 'Barça News', icon: '✦' },
 	{ id: 'match', label: 'Match Day', icon: '⚽' },
 	{ id: 'squad', label: 'Squad Hub', icon: '👕' },
+	{ id: 'transfers', label: 'Transfers', icon: '⇄' },
 	{ id: 'ratings', label: 'Ratings', icon: '★' },
 ];
 

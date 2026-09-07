@@ -217,7 +217,16 @@ export type SofaTeamPlayer = {
 	number: string;
 	nationality: string;
 	birthDate: string;
+	marketValueEur?: number;
 };
+
+function sofaMarketValueEur(player: Json): number | undefined {
+	const raw = player.proposedMarketValueRaw as Json | undefined;
+	const fromRaw = Number(raw?.value ?? 0);
+	if (Number.isFinite(fromRaw) && fromRaw > 0) return fromRaw;
+	const n = Number(player.proposedMarketValue ?? 0);
+	return Number.isFinite(n) && n > 0 ? n : undefined;
+}
 
 /** Current squad list for a SofaScore team (e.g. Barcelona Atlètic = 24343). */
 export async function sofaFetchTeamPlayers(teamId: number): Promise<SofaTeamPlayer[]> {
@@ -238,6 +247,7 @@ export async function sofaFetchTeamPlayers(teamId: number): Promise<SofaTeamPlay
 					: '',
 				nationality: String(country?.name ?? ''),
 				birthDate: '',
+				marketValueEur: sofaMarketValueEur(player),
 			} satisfies SofaTeamPlayer;
 		})
 		.filter(Boolean) as SofaTeamPlayer[];

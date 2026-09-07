@@ -8,6 +8,7 @@ import { fetchBarcaInstagramFeed, fetchBarcaSocialHub, fetchBarcaXFeed, streamIn
 import { fetchFabrizioProfile, fetchFabrizioRomanoNews, fetchReshadProfile, fetchReshadRahmanNews } from './culers-twitter.ts';
 import { fetchLaMasiaHub, fetchLaMasiaPlayerStats } from './culers-lamasia.ts';
 import { fetchSofaScoreMatchRatings, fetchSofaScorePlayerMatchStats } from './culers-sofascore.ts';
+import { fetchTransfersHub, attachNewsToTransferRumors } from './culers-transfers.ts';
 
 const BARCA_TEAM_ID = '133739';
 
@@ -245,11 +246,12 @@ async function fetchLineupForFixture(
 }
 
 async function fetchAll() {
-	const [fixturesResult, newsResult, squadResult, liveResult] = await Promise.allSettled([
+	const [fixturesResult, newsResult, squadResult, liveResult, transfersResult] = await Promise.allSettled([
 		fetchFixtures(),
 		fetchNews(),
 		fetchSquad(),
 		fetchLive(),
+		fetchTransfersHub(),
 	]);
 
 	const failures: string[] = [];
@@ -292,6 +294,27 @@ async function fetchAll() {
 	}
 
 	const stats = computeStats(fixtures);
+	const transfersRaw = transfersResult.status === 'fulfilled' ? transfersResult.value : undefined;
+	const transfers = transfersRaw
+		? attachNewsToTransferRumors(transfersRaw, [
+				...newsPack.footballNews.map((item) => ({
+					title: item.title,
+					link: item.link,
+					text: item.text,
+					pubDate: item.pubDate,
+					source: item.source,
+					media: item.media,
+				})),
+				...newsPack.news.map((item) => ({
+					title: item.title,
+					link: item.link,
+					text: item.text,
+					pubDate: item.pubDate,
+					source: item.source,
+					media: item.media,
+				})),
+			])
+		: undefined;
 
 	return {
 		fetchedAt: new Date().toISOString(),
@@ -306,11 +329,13 @@ async function fetchAll() {
 		live,
 		lineup,
 		stats,
+		transfers,
 		sources: [
 			'FC Barcelona official — api-fcb.pulselive.com (La Liga & UCL fixtures, squad, player stats)',
 			'SofaScore — confirmed lineups (api.sofascore.com)',
 			'@ReshadRahman on X — api.fxtwitter.com',
 			'@FabrizioRomano on X — api.fxtwitter.com',
+			'TransferRoom — public intel, blog, window tracker',
 			'TheSportsDB (live scores fallback)',
 		],
 	};
@@ -436,6 +461,9 @@ export async function dispatchCulersApi(
 		if (url.pathname === '/api/la-masia') {
 			const squad = await fetchSquad();
 			return jsonResult(await fetchLaMasiaHub(squad.players));
+		}
+		if (url.pathname === '/api/transfers') {
+			return jsonResult(await fetchTransfersHub());
 		}
 		if (url.pathname === '/api/la-masia-player-stats') {
 			const sofaId = Number(url.searchParams.get('sofaId'));

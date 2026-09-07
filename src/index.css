@@ -3545,6 +3545,248 @@ a {
 	margin-top: 0.2rem;
 }
 
+.transfers-page {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+}
+
+.transfer-hero {
+	display: grid;
+	gap: 1rem;
+	padding: 1rem 1.1rem;
+}
+
+.transfer-hero h3 {
+	margin: 0.2rem 0 0.35rem;
+	font-family: var(--display);
+	letter-spacing: 0.04em;
+}
+
+.transfer-hero-stats {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 0.6rem;
+}
+
+.transfer-hero-stats > div {
+	padding: 0.7rem 0.75rem;
+	border-radius: 12px;
+	background: rgba(255, 255, 255, 0.04);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.transfer-hero-stats strong {
+	display: block;
+	font-size: 1.25rem;
+	color: var(--gold);
+}
+
+.transfer-hero-stats span {
+	font-size: 0.72rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--muted);
+}
+
+.transfer-hero-links {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem 0.85rem;
+}
+
+.transfer-hero-links a {
+	color: var(--gold-soft);
+	font-size: 0.82rem;
+}
+
+.transfer-table-wrap {
+	overflow-x: auto;
+	margin-top: 0.75rem;
+}
+
+.transfer-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 0.88rem;
+}
+
+.transfer-table th {
+	text-align: left;
+	font-size: 0.68rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--muted);
+	padding: 0.4rem 0.55rem;
+	border-bottom: 1px solid var(--line);
+}
+
+.transfer-table td {
+	padding: 0.55rem;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+	vertical-align: top;
+}
+
+.transfer-table td strong {
+	display: block;
+}
+
+.transfer-intel-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0.65rem;
+	margin-top: 0.75rem;
+}
+
+.transfer-intel-card {
+	display: flex;
+	gap: 0.75rem;
+	padding: 0.8rem;
+	border-radius: 12px;
+	border: 1px solid var(--line);
+	background: rgba(255, 255, 255, 0.03);
+	color: inherit;
+	text-decoration: none;
+}
+
+.transfer-intel-card:hover {
+	border-color: var(--grana);
+}
+
+.transfer-intel-card img {
+	width: 88px;
+	height: 64px;
+	object-fit: cover;
+	border-radius: 8px;
+}
+
+.transfer-intel-card strong,
+.transfer-intel-card .muted {
+	display: block;
+}
+
+.transfer-intel-meta {
+	display: block;
+	margin-top: 0.35rem;
+	font-size: 0.72rem;
+	color: var(--gold-soft);
+}
+
+.transfer-rumor-text {
+	margin: 0;
+	font-size: 0.92rem;
+	line-height: 1.45;
+	white-space: pre-wrap;
+}
+
+.transfer-rumor-filters {
+	margin: 0.85rem 0 0.35rem;
+}
+
+.transfer-rumor-grid {
+	display: grid;
+	gap: 0.85rem;
+	margin-top: 0.75rem;
+}
+
+.transfer-rumor-card {
+	margin: 0;
+	padding: 0.9rem 1rem 0.75rem;
+	border-radius: 14px;
+	border: 1px solid var(--line);
+	background: rgba(255, 255, 255, 0.03);
+}
+
+.transfer-rumor-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.35rem;
+	margin: 0.35rem 0 0.15rem;
+}
+
+.rumor-heat,
+.rumor-lean {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.12rem 0.48rem;
+	border-radius: 999px;
+	font-size: 0.64rem;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.rumor-heat-here-we-go {
+	background: rgba(168, 255, 120, 0.16);
+	color: #c6ff9a;
+}
+
+.rumor-heat-hot {
+	background: rgba(255, 196, 80, 0.16);
+	color: #ffd27a;
+}
+
+.rumor-heat-watch {
+	background: rgba(120, 180, 255, 0.14);
+	color: #9ec5ff;
+}
+
+.rumor-heat-denied {
+	background: rgba(255, 90, 90, 0.16);
+	color: #ff9a9a;
+}
+
+.rumor-lean-in {
+	background: rgba(168, 40, 40, 0.28);
+	color: #ffd4a8;
+}
+
+.rumor-lean-out {
+	background: rgba(255, 255, 255, 0.08);
+	color: #d8d8d8;
+}
+
+.transfer-records-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+	gap: 0.85rem;
+}
+
+.transfer-record-list {
+	margin: 0.75rem 0 0;
+	padding-left: 1.15rem;
+}
+
+.transfer-record-list li {
+	margin-bottom: 0.55rem;
+}
+
+.transfer-record-list span {
+	display: block;
+	color: var(--muted);
+	font-size: 0.82rem;
+}
+
+.transfer-value-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+	gap: 0.65rem;
+	margin-top: 0.85rem;
+}
+
+.transfer-value-chip {
+	display: inline-block;
+	margin-top: 0.25rem;
+	color: var(--gold);
+	font-weight: 700;
+}
+
+@media (max-width: 720px) {
+	.transfer-hero-stats {
+		grid-template-columns: 1fr;
+	}
+}
+
 /* Player stats modal */
 .modal-backdrop {
 	position: fixed;

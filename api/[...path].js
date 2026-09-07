@@ -718,6 +718,13 @@ async function sofaFetch(apiPath) {
   }
   return sofaFetchDirect(apiPath);
 }
+function sofaMarketValueEur(player) {
+  const raw = player.proposedMarketValueRaw;
+  const fromRaw = Number(raw?.value ?? 0);
+  if (Number.isFinite(fromRaw) && fromRaw > 0) return fromRaw;
+  const n = Number(player.proposedMarketValue ?? 0);
+  return Number.isFinite(n) && n > 0 ? n : void 0;
+}
 async function sofaFetchTeamPlayers(teamId) {
   const data = await sofaFetch(`/team/${teamId}/players`);
   const rows = data?.players ?? [];
@@ -732,7 +739,8 @@ async function sofaFetchTeamPlayers(teamId) {
       position: String(player.position ?? ""),
       number: player.jerseyNumber != null || player.shirtNumber != null ? String(player.jerseyNumber ?? player.shirtNumber) : "",
       nationality: String(country?.name ?? ""),
-      birthDate: ""
+      birthDate: "",
+      marketValueEur: sofaMarketValueEur(player)
     };
   }).filter(Boolean);
 }
@@ -3633,9 +3641,495 @@ async function fetchLaMasiaPlayerStats(sofaId) {
   };
 }
 
+// culers-transferroom.ts
+var HUBSPOT_PORTAL = "6939831";
+var BLOG_RSS = "https://blog.transferroom.com/rss.xml";
+var TRACKER_URL = "https://www.transferroom.com/transfer-tracker";
+var XTV_URL = "https://www.transferroom.com/webinars/expected-transfer-value-xtv";
+var UA = "Culers/1.0 (local Barcelona fan app)";
+function stripHtml(s) {
+  return s.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+async function fetchText3(url) {
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "*/*" } });
+    if (!res.ok) return null;
+    return await res.text();
+  } catch {
+    return null;
+  }
+}
+async function fetchJson2(url) {
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": UA, Accept: "application/json" } });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+function isBarcaHit(title, snippet, url) {
+  const blob = `${title} ${snippet} ${url}`.toLowerCase();
+  return /barcelona|barça|barca|blaugrana|camp nou/.test(blob);
+}
+async function hubspotSearch(term, limit = 18) {
+  const url = `https://api.hubapi.com/contentsearch/v2/search?portalId=${HUBSPOT_PORTAL}&term=${encodeURIComponent(term)}&limit=${limit}`;
+  const data = await fetchJson2(url);
+  const out = [];
+  for (const row of data?.results ?? []) {
+    const title = stripHtml(String(row.title ?? ""));
+    const snippet = stripHtml(String(row.description ?? ""));
+    const link = String(row.url ?? "");
+    if (!title || !link) continue;
+    if (row.isPrivate) continue;
+    out.push({
+      id: String(row.id ?? link),
+      title,
+      url: link,
+      snippet,
+      pubDate: row.publishedDate ? new Date(row.publishedDate).toISOString() : void 0,
+      image: row.featuredImageUrl || void 0,
+      tags: row.tags,
+      source: "TransferRoom"
+    });
+  }
+  return out;
+}
+function parseRss(xml) {
+  const items = xml.split(/<item[\s>]/i).slice(1);
+  const out = [];
+  for (const chunk of items) {
+    const title = stripHtml((chunk.match(/<title>([\s\S]*?)<\/title>/i)?.[1] ?? "").replace(/<!\[CDATA\[|\]\]>/g, ""));
+    const link = (chunk.match(/<link>([\s\S]*?)<\/link>/i)?.[1] ?? "").trim();
+    const desc = stripHtml(
+      (chunk.match(/<description>([\s\S]*?)<\/description>/i)?.[1] ?? "").replace(/<!\[CDATA\[|\]\]>/g, "")
+    );
+    const date = (chunk.match(/<pubDate>([\s\S]*?)<\/pubDate>/i)?.[1] ?? "").trim();
+    if (!title || !link) continue;
+    out.push({
+      id: link,
+      title,
+      url: link,
+      snippet: desc,
+      pubDate: date ? new Date(date).toISOString() : void 0,
+      source: "TransferRoom blog"
+    });
+  }
+  return out;
+}
+async function fetchTransferRoomIntel() {
+  const [barca, fc, rssXml] = await Promise.all([
+    hubspotSearch("Barcelona"),
+    hubspotSearch("FC Barcelona"),
+    fetchText3(BLOG_RSS)
+  ]);
+  const rss = rssXml ? parseRss(rssXml) : [];
+  const merged = /* @__PURE__ */ new Map();
+  for (const item of [...barca, ...fc, ...rss]) {
+    const key = item.url.replace(/\/$/, "").toLowerCase();
+    if (!merged.has(key)) merged.set(key, item);
+  }
+  const preferred = [...merged.values()].filter((i) => isBarcaHit(i.title, i.snippet, i.url));
+  const rest = [...merged.values()].filter((i) => !preferred.includes(i));
+  return [...preferred, ...rest].slice(0, 24);
+}
+async function fetchTransferRoomWindowNote() {
+  const html = await fetchText3(TRACKER_URL);
+  if (!html) {
+    return `Live TransferRoom window tracker: ${TRACKER_URL} \u2014 deal boards need a club login.`;
+  }
+  const text = html.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const spain = text.match(/Spain.{0,160}/i)?.[0];
+  const liga = text.match(/La\s*Liga.{0,160}/i)?.[0];
+  const extra = [spain, liga].filter(Boolean).join(" \xB7 ");
+  return extra ? `TransferRoom tracker: ${extra}` : `TransferRoom Transfer Window Tracker is live at ${TRACKER_URL}. Spain / La Liga dates load in their club dashboard; public page is a world map of windows.`;
+}
+function transferRoomLinks() {
+  return {
+    home: "https://www.transferroom.com/",
+    tracker: TRACKER_URL,
+    blog: "https://blog.transferroom.com/",
+    xtv: XTV_URL,
+    api: "https://www.transferroom.com/api-docs"
+  };
+}
+
+// culers-transfers.ts
+var UA2 = "Culers/1.0 (local Barcelona fan app)";
+var RECORDS_PAGE = "List of FC Barcelona records and statistics";
+function formatEur(n) {
+  if (!Number.isFinite(n) || n <= 0) return "\u2014";
+  if (n >= 1e9) return `\u20AC${(n / 1e9).toFixed(2)}bn`;
+  if (n >= 1e6) {
+    const m = n / 1e6;
+    return `\u20AC${m >= 10 ? Math.round(m) : m.toFixed(1)}m`;
+  }
+  if (n >= 1e3) return `\u20AC${Math.round(n / 1e3)}k`;
+  return `\u20AC${Math.round(n)}`;
+}
+function currentSeasonLabel(now = /* @__PURE__ */ new Date()) {
+  const y = now.getUTCFullYear();
+  const m = now.getUTCMonth() + 1;
+  const start = m >= 7 ? y : y - 1;
+  return `${start}\u2013${String(start + 1).slice(2)}`;
+}
+function expandTemplate(raw) {
+  const inner = raw.slice(2, -2);
+  const parts = inner.split("|").map((p) => p.trim());
+  const name = (parts[0] ?? "").toLowerCase();
+  if (name === "sortname") return `${parts[1] ?? ""} ${parts[2] ?? ""}`.trim();
+  if (name === "nowrap") return parts[1] ?? "";
+  if (name === "nbsp") return " ";
+  if (name.startsWith("flag") || name.startsWith("fba") || name === "bra" || name === "esp" || name === "arg") return "";
+  if (name === "efn" || name.startsWith("cite") || name === "ref") return "";
+  return "";
+}
+function stripWiki(raw) {
+  let s = raw;
+  s = s.replace(/<ref[\s\S]*?<\/ref>/gi, "");
+  s = s.replace(/<ref[^>]*\/>/gi, "");
+  for (let i = 0; i < 6; i++) {
+    const next = s.replace(/\{\{[^{}]*\}\}/g, (m) => expandTemplate(m));
+    if (next === s) break;
+    s = next;
+  }
+  s = s.replace(/\{\{[\s\S]*?\}\}/g, " ");
+  s = s.replace(/\[\[([^|\]]*\|)?([^\]]+)\]\]/g, "$2");
+  s = s.replace(/'{2,}/g, "");
+  s = s.replace(/<br\s*\/?>/gi, " ");
+  s = s.replace(/<[^>]+>/g, "");
+  s = s.replace(/&nbsp;/g, " ");
+  return s.replace(/\s+/g, " ").trim();
+}
+function stripCellMeta(cell) {
+  let s = cell.trim();
+  while (/^(rowspan|colspan|style|align|width|scope|class|valign)\s*=/i.test(s)) {
+    const pipe = s.indexOf("|");
+    if (pipe < 0) break;
+    s = s.slice(pipe + 1).trim();
+  }
+  return s;
+}
+function extractNamed(wikitext, heading, stop) {
+  const m = wikitext.match(heading);
+  if (!m || m.index == null) return "";
+  const rest = wikitext.slice(m.index + m[0].length);
+  const next = rest.search(stop);
+  return next >= 0 ? rest.slice(0, next) : rest;
+}
+function extractTable(section) {
+  const start = section.indexOf("{|");
+  if (start < 0) return "";
+  const end = section.indexOf("\n|}", start);
+  return end >= 0 ? section.slice(start, end) : section.slice(start);
+}
+function parseWikiRows(tableWiki) {
+  const rows = tableWiki.split(/\n\|-[^\n]*/).slice(1);
+  const out = [];
+  for (const row of rows) {
+    const cells = [];
+    let buf = "";
+    const flush = () => {
+      const cleaned = stripWiki(stripCellMeta(buf));
+      if (cleaned) cells.push(cleaned);
+      buf = "";
+    };
+    for (const line of row.split("\n")) {
+      if (/^\|\}/.test(line)) continue;
+      if (/^[|!]/.test(line)) {
+        const payload = line.replace(/^[|!]\s?/, "");
+        const chunks = payload.split(/\s*\|\|\s*/);
+        if (chunks.length > 1) {
+          flush();
+          for (const chunk of chunks) {
+            const cleaned = stripWiki(stripCellMeta(chunk));
+            if (cleaned) cells.push(cleaned);
+          }
+        } else {
+          flush();
+          buf = payload;
+        }
+      } else if (buf) {
+        buf += ` ${line}`;
+      }
+    }
+    flush();
+    if (cells.length) out.push(cells);
+  }
+  return out;
+}
+function parseSeasonDeals(section, direction) {
+  const table = extractTable(section);
+  const rows = parseWikiRows(table);
+  const deals = [];
+  let window = "unknown";
+  for (const cells of rows) {
+    const joined = cells.join(" ").toLowerCase();
+    if (cells.length <= 2 && /summer|winter/.test(joined)) {
+      window = /winter/.test(joined) ? "winter" : "summer";
+      continue;
+    }
+    if (cells.length < 6) continue;
+    const [num, pos, player, club, type, fee, date] = cells;
+    if (!player || /player|transfer from|transfer to/i.test(player)) continue;
+    deals.push({
+      player,
+      position: pos && !/^\d/.test(pos) ? pos : num && !/^\d|^—|^–/.test(num) ? num : pos,
+      club: club ?? "",
+      type: type ?? "",
+      fee: fee ?? "",
+      date: date ?? "",
+      window,
+      direction
+    });
+  }
+  return deals;
+}
+function playerKey(name) {
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+function isLoanReturn(deal) {
+  return /loan\s*return/i.test(deal.type);
+}
+function netSeasonMoves(arrivals, departures) {
+  const names = new Set([...arrivals, ...departures].map((d) => playerKey(d.player)));
+  const ins = [];
+  const outs = [];
+  for (const name of names) {
+    const playerIns = arrivals.filter((d) => playerKey(d.player) === name);
+    const playerOuts = departures.filter((d) => playerKey(d.player) === name);
+    const realIn = playerIns.filter((d) => !isLoanReturn(d));
+    const realOut = playerOuts.filter((d) => !isLoanReturn(d));
+    if (realIn.length || realOut.length) {
+      ins.push(...realIn);
+      outs.push(...realOut);
+    } else {
+      ins.push(...playerIns);
+      outs.push(...playerOuts);
+    }
+  }
+  const byDate = (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.player.localeCompare(b.player);
+  return { arrivals: ins.sort(byDate), departures: outs.sort(byDate) };
+}
+function parseFeeRecords(section, direction) {
+  const table = extractTable(section);
+  const rows = parseWikiRows(table);
+  const out = [];
+  for (const cells of rows) {
+    if (cells.length < 3) continue;
+    if (/^rank$/i.test(cells[0] ?? "") || /^player$/i.test(cells[1] ?? "")) continue;
+    const names = cells.filter((c) => !/^\d+$/.test(c) && !/[£€]/.test(c) && !/^(?:19|20)\d{2}/.test(c.trim()));
+    const player = names[0];
+    const club = names[1] ?? "";
+    if (!player || /nationality|transfer fee|player/i.test(player)) continue;
+    const euroCell = cells.find((c) => /€/.test(c)) ?? "";
+    const yearCell = [...cells].reverse().find((c) => /(?:19|20)\d{2}/.test(c)) ?? "";
+    const fee = euroCell.replace(/\[.*?\]/g, "").replace(/million/gi, "m").trim();
+    out.push({
+      player,
+      club,
+      fee: /€\s*\d/.test(fee) && !/[mb]/i.test(fee) ? `${fee}m` : fee,
+      year: (yearCell.match(/(?:19|20)\d{2}/) ?? [yearCell])[0] ?? "",
+      direction
+    });
+    if (out.length >= 10) break;
+  }
+  return out;
+}
+async function wikiWikitext(page) {
+  const url = `https://en.wikipedia.org/w/api.php?action=parse&page=${encodeURIComponent(page)}&prop=wikitext&format=json&redirects=1`;
+  try {
+    const res = await fetch(url, { headers: { "User-Agent": UA2 } });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.parse?.wikitext?.["*"] ?? null;
+  } catch {
+    return null;
+  }
+}
+function rumorBody(title, text) {
+  const a = title.trim();
+  const b = text.trim();
+  if (!b) return a;
+  if (!a) return b;
+  if (a === b) return b;
+  if (b.startsWith(a.replace(/…|\.\.\.$/, "").trim()) || b.includes(a.replace(/…|\.\.\.$/, "").trim())) return b;
+  if (a.startsWith(b.replace(/…|\.\.\.$/, "").trim())) return a;
+  return b.length >= a.length ? b : a;
+}
+var TRANSFER_TALK = /here we go|transfer|sign(?:ed|ing|s)?\b|loan|release clause|personal terms|agrees|agreement|bid|offer|medical|join(?:s|ed)?\b|\bdeal\b|\bfee\b|rejected|close to|set to|on the verge|target|linked|interest|wanted|contract|clause/;
+function isBarcaTalk(blob) {
+  return /barcelona|barça|barca|blaugrana|culers/.test(blob);
+}
+function isQuoteNoise(blob) {
+  return /\bi love (football and i love )?barcelona\b|more than a club|més que un club/.test(blob) && !/here we go|transfer|signed|bid|deal|loan/.test(blob);
+}
+function rumorHeat(blob) {
+  if (/here we go|deal done|has signed|signed for|completed the signing|it's done|its done/.test(blob)) {
+    return { heat: "here-we-go", heatLabel: "Here we go" };
+  }
+  if (/rejected|not happening|no deal|won'?t join|will not join|denied|off the table/.test(blob)) {
+    return { heat: "denied", heatLabel: "Off" };
+  }
+  if (/medical|personal terms|verbal agreement|agreement reached|exclusive|done deal/.test(blob)) {
+    return { heat: "hot", heatLabel: "Close" };
+  }
+  return { heat: "watch", heatLabel: "Watch" };
+}
+function rumorLean(blob) {
+  const comingIn = /(?:join(?:s|ed)?|to|towards|signing for|signs for|headed to)\s+(?:fc\s+)?(?:barcelona|barça|barca)/.test(blob) || /(?:barcelona|barça|barca)\s+(?:have\s+|has\s+)?(?:sign|signed|agree|agrees|close|bid|offer|want|wanted|target)/.test(
+    blob
+  );
+  const goingOut = /(?:leave|leaves|leaving|exit|exits|depart|departs|sold by|from)\s+(?:fc\s+)?(?:barcelona|barça|barca)/.test(blob) || /(?:barcelona|barça|barca)\s+(?:sell|sold|loan out|let go|release)/.test(blob);
+  if (comingIn && !goingOut) return "in";
+  if (goingOut && !comingIn) return "out";
+  return "other";
+}
+function sourceHandle(source) {
+  if (/fabrizio/i.test(source)) return "FabrizioRomano";
+  if (/reshad/i.test(source)) return "ReshadRahman";
+  return void 0;
+}
+function collectTransferRumors(seeds) {
+  const byUrl = /* @__PURE__ */ new Map();
+  for (const seed of seeds) {
+    const url = String(seed.url || seed.link || "").trim();
+    const text = rumorBody(seed.title, seed.text || seed.snippet || "");
+    if (!url || !text) continue;
+    const blob = text.toLowerCase();
+    if (isQuoteNoise(blob)) continue;
+    if (!TRANSFER_TALK.test(blob)) continue;
+    const handle = sourceHandle(seed.source);
+    const barcaBeat = handle === "ReshadRahman" || isBarcaTalk(blob);
+    if (!barcaBeat) continue;
+    const { heat, heatLabel } = rumorHeat(blob);
+    byUrl.set(url, {
+      title: text,
+      url,
+      text,
+      pubDate: seed.pubDate,
+      source: seed.source,
+      handle,
+      heat,
+      heatLabel,
+      lean: rumorLean(blob),
+      media: seed.media
+    });
+  }
+  const rank = { "here-we-go": 0, hot: 1, watch: 2, denied: 3 };
+  const byBody = /* @__PURE__ */ new Map();
+  for (const rumor of byUrl.values()) {
+    const key = rumor.text.replace(/\s+/g, " ").trim().toLowerCase();
+    const prev = byBody.get(key);
+    if (!prev) {
+      byBody.set(key, rumor);
+      continue;
+    }
+    const hotter = rank[rumor.heat] < rank[prev.heat];
+    const longer = rumor.text.length > prev.text.length;
+    const newer = new Date(rumor.pubDate ?? 0).getTime() > new Date(prev.pubDate ?? 0).getTime();
+    if (hotter || longer || rank[rumor.heat] === rank[prev.heat] && !longer && newer) {
+      byBody.set(key, {
+        ...rumor,
+        text: longer ? rumor.text : prev.text,
+        title: longer ? rumor.title : prev.title,
+        media: rumor.media?.length ? rumor.media : prev.media
+      });
+    }
+  }
+  return [...byBody.values()].sort((a, b) => {
+    const heat = rank[a.heat] - rank[b.heat];
+    if (heat) return heat;
+    return new Date(b.pubDate ?? 0).getTime() - new Date(a.pubDate ?? 0).getTime();
+  });
+}
+function attachNewsToTransferRumors(hub, extra) {
+  return {
+    ...hub,
+    rumors: collectTransferRumors([
+      ...hub.rumors.map((r) => ({
+        title: r.text,
+        url: r.url,
+        text: r.text,
+        pubDate: r.pubDate,
+        source: r.source,
+        media: r.media
+      })),
+      ...extra
+    ])
+  };
+}
+async function fetchTransfersHub() {
+  const season = currentSeasonLabel();
+  const seasonPage = `${season} FC Barcelona season`;
+  const links = transferRoomLinks();
+  const [intel, windowNote, seasonWiki, recordsWiki, sofaPlayers, fabrizio, reshad] = await Promise.all([
+    fetchTransferRoomIntel(),
+    fetchTransferRoomWindowNote(),
+    wikiWikitext(seasonPage),
+    wikiWikitext(RECORDS_PAGE),
+    sofaFetchTeamPlayers(SOFASCORE_BARCA_TEAM_ID),
+    fetchFabrizioRomanoNews().catch(() => ({ items: [] })),
+    fetchReshadRahmanNews().catch(() => ({ items: [] }))
+  ]);
+  const transfersSec = seasonWiki ? extractNamed(`
+${seasonWiki}`, /\n==Transfers==/, /\n==[^=]/) : "";
+  const rawArrivals = parseSeasonDeals(extractNamed(transfersSec, /===In\b/, /\n===/), "in");
+  const rawDepartures = parseSeasonDeals(extractNamed(transfersSec, /===Out\b/, /\n===/), "out");
+  const { arrivals, departures } = netSeasonMoves(rawArrivals, rawDepartures);
+  const recordsIn = recordsWiki ? parseFeeRecords(extractNamed(recordsWiki, /=== Transfer fee paid ===/, /\n===/), "in") : [];
+  const recordsOut = recordsWiki ? parseFeeRecords(extractNamed(recordsWiki, /=== Transfer fee received ===/, /\n===/), "out") : [];
+  const values = sofaPlayers.filter((p) => p.marketValueEur && p.marketValueEur > 0).sort((a, b) => (b.marketValueEur ?? 0) - (a.marketValueEur ?? 0)).map((p) => ({
+    name: p.name,
+    position: p.position,
+    number: p.number,
+    nationality: p.nationality,
+    valueEur: p.marketValueEur ?? 0,
+    valueLabel: formatEur(p.marketValueEur ?? 0),
+    sofaId: p.id
+  }));
+  const squadValueTotalEur = values.reduce((sum, p) => sum + p.valueEur, 0);
+  const rumors = collectTransferRumors(
+    [...fabrizio.items, ...reshad.items].map((item) => ({
+      title: item.title,
+      link: item.link,
+      text: item.text,
+      pubDate: item.pubDate,
+      source: item.source,
+      media: item.media
+    }))
+  );
+  const sources = [
+    "TransferRoom HubSpot search + blog RSS",
+    "TransferRoom Transfer Window Tracker",
+    `Wikipedia \u2014 ${seasonPage}`,
+    `Wikipedia \u2014 ${RECORDS_PAGE}`,
+    "SofaScore proposed market values",
+    "Fabrizio Romano + Reshad Rahman (Bar\xE7a transfer talk)"
+  ];
+  return {
+    season,
+    seasonPage: `https://en.wikipedia.org/wiki/${encodeURIComponent(seasonPage.replace(/ /g, "_"))}`,
+    windowNote,
+    arrivals,
+    departures,
+    intel,
+    rumors,
+    recordsIn,
+    recordsOut,
+    values,
+    squadValueTotalEur,
+    squadValueTotalLabel: formatEur(squadValueTotalEur),
+    links,
+    sources,
+    fetchedAt: (/* @__PURE__ */ new Date()).toISOString(),
+    note: `TransferRoom\u2019s club API / xTV board is login-only. Public TransferRoom intel is wired in full (search, blog, tracker, xTV). Completed deals come from the ${season} Wikipedia season page; current player values from SofaScore.`
+  };
+}
+
 // culers-api-handlers.ts
 var BARCA_TEAM_ID3 = "133739";
-async function fetchJson2(url) {
+async function fetchJson3(url) {
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": "Culers/1.0 (local Barcelona fan app)" }
@@ -3700,8 +4194,8 @@ async function fetchFixtures() {
   const fcb = await fetchFcbFixtures();
   if (fcb.length) return fcb;
   const [next, last] = await Promise.all([
-    fetchJson2(`https://www.thesportsdb.com/api/v1/json/3/eventsnext.php?id=${BARCA_TEAM_ID3}`),
-    fetchJson2(`https://www.thesportsdb.com/api/v1/json/3/eventslast.php?id=${BARCA_TEAM_ID3}`)
+    fetchJson3(`https://www.thesportsdb.com/api/v1/json/3/eventsnext.php?id=${BARCA_TEAM_ID3}`),
+    fetchJson3(`https://www.thesportsdb.com/api/v1/json/3/eventslast.php?id=${BARCA_TEAM_ID3}`)
   ]);
   const upcoming = (next?.events ?? []).map((e) => normalizeEvent(e, "upcoming"));
   const recent = (last?.events ?? []).map((e) => normalizeEvent(e, "past"));
@@ -3729,7 +4223,7 @@ async function fetchSquad() {
       lastMatch: fcb.lastMatch
     };
   }
-  const data = await fetchJson2(
+  const data = await fetchJson3(
     `https://www.thesportsdb.com/api/v1/json/3/lookup_all_players.php?id=${BARCA_TEAM_ID3}`
   );
   const players = await enrichPlayerPhotos(
@@ -3766,7 +4260,7 @@ async function fetchLive() {
       message: recentFixture.kind === "past" ? "Full time \u2014 final score from FC Barcelona official." : "No live feed \u2014 today's fixture shown if scheduled."
     };
   }
-  const liveData = await fetchJson2("https://www.thesportsdb.com/api/v1/json/3/livescore.php?s=Soccer");
+  const liveData = await fetchJson3("https://www.thesportsdb.com/api/v1/json/3/livescore.php?s=Soccer");
   const events = liveData?.events ?? [];
   const barcaLive = events.find((e) => {
     const home = String(e.strHomeTeam ?? "").toLowerCase();
@@ -3777,7 +4271,7 @@ async function fetchLive() {
     return { live: false, match: null, events: [] };
   }
   const eventId = String(barcaLive.idEvent ?? "");
-  const timeline = eventId ? await fetchJson2(`https://www.thesportsdb.com/api/v1/json/3/lookuptimeline.php?id=${eventId}`) : null;
+  const timeline = eventId ? await fetchJson3(`https://www.thesportsdb.com/api/v1/json/3/lookuptimeline.php?id=${eventId}`) : null;
   const timelineEvents = (timeline?.timeline ?? []).map((t) => ({
     minute: String(t.intTime ?? t.strTime ?? ""),
     type: String(t.strTimeline ?? t.strTimelineDetail ?? "Event"),
@@ -3819,11 +4313,12 @@ async function fetchLineupForFixture(squad, fixtures, fixtureId) {
   });
 }
 async function fetchAll() {
-  const [fixturesResult, newsResult, squadResult, liveResult] = await Promise.allSettled([
+  const [fixturesResult, newsResult, squadResult, liveResult, transfersResult] = await Promise.allSettled([
     fetchFixtures(),
     fetchNews(),
     fetchSquad(),
-    fetchLive()
+    fetchLive(),
+    fetchTransfersHub()
   ]);
   const failures = [];
   const fixtures = fixturesResult.status === "fulfilled" ? fixturesResult.value : (failures.push("fixtures"), []);
@@ -3850,6 +4345,25 @@ async function fetchAll() {
     lineup = await fetchLineupForFixture(squad, [], void 0);
   }
   const stats = computeStats(fixtures);
+  const transfersRaw = transfersResult.status === "fulfilled" ? transfersResult.value : void 0;
+  const transfers = transfersRaw ? attachNewsToTransferRumors(transfersRaw, [
+    ...newsPack.footballNews.map((item) => ({
+      title: item.title,
+      link: item.link,
+      text: item.text,
+      pubDate: item.pubDate,
+      source: item.source,
+      media: item.media
+    })),
+    ...newsPack.news.map((item) => ({
+      title: item.title,
+      link: item.link,
+      text: item.text,
+      pubDate: item.pubDate,
+      source: item.source,
+      media: item.media
+    }))
+  ]) : void 0;
   return {
     fetchedAt: (/* @__PURE__ */ new Date()).toISOString(),
     fixtures,
@@ -3863,11 +4377,13 @@ async function fetchAll() {
     live,
     lineup,
     stats,
+    transfers,
     sources: [
       "FC Barcelona official \u2014 api-fcb.pulselive.com (La Liga & UCL fixtures, squad, player stats)",
       "SofaScore \u2014 confirmed lineups (api.sofascore.com)",
       "@ReshadRahman on X \u2014 api.fxtwitter.com",
       "@FabrizioRomano on X \u2014 api.fxtwitter.com",
+      "TransferRoom \u2014 public intel, blog, window tracker",
       "TheSportsDB (live scores fallback)"
     ]
   };
@@ -3980,6 +4496,9 @@ async function dispatchCulersApi(url, options = {}) {
     if (url.pathname === "/api/la-masia") {
       const squad = await fetchSquad();
       return jsonResult(await fetchLaMasiaHub(squad.players));
+    }
+    if (url.pathname === "/api/transfers") {
+      return jsonResult(await fetchTransfersHub());
     }
     if (url.pathname === "/api/la-masia-player-stats") {
       const sofaId = Number(url.searchParams.get("sofaId"));
