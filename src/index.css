@@ -3469,6 +3469,12 @@ a {
 	gap: 1.35rem;
 }
 
+#la-masia-juvenil,
+#la-masia-atletic,
+#la-masia-first-team {
+	scroll-margin-top: 5.5rem;
+}
+
 .la-masia-section .section-head.inline {
 	margin-bottom: 0.75rem;
 }
@@ -3499,10 +3505,227 @@ a {
 	background: rgba(212, 175, 55, 0.08);
 }
 
-.la-masia-badge.atletic {
+.la-masia-badge.juvenil {
+	color: #c4e0a4;
+	border-color: rgba(196, 224, 164, 0.4);
+	background: rgba(40, 90, 40, 0.25);
+}
+
+.la-masia-pathway-lead {
+	margin: 0 0 0.85rem;
+	max-width: 46rem;
+}
+
+.la-masia-pathway {
+	list-style: none;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.45rem;
+	margin: 0;
+	padding: 0;
+	align-items: stretch;
+}
+
+.la-masia-pathway li {
+	display: flex;
+	align-items: stretch;
+	gap: 0.45rem;
+}
+
+.la-masia-pathway-arrow {
+	align-self: center;
+	color: var(--gold);
+	opacity: 0.7;
+	font-size: 0.85rem;
+}
+
+.la-masia-rung {
+	display: flex;
+	flex-direction: column;
+	gap: 0.12rem;
+	min-width: 6.5rem;
+	padding: 0.55rem 0.7rem;
+	border-radius: 12px;
+	border: 1px dashed var(--line);
+	background: rgba(0, 0, 0, 0.18);
+	text-decoration: none;
+	color: inherit;
+}
+
+.la-masia-rung strong {
+	font-size: 0.92rem;
+}
+
+.la-masia-rung span,
+.la-masia-rung em {
+	font-size: 0.72rem;
+	font-style: normal;
+	color: var(--muted);
+}
+
+.la-masia-rung.is-live {
+	border-style: solid;
+	border-color: rgba(212, 175, 55, 0.35);
+	background: rgba(212, 175, 55, 0.08);
+}
+
+.la-masia-ig-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+	gap: 0.55rem;
+}
+
+.la-masia-ig-tile {
+	position: relative;
+	display: block;
+	aspect-ratio: 1;
+	overflow: hidden;
+	border-radius: 12px;
+	border: 1px solid var(--line);
+	text-decoration: none;
+	color: inherit;
+}
+
+.la-masia-ig-tile img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	display: block;
+}
+
+.la-masia-ig-tile span {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	padding: 1.4rem 0.45rem 0.4rem;
+	font-size: 0.68rem;
+	line-height: 1.3;
+	background: linear-gradient(transparent, rgba(0, 0, 0, 0.82));
+	display: -webkit-box;
+	-webkit-line-clamp: 2;
+	-webkit-box-orient: vertical;
+	overflow: hidden;
+}
+
+.la-masia-ig-fallback {
+	display: flex;
+	gap: 0.75rem;
+	align-items: center;
+	padding: 0.9rem 1rem;
+	border-radius: 14px;
+	border: 1px solid var(--line);
+	background: var(--bg-2);
+	text-decoration: none;
+	color: inherit;
+}
+
+.la-masia-ig-fallback svg {
+	width: 36px;
+	height: 36px;
+	flex-shrink: 0;
+}
+
+.la-masia-ig-fallback em {
+	display: block;
+	font-style: normal;
+	font-size: 0.8rem;
+	color: var(--muted);
+}
+
+.la-masia-weekend-card {
+	padding: 0.85rem 0.95rem;
+	border-radius: 14px;
+	border: 1px solid var(--line);
+	background: var(--bg-2);
+}
+
+.la-masia-weekend-line {
+	display: flex;
+	flex-direction: column;
+	gap: 0.15rem;
+	margin: 0.65rem 0 0;
+}
+
+.la-masia-weekend-line span {
+	font-size: 0.65rem;
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--gold);
+}
+
+.la-masia-weekend-line.is-live span {
+	color: #e74c3c;
+}
+
+.la-masia-weekend-line.is-live strong {
+	color: #fff;
+}
+
+.la-masia-culture {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+	gap: 0.75rem;
+}
+
+.la-masia-culture-panel {
+	padding: 0.95rem 1rem;
+	border-radius: 14px;
+	border: 1px solid var(--line);
+	background:
+		radial-gradient(ellipse at top right, rgba(0, 77, 152, 0.18), transparent 55%),
+		var(--bg-2);
+}
+
+.la-masia-culture-panel h3 {
+	margin: 0.2rem 0 0.55rem;
+	font-family: var(--display);
+	font-size: 1.15rem;
+}
+
+.la-masia-culture-panel p {
+	margin: 0 0 0.55rem;
+	font-size: 0.88rem;
+	line-height: 1.45;
+}
+
+.la-masia-heart {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+	gap: 0.4rem;
+}
+
+.la-masia-heart li {
+	display: flex;
+	gap: 0.55rem;
+	align-items: flex-start;
+}
+
+.la-masia-heart strong {
+	width: 1.35rem;
+	color: var(--gold);
+	font-family: var(--display);
+	font-size: 1.1rem;
+}
+
+.la-masia-heart span {
+	display: block;
+	font-size: 0.82rem;
+}
+
+.la-masia-heart em {
+	display: block;
+	font-style: normal;
+	font-size: 0.75rem;
+	color: var(--muted);
+}
+
+.la-masia-prospect-pill {
 	color: #8ec7ff;
-	border-color: rgba(142, 199, 255, 0.35);
-	background: rgba(0, 77, 152, 0.2);
+	border-color: rgba(142, 199, 255, 0.4);
 }
 
 .squad-hub-card.is-static {

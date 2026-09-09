@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Scrape FC Barcelona Instagram + cache post images locally."""
+"""Scrape a public Instagram profile + cache post images locally."""
 from __future__ import annotations
 
 import html
@@ -11,7 +11,7 @@ from pathlib import Path
 from curl_cffi import requests
 
 ROOT = Path(__file__).resolve().parents[1]
-CACHE_DIR = ROOT / ".cache" / "instagram"
+CACHE_ROOT = ROOT / ".cache" / "instagram"
 HEADERS = {"Referer": "https://www.instagram.com/"}
 
 
@@ -19,13 +19,18 @@ def session():
 	return requests.Session(impersonate="chrome120")
 
 
-def cache_image(code: str, url: str, s: requests.Session) -> bool:
+def cache_dir(username: str) -> Path:
+	return CACHE_ROOT / username
+
+
+def cache_image(username: str, code: str, url: str, s: requests.Session) -> bool:
 	post_headers = {**HEADERS, "Referer": f"https://www.instagram.com/p/{code}/"}
 	res = s.get(url, headers=post_headers, timeout=30)
 	if res.status_code != 200 or len(res.content) < 512:
 		return False
-	CACHE_DIR.mkdir(parents=True, exist_ok=True)
-	(CACHE_DIR / f"{code}.jpg").write_bytes(res.content)
+	folder = cache_dir(username)
+	folder.mkdir(parents=True, exist_ok=True)
+	(folder / f"{code}.jpg").write_bytes(res.content)
 	return True
 
 
@@ -49,10 +54,14 @@ def fetch_profile(username: str = "fcbarcelona") -> dict:
 		posts_count_label = posts_match.group(1) if posts_match else ""
 
 	if og_image:
-		cache_image("profile", html.unescape(og_image.group(1)), s)
+		cache_image(username, "profile", html.unescape(og_image.group(1)), s)
 
 	shortcodes = list(dict.fromkeys(re.findall(r"/p/([A-Za-z0-9_-]{11})", text)))[:12]
 	posts = []
+	caption_prefix = re.compile(
+		rf"^[\d,.]+[KMB]?\s+likes,\s+[\d,.]+[KMB]?\s+comments\s+-\s+{re.escape(username)}[^:]*:\s*",
+		re.I,
+	)
 	for code in shortcodes[:9]:
 		post_res = s.get(f"https://www.instagram.com/p/{code}/", headers=HEADERS, timeout=30)
 		if post_res.status_code != 200:
@@ -62,14 +71,9 @@ def fetch_profile(username: str = "fcbarcelona") -> dict:
 		if not image:
 			continue
 		image_url = html.unescape(image.group(1))
-		cached = cache_image(code, image_url, s)
+		cached = cache_image(username, code, image_url, s)
 		cap = html.unescape(caption.group(1)) if caption else ""
-		cap = re.sub(
-			r"^[\d,.]+[KMB]?\s+likes,\s+[\d,.]+[KMB]?\s+comments\s+-\s+fcbarcelona[^:]*:\s*",
-			"",
-			cap,
-			flags=re.I,
-		)
+		cap = caption_prefix.sub("", cap)
 		posts.append(
 			{
 				"id": code,
@@ -80,10 +84,11 @@ def fetch_profile(username: str = "fcbarcelona") -> dict:
 			}
 		)
 
+	profile_file = cache_dir(username) / "profile.jpg"
 	return {
 		"username": username,
 		"profileUrl": profile_url,
-		"profileImage": "/api/social/instagram/image?id=profile" if (CACHE_DIR / "profile.jpg").exists() else "",
+		"profileImage": f"/api/social/instagram/image?user={username}&id=profile" if profile_file.exists() else "",
 		"followersLabel": followers_label,
 		"postsLabel": posts_count_label,
 		"posts": posts,

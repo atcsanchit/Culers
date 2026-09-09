@@ -22,9 +22,11 @@ export type LaMasiaSpotlight = {
 	generation: string;
 	bio: string;
 	debutNote: string;
-	status: 'current' | 'alumni';
+	status: 'current' | 'alumni' | 'prospect';
 	/** Portrait for alumni who are no longer on the squad feed */
 	photoUrl?: string;
+	/** SofaScore id for Atlètic / Juvenil names not on the first-team feed */
+	sofaId?: number;
 	/** Club records for players who left (or full career legends) */
 	barcaRecord?: BarcaClubRecord;
 };
@@ -170,6 +172,42 @@ export const LA_MASIA_SPOTLIGHTS: LaMasiaSpotlight[] = [
 			],
 			legacy: 'Early first-team trust at pivot — career minutes paused by injury, still La Masia’s long game.',
 		},
+	},
+	{
+		id: 'toni-fernandez',
+		name: 'Toni Fernández',
+		matchNames: ['toni fernandez', 'toni fernández'],
+		position: 'Winger / forward',
+		generation: 'La Masia · Atlètic',
+		bio: 'Rubí kid who debuted for the first team at 16. Fast, left-footed, still doing most of his minutes with Barça Atlètic.',
+		debutNote: 'Watch this weekend at Estadi Johan Cruyff — next in line, not a museum piece.',
+		status: 'prospect',
+		sofaId: 1590761,
+		photoUrl: 'https://img.sofascore.com/api/v1/player/1590761/image',
+	},
+	{
+		id: 'oscar-gistau',
+		name: 'Òscar Gistau',
+		matchNames: ['oscar gistau', 'òscar gistau', 'gistau'],
+		position: 'Centre-forward',
+		generation: 'La Masia · Juvenil / Atlètic',
+		bio: 'Youth League winner who can still turn out for Juvenil A. A nine who presses, moves, and hunts the box.',
+		debutNote: 'Watch this weekend — Atlètic or U19, same campus, same ask.',
+		status: 'prospect',
+		sofaId: 1539491,
+		photoUrl: 'https://img.sofascore.com/api/v1/player/1539491/image',
+	},
+	{
+		id: 'xavi-espart',
+		name: 'Xavi Espart',
+		matchNames: ['xavi espart', 'espart'],
+		position: 'Defender / midfielder',
+		generation: 'La Masia · Atlètic → first team',
+		bio: 'Vilassar boy who grew up at Joan Gamper. Full-back or interior — the kind of utility the academy still prints.',
+		debutNote: 'Watch this weekend: first-team minutes when they come, Atlètic when they don’t.',
+		status: 'prospect',
+		sofaId: 1546073,
+		photoUrl: 'https://img.sofascore.com/api/v1/player/1546073/image',
 	},
 	{
 		id: 'messi',
@@ -464,7 +502,7 @@ export function findSquadMatch<T extends { name: string; photo?: string; number?
 	spotlight: LaMasiaSpotlight,
 	squad: T[],
 ): T | null {
-	// Alumni left the club — never bind to a current squad namesake (e.g. Xavi Espart).
+	// Alumni left the club — never bind to a current squad namesake (e.g. Xavi Hernández vs Xavi Espart).
 	if (spotlight.status === 'alumni') return null;
 
 	const keys = spotlight.matchNames.map(normalizeNameKey);
@@ -488,7 +526,8 @@ export function findSquadMatch<T extends { name: string; photo?: string; number?
 /** Synthetic player for alumni legend profile cards. */
 export function alumniSpotlightToPlayer(spotlight: LaMasiaSpotlight): Player {
 	return {
-		id: `alumni-${spotlight.id}`,
+		id: spotlight.sofaId ? `prospect-${spotlight.id}` : `alumni-${spotlight.id}`,
+		sofaId: spotlight.sofaId,
 		name: spotlight.name,
 		position: spotlight.position,
 		number: '',

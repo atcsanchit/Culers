@@ -12,6 +12,16 @@ const IS_SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCT
 
 export const BARCA_X_HANDLE = 'FCBarcelona';
 export const BARCA_INSTAGRAM_USER = 'fcbarcelona';
+export const MASIA_INSTAGRAM_USER = 'fcbmasia';
+
+const INSTAGRAM_USERS = new Set([BARCA_INSTAGRAM_USER, MASIA_INSTAGRAM_USER]);
+
+export function sanitizeInstagramUser(raw: string | null | undefined) {
+	const user = String(raw ?? BARCA_INSTAGRAM_USER)
+		.toLowerCase()
+		.replace(/[^a-z0-9._]/g, '');
+	return INSTAGRAM_USERS.has(user) ? user : BARCA_INSTAGRAM_USER;
+}
 
 export type InstagramPost = {
 	id: string;
@@ -38,11 +48,15 @@ export type SocialHubData = {
 	note?: string;
 };
 
-function proxyInstagramImage(id: string) {
-	return `/api/social/instagram/image?id=${encodeURIComponent(id)}`;
+function proxyInstagramImage(id: string, user = BARCA_INSTAGRAM_USER) {
+	return `/api/social/instagram/image?user=${encodeURIComponent(user)}&id=${encodeURIComponent(id)}`;
 }
 
-async function runInstagramScraper(): Promise<{
+function instagramCacheFile(user: string, id: string) {
+	return path.join(CACHE_DIR, user, `${id}.jpg`);
+}
+
+async function runInstagramScraper(username = BARCA_INSTAGRAM_USER): Promise<{
 	username: string;
 	profileUrl: string;
 	profileImage?: string;
@@ -54,7 +68,7 @@ async function runInstagramScraper(): Promise<{
 	if (IS_SERVERLESS) return null;
 
 	return new Promise((resolve) => {
-		const child = spawn(PYTHON, [INSTAGRAM_SCRIPT, BARCA_INSTAGRAM_USER], { cwd: ROOT });
+		const child = spawn(PYTHON, [INSTAGRAM_SCRIPT, username], { cwd: ROOT });
 		let stdout = '';
 		const timer = setTimeout(() => {
 			child.kill('SIGKILL');
@@ -118,21 +132,34 @@ export async function fetchBarcaSocialHub(): Promise<SocialHubData> {
 }
 
 export async function fetchBarcaInstagramFeed() {
-	const data = await runInstagramScraper();
-	const profilePath = path.join(CACHE_DIR, 'profile.jpg');
+	return fetchInstagramFeedFor(BARCA_INSTAGRAM_USER);
+}
+
+export async function fetchInstagramFeedFor(rawUser: string) {
+	const username = sanitizeInstagramUser(rawUser);
+	const data = await runInstagramScraper(username);
 	let profileImage = '';
 	try {
-		await readFile(profilePath);
-		profileImage = proxyInstagramImage('profile');
+		await readFile(instagramCacheFile(username, 'profile'));
+		profileImage = proxyInstagramImage('profile', username);
 	} catch {
-		profileImage = '';
+		if (username === BARCA_INSTAGRAM_USER) {
+			try {
+				await readFile(path.join(CACHE_DIR, 'profile.jpg'));
+				profileImage = proxyInstagramImage('profile', username);
+			} catch {
+				profileImage = '';
+			}
+		}
 	}
 
+	const fallbackFollowers = username === MASIA_INSTAGRAM_USER ? '6M+' : '148M';
+
 	return {
-		username: BARCA_INSTAGRAM_USER,
-		profileUrl: `https://www.instagram.com/${BARCA_INSTAGRAM_USER}/`,
+		username,
+		profileUrl: `https://www.instagram.com/${username}/`,
 		profileImage,
-		followersLabel: data?.followersLabel ?? '148M',
+		followersLabel: data?.followersLabel ?? (data ? undefined : fallbackFollowers),
 		postsLabel: data?.postsLabel,
 		posts: (data?.posts ?? [])
 			.filter((post) => post.cached !== false)
@@ -140,22 +167,32 @@ export async function fetchBarcaInstagramFeed() {
 				id: post.id,
 				url: post.url,
 				caption: post.caption,
-				image: proxyInstagramImage(post.id),
+				image: proxyInstagramImage(post.id, username),
 			})),
 		fetchedAt: new Date().toISOString(),
-		source: 'Instagram — @fcbarcelona (public previews)',
+		source: `Instagram — @${username} (public previews)`,
 	};
 }
 
-export async function streamInstagramImage(id: string): Promise<{ body: Buffer; contentType: string } | null> {
+export async function streamInstagramImage(
+	id: string,
+	rawUser?: string | null,
+): Promise<{ body: Buffer; contentType: string } | null> {
 	const safeId = id.replace(/[^a-zA-Z0-9_-]/g, '');
-	const filePath = path.join(CACHE_DIR, `${safeId}.jpg`);
-	try {
-		const body = await readFile(filePath);
-		return { body, contentType: 'image/jpeg' };
-	} catch {
-		return null;
+	const username = sanitizeInstagramUser(rawUser);
+	const paths = [instagramCacheFile(username, safeId)];
+	if (username === BARCA_INSTAGRAM_USER) {
+		paths.push(path.join(CACHE_DIR, `${safeId}.jpg`));
 	}
+	for (const filePath of paths) {
+		try {
+			const body = await readFile(filePath);
+			return { body, contentType: 'image/jpeg' };
+		} catch {
+			/* try next path */
+		}
+	}
+	return null;
 }
 
 export async function fetchBarcaXFeed() {

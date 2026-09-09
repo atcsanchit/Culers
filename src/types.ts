@@ -62,13 +62,43 @@ export type Squad = {
 
 export type LaMasiaPlayer = Player & {
 	sofaId?: number;
-	group: 'first-team' | 'atletic';
+	group: 'first-team' | 'atletic' | 'juvenil';
 	statsAvailable: boolean;
+};
+
+export type LaMasiaMatch = {
+	opponent: string;
+	isHome: boolean;
+	date: string;
+	time: string;
+	competition: string;
+	homeScore: number | null;
+	awayScore: number | null;
+	status: string;
+};
+
+export type LaMasiaWeekendTeam = {
+	id: 'atletic' | 'juvenil';
+	label: string;
+	last: LaMasiaMatch | null;
+	next: LaMasiaMatch | null;
+};
+
+export type LaMasiaPathwayRung = {
+	id: 'infantil' | 'cadet' | 'juvenil' | 'atletic' | 'first-team';
+	label: string;
+	ages: string;
+	live: boolean;
+	count: number | null;
+	note: string;
 };
 
 export type LaMasiaHub = {
 	firstTeam: LaMasiaPlayer[];
 	atletic: LaMasiaPlayer[];
+	juvenil: LaMasiaPlayer[];
+	pathway: LaMasiaPathwayRung[];
+	weekend: LaMasiaWeekendTeam[];
 	fetchedAt: string;
 	source: string;
 	note?: string;
