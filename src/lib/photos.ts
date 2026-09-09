@@ -77,22 +77,42 @@ function normalizePlayerKey(name: string) {
 		.trim();
 }
 
-/** Prefer a photo from Squad Hub when SofaScore / lineup photo is missing. */
-export function enrichPlayerPhoto(player: Player, squad: readonly Player[]): Player {
-	if (playerPhotoSrc(player)) return player;
+export function findSquadPlayer(player: Player, squad: readonly Player[]): Player | undefined {
 	const key = normalizePlayerKey(player.name);
 	const last = key.split(' ').pop() ?? key;
-	const byId = squad.find((s) => s.id === player.id && playerPhotoSrc(s));
-	if (byId) return { ...player, photo: byId.photo };
-	const byName = squad.find((s) => normalizePlayerKey(s.name) === key && playerPhotoSrc(s));
-	if (byName) return { ...player, photo: byName.photo };
-	const byNumber =
-		player.number &&
-		squad.find((s) => s.number === player.number && playerPhotoSrc(s) && normalizePlayerKey(s.name).includes(last));
-	if (byNumber) return { ...player, photo: byNumber.photo };
-	const byLast = squad.find((s) => normalizePlayerKey(s.name).endsWith(last) && playerPhotoSrc(s));
-	if (byLast) return { ...player, photo: byLast.photo };
-	return player;
+	const sofaId = player.sofaId ?? (Number(/^sofa-(\d+)$/i.exec(player.id)?.[1] || 0) || undefined);
+	return (
+		squad.find((s) => player.fcbId && s.fcbId === player.fcbId) ??
+		squad.find((s) => sofaId && s.sofaId === sofaId) ??
+		squad.find((s) => s.id === player.id) ??
+		squad.find((s) => normalizePlayerKey(s.name) === key) ??
+		(player.number
+			? squad.find((s) => s.number === player.number && normalizePlayerKey(s.name).includes(last))
+			: undefined) ??
+		(last.length > 3 ? squad.find((s) => normalizePlayerKey(s.name).endsWith(last)) : undefined)
+	);
+}
+
+/** Copy photo plus official ids from Squad Hub onto a lineup / SofaScore player. */
+export function attachSquadIdentity(player: Player, squad: readonly Player[]): Player {
+	const hit = findSquadPlayer(player, squad);
+	if (!hit) return player;
+	return {
+		...hit,
+		...player,
+		fcbId: player.fcbId ?? hit.fcbId,
+		sofaId: player.sofaId ?? hit.sofaId,
+		photo: playerPhotoSrc(player) ? player.photo : hit.photo,
+		nationality: player.nationality || hit.nationality,
+		birthDate: player.birthDate || hit.birthDate,
+		position: player.position || hit.position,
+		number: player.number || hit.number,
+	};
+}
+
+/** Prefer a photo from Squad Hub when SofaScore / lineup photo is missing. */
+export function enrichPlayerPhoto(player: Player, squad: readonly Player[]): Player {
+	return attachSquadIdentity(player, squad);
 }
 
 export function enrichPlayersPhotos(players: Player[], squad: readonly Player[]): Player[] {
