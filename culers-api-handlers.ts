@@ -7,7 +7,9 @@ import { enrichPlayerPhotos } from './culers-photos.ts';
 import { fetchInstagramFeedFor, fetchBarcaSocialHub, fetchBarcaXFeed, streamInstagramImage, sanitizeInstagramUser } from './culers-social.ts';
 import { fetchFabrizioProfile, fetchFabrizioRomanoNews, fetchReshadProfile, fetchReshadRahmanNews } from './culers-twitter.ts';
 import { fetchLaMasiaHub, fetchLaMasiaPlayerStats } from './culers-lamasia.ts';
-import { fetchSofaScoreMatchRatings, fetchSofaScorePlayerMatchStats } from './culers-sofascore.ts';
+import { fetchSofaScoreMatchRatings, fetchSofaScorePlayerMatchStats, parseSofaEventId } from './culers-sofascore.ts';
+import { fetchLiveBoard, fetchLiveMatchDetail } from './culers-live-board.ts';
+import { fetchClubHomeGroundBackground } from './culers-stadium-photos.ts';
 import { fetchTransfersHub, attachNewsToTransferRumors } from './culers-transfers.ts';
 
 const BARCA_TEAM_ID = '133739';
@@ -391,6 +393,16 @@ export async function dispatchCulersApi(
 		if (url.pathname === '/api/live') {
 			return jsonResult(await fetchLive());
 		}
+		if (url.pathname === '/api/live-board') {
+			return jsonResult(await fetchLiveBoard());
+		}
+		if (url.pathname === '/api/live-match') {
+			const eventId = Number(url.searchParams.get('eventId'));
+			if (!eventId) return jsonResult({ error: 'eventId required' }, 400);
+			const detail = await fetchLiveMatchDetail(eventId);
+			if (!detail) return jsonResult({ error: 'Match not found' }, 404);
+			return jsonResult(detail);
+		}
 		if (url.pathname === '/api/lineup') {
 			const squad = await fetchSquad();
 			const fixtures = await fetchFixtures();
@@ -414,7 +426,10 @@ export async function dispatchCulersApi(
 			if (!fixtureId || (!fcbId && !sofaId && !playerName)) {
 				return jsonResult({ error: 'fixtureId and fcbId, sofaId, or playerName required' }, 400);
 			}
-			const fixture = (await fetchFcbFixtures()).find((f) => f.id === fixtureId) ?? (await fetchFcbFixtureById(fixtureId));
+			const sofaEventId = parseSofaEventId(fixtureId);
+			const fixture = sofaEventId
+				? null
+				: (await fetchFcbFixtures()).find((f) => f.id === fixtureId) ?? (await fetchFcbFixtureById(fixtureId));
 			if (sofaId || playerName) {
 				const sofaStats = await fetchSofaScorePlayerMatchStats({
 					fixtureId,
@@ -433,6 +448,11 @@ export async function dispatchCulersApi(
 		if (url.pathname === '/api/match-ratings') {
 			const fixtureId = url.searchParams.get('fixtureId');
 			if (!fixtureId) return jsonResult({ error: 'fixtureId required' }, 400);
+			if (parseSofaEventId(fixtureId)) {
+				const board = await fetchSofaScoreMatchRatings({ fixtureId, prefer: 'any' });
+				if (!board) return jsonResult({ error: 'Ratings unavailable for this fixture' }, 404);
+				return jsonResult(board);
+			}
 			const fixtures = await fetchFcbFixtures();
 			const fixture = fixtures.find((f) => f.id === fixtureId) ?? (await fetchFcbFixtureById(fixtureId));
 			if (!fixture) return jsonResult({ error: 'Fixture not found' }, 404);
@@ -504,6 +524,11 @@ export async function dispatchCulersApi(
 				images: listHomeBackgrounds(projectRoot),
 				updatedAt: new Date().toISOString(),
 			});
+		}
+		if (url.pathname === '/api/club-ground') {
+			const team = String(url.searchParams.get('team') || '').trim();
+			if (!team) return jsonResult({ error: 'team required' }, 400);
+			return jsonResult(await fetchClubHomeGroundBackground(team));
 		}
 		return jsonResult({ error: 'Not found' }, 404);
 	} catch (err) {

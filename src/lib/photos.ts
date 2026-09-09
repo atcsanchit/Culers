@@ -3,7 +3,7 @@ import type { Player } from '../types';
 /** Local bundled crest — avoids hotlink/CORS issues with fcbarcelona.com */
 export const BARCA_CREST = '/barca-crest.svg';
 
-/** Camp Nou grass — fixed player stats modal background. */
+/** Camp Nou grass — default player-stats wallpaper for Barça. */
 export const CAMP_NOU_BG = '/backgrounds/player/camp-nou-grass.jpg';
 
 /** Home slideshow reads public/backgrounds/home/manifest.json (auto-generated from any images in that folder). */
@@ -107,6 +107,7 @@ export function attachSquadIdentity(player: Player, squad: readonly Player[]): P
 		birthDate: player.birthDate || hit.birthDate,
 		position: player.position || hit.position,
 		number: player.number || hit.number,
+		club: player.club || hit.club,
 	};
 }
 

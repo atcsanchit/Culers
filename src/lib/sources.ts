@@ -8,6 +8,7 @@ export const DATA_SOURCES = {
 	],
 	live: [
 		{ id: 'thesportsdb-live', label: 'TheSportsDB live scores', endpoint: '/api/live' },
+		{ id: 'sofascore-live-board', label: 'SofaScore live board — Europe, MLS, UCL, UEL, internationals', endpoint: '/api/live-board' },
 	],
 	lineup: [
 		{ id: 'sofascore-lineup', label: 'SofaScore — confirmed lineups', url: 'https://www.sofascore.com/team/football/fc-barcelona/2817' },
@@ -28,6 +29,7 @@ export const DATA_SOURCES = {
 		{ id: 'fcb-x', label: '@FCBarcelona on X', endpoint: '/api/social/x' },
 	],
 	playerStats: [
+		{ id: 'club-home-ground', label: 'TheSportsDB club home grounds (player stats wallpaper)', endpoint: '/api/club-ground' },
 		{ id: 'fcb-official-stats', label: 'FC Barcelona official player stats (Opta)', endpoint: '/api/player-stats' },
 		{ id: 'fcb-live-match-stats', label: 'FC Barcelona live match player stats', endpoint: '/api/player-match-stats' },
 	],

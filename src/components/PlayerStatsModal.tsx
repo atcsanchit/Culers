@@ -2,15 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Player, PlayerMatchStats, PlayerStats, StatRow } from '../types';
 import type { PlayerOpenOrigin, PlayerStatsContext } from '../store/BarcaState';
 import { useBarca } from '../store/BarcaState';
-import {
-	fetchPlayerMatchStats,
-	fetchPlayerStats,
-	fetchLaMasiaPlayerStats,
-	formatDateTime,
-	LIVE_POLL_MS,
-} from '../lib/api';
+import { CAMP_NOU_BG, attachSquadIdentity, isBarcaTeamName, playerInitials, playerPhotoSrc } from '../lib/photos';
+import { fetchClubGround, fetchPlayerMatchStats, fetchPlayerStats, fetchLaMasiaPlayerStats, formatDateTime, LIVE_POLL_MS } from '../lib/api';
 import { useProfileMotion } from '../lib/motion';
-import { CAMP_NOU_BG, attachSquadIdentity, playerInitials, playerPhotoSrc } from '../lib/photos';
 
 type Props = {
 	player: Player | null;
@@ -86,6 +80,7 @@ export function PlayerStatsModal({ player: openedPlayer, origin, statsContext, o
 	const [error, setError] = useState<string | null>(null);
 	const [tab, setTab] = useState<StatsTab>(defaultTab);
 	const [photoOk, setPhotoOk] = useState(false);
+	const [groundBg, setGroundBg] = useState(CAMP_NOU_BG);
 	const pollRef = useRef<number | null>(null);
 	const { motion, requestClose } = useProfileMotion(resolvedPlayer?.id ?? null, onClose);
 
@@ -97,6 +92,25 @@ export function PlayerStatsModal({ player: openedPlayer, origin, statsContext, o
 		setPhotoOk(false);
 		setSeasonError(null);
 	}, [resolvedPlayer?.id, defaultTab]);
+
+	const clubHint = resolvedPlayer?.club?.trim() || (resolvedPlayer?.fcbId ? 'Barcelona' : '');
+
+	useEffect(() => {
+		if (!resolvedPlayer) return;
+		if (!clubHint || isBarcaTeamName(clubHint)) {
+			setGroundBg(CAMP_NOU_BG);
+			return;
+		}
+		setGroundBg('');
+		let cancelled = false;
+		void fetchClubGround(clubHint).then((next) => {
+			if (cancelled) return;
+			setGroundBg(next.backgroundImage?.trim() || '');
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, [resolvedPlayer?.id, clubHint]);
 
 	useEffect(() => {
 		if (!resolvedPlayer) return;
@@ -283,7 +297,7 @@ export function PlayerStatsModal({ player: openedPlayer, origin, statsContext, o
 			>
 				<div
 					className={`modal-photo-panel profile-photo-panel profile-motion-${motion}${compactPhoto ? ' is-compact-photo' : ''}`}
-					style={{ backgroundImage: `url(${CAMP_NOU_BG})` }}
+					style={groundBg ? { backgroundImage: `url(${groundBg})` } : undefined}
 					onClick={requestClose}
 					role="presentation"
 				>
@@ -312,8 +326,11 @@ export function PlayerStatsModal({ player: openedPlayer, origin, statsContext, o
 						<p className="muted">
 							{isLegend
 								? `${player.position}${statsContext.generation ? ` · ${statsContext.generation}` : ''}`
-								: `${player.position}${player.nationality ? ` · ${player.nationality}` : ''}`}
+								: player.position}
 						</p>
+						{!isLegend && (player.club || player.fcbId) && (
+							<p className="player-club-name">{player.club?.trim() || 'FC Barcelona'}</p>
+						)}
 					</div>
 				</div>
 

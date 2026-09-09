@@ -12,6 +12,7 @@ type Props = {
 		player: RatedPitchPlayer,
 		origin: PlayerOpenOrigin,
 		fixtureId: string,
+		teamName: string,
 	) => void;
 };
 
@@ -178,7 +179,7 @@ export function MatchRatingsPitch({ fixtureId, pollKey, onPlayerClick }: Props) 
 	if (!display) return null;
 
 	return (
-		<section className="match-ratings-pitch">
+		<section className="match-ratings-pitch pop-card">
 			<header className="mrp-header">
 				<div className="mrp-team home">
 					<SideCrest name={display.home.teamName} />
@@ -219,7 +220,7 @@ export function MatchRatingsPitch({ fixtureId, pollKey, onPlayerClick }: Props) 
 							key={`h-${p.id}`}
 							player={p}
 							side="home"
-							onClick={(origin) => onPlayerClick?.(p, origin, fixtureId)}
+							onClick={(origin) => onPlayerClick?.(p, origin, fixtureId, display.home.teamName)}
 						/>
 					))}
 				</div>
@@ -229,7 +230,7 @@ export function MatchRatingsPitch({ fixtureId, pollKey, onPlayerClick }: Props) 
 							key={`a-${p.id}`}
 							player={p}
 							side="away"
-							onClick={(origin) => onPlayerClick?.(p, origin, fixtureId)}
+							onClick={(origin) => onPlayerClick?.(p, origin, fixtureId, display.away.teamName)}
 						/>
 					))}
 				</div>

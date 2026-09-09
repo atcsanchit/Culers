@@ -19,7 +19,7 @@ export function OnThisDayCard() {
 	};
 
 	return (
-		<div className="home-block glass-panel culture-card on-this-day-card">
+		<div className="home-block glass-panel pop-card is-quiet culture-card on-this-day-card">
 			<span className="panel-label">Archive</span>
 			<h3>On this day</h3>
 			<button

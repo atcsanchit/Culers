@@ -169,7 +169,7 @@ export function HeroSpotlight({
 					{slide.kind === 'next' && next && nextCd && !nextCd.expired && (
 						<button
 							type="button"
-							className={`hero-spot-card${nextIsRivalry ? ' is-rivalry' : ''}`}
+							className={`hero-spot-card pop-card${nextIsRivalry ? ' is-rivalry' : ''}`}
 							onClick={() => onOpenFixture(next)}
 						>
 							<span className="hero-spot-label">
@@ -205,7 +205,7 @@ export function HeroSpotlight({
 					{slide.kind === 'rivalry' && rivalryUpcoming && rivCd && !rivCd.expired && (
 						<button
 							type="button"
-							className="hero-spot-card is-rivalry"
+							className="hero-spot-card pop-card is-rivalry"
 							onClick={() => onOpenFixture(rivalryUpcoming.fixture)}
 						>
 							<span className="hero-spot-label">Rivalry countdown</span>
@@ -241,7 +241,7 @@ export function HeroSpotlight({
 					)}
 
 					{slide.kind === 'history' && (
-						<button type="button" className="hero-spot-card is-history" onClick={onOpenOnThisDay}>
+						<button type="button" className="hero-spot-card pop-card is-history" onClick={onOpenOnThisDay}>
 							<span className="hero-spot-label">
 								{history.exact ? 'On this day' : 'Barça lore'}
 							</span>
@@ -252,7 +252,7 @@ export function HeroSpotlight({
 					)}
 
 					{slide.kind === 'news' && newsItem && (
-						<button type="button" className="hero-spot-card is-news" onClick={onOpenNews}>
+						<button type="button" className="hero-spot-card pop-card is-news" onClick={onOpenNews}>
 							<span className="hero-spot-label">Barça news</span>
 							<strong className="hero-spot-title">{newsItem.title}</strong>
 							<span className="hero-spot-when muted">{newsItem.source}</span>

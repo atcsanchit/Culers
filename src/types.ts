@@ -45,6 +45,8 @@ export type Player = {
 	nationality: string;
 	photo: string;
 	birthDate: string;
+	/** Club side when opened from a match ratings pitch (home-ground wallpaper). */
+	club?: string;
 };
 
 export type Squad = {
@@ -195,6 +197,45 @@ export type LiveData = {
 	events: TimelineEvent[];
 	clock?: string;
 	message?: string;
+};
+
+export type LiveBoardGroupId = 'ucl' | 'uel' | 'europe' | 'mls' | 'international';
+
+export type LiveBoardMatch = {
+	id: number;
+	homeTeam: string;
+	awayTeam: string;
+	homeScore: number | null;
+	awayScore: number | null;
+	competition: string;
+	group: LiveBoardGroupId;
+	clock: string;
+	status: string;
+	venue: string;
+	startTimestamp: number;
+};
+
+export type LiveBoardHub = {
+	groups: Array<{
+		id: LiveBoardGroupId;
+		label: string;
+		matches: LiveBoardMatch[];
+	}>;
+	history: Array<{
+		id: LiveBoardGroupId;
+		label: string;
+		matches: LiveBoardMatch[];
+	}>;
+	fetchedAt: string;
+	source: string;
+	note?: string;
+};
+
+export type LiveBoardDetail = {
+	match: LiveBoardMatch;
+	events: TimelineEvent[];
+	clock: string;
+	fetchedAt: string;
 };
 
 export type FetchPayload = {
@@ -378,7 +419,16 @@ export type MatchRatings = {
 	updatedAt: string;
 };
 
-export type Tab = 'home' | 'fixtures' | 'news' | 'football-news' | 'match' | 'squad' | 'transfers' | 'ratings';
+export type Tab =
+	| 'home'
+	| 'fixtures'
+	| 'news'
+	| 'football-news'
+	| 'match'
+	| 'live'
+	| 'squad'
+	| 'transfers'
+	| 'ratings';
 
 export type SocialPlatformId = 'instagram' | 'x';
 

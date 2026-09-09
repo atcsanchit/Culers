@@ -77,7 +77,12 @@ export function MatchPage() {
 		openPlayerStats(merged, origin);
 	};
 
-	const handleRatedPlayerClick = (rated: RatedPitchPlayer, origin: { x: number; y: number }, fixtureId: string) => {
+	const handleRatedPlayerClick = (
+		rated: RatedPitchPlayer,
+		origin: { x: number; y: number },
+		fixtureId: string,
+		teamName: string,
+	) => {
 		const fromSquad = data.squad.players.find(
 			(p) =>
 				(rated.sofaId && p.sofaId === rated.sofaId) ||
@@ -98,6 +103,7 @@ export function MatchPage() {
 				birthDate: fromSquad?.birthDate ?? '',
 				sofaId: rated.sofaId ?? fromSquad?.sofaId,
 				fcbId: fromSquad?.fcbId,
+				club: teamName,
 			},
 			origin,
 			{ mode: isViewingLive ? 'live' : 'match', fixtureId },

@@ -71,7 +71,7 @@ export function LaMasiaSpotlight({ squad, onOpenPlayer }: Props) {
 	};
 
 	return (
-		<div className="home-block glass-panel culture-card la-masia-card">
+		<div className="home-block glass-panel pop-card is-quiet culture-card la-masia-card">
 			<span className="panel-label">Academy</span>
 			<h3>La Masia spotlight</h3>
 

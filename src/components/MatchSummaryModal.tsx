@@ -107,7 +107,7 @@ export function MatchSummaryModal({ fixture, onClose }: Props) {
 							<span className="match-crest-name">{homeTeam}</span>
 						</div>
 
-						<div className={`match-score-center profile-motion-${motion}`}>
+						<div className={`match-score-center pop-card profile-motion-${motion}`}>
 							{isPreview ? (
 								<span className="match-scoreline preview">vs</span>
 							) : (
@@ -188,22 +188,25 @@ export function MatchSummaryModal({ fixture, onClose }: Props) {
 					{!loading && !error && tab === 'ratings' && fixture && (
 						<MatchRatingsPitch
 							fixtureId={fixture.id}
-							onPlayerClick={(rated: RatedPitchPlayer, origin) => {
+							onPlayerClick={(rated: RatedPitchPlayer, origin, _fixtureId, teamName) => {
 								const fromSquad = data?.squad.players.find(
 									(p) =>
 										(rated.sofaId && p.sofaId === rated.sofaId) ||
 										p.name.toLowerCase() === rated.name.toLowerCase(),
 								);
 								openPlayerStats(
-									fromSquad ?? {
-										id: rated.id,
-										name: rated.name,
-										position: rated.position,
-										number: rated.number,
-										nationality: '',
-										photo: rated.photo ?? '',
-										birthDate: '',
-										sofaId: rated.sofaId,
+									{
+										...(fromSquad ?? {
+											id: rated.id,
+											name: rated.name,
+											position: rated.position,
+											number: rated.number,
+											nationality: '',
+											photo: rated.photo ?? '',
+											birthDate: '',
+											sofaId: rated.sofaId,
+										}),
+										club: teamName,
 									},
 									origin,
 									{ mode: 'match', fixtureId: fixture.id },

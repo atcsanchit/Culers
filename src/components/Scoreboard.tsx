@@ -31,7 +31,7 @@ export function Scoreboard({ fixture, large = false, live = false, clock }: Prop
 	}, [left, right, live, showScore]);
 
 	return (
-		<div className={`scoreboard ${large ? 'large' : ''} ${live ? 'live' : ''}${tick ? ' score-tick' : ''}`}>
+		<div className={`scoreboard pop-card ${large ? 'large' : ''} ${live ? 'live' : ''}${tick ? ' score-tick' : ''}`}>
 			{live && (
 				<div className="live-banner">
 					<span className="pulse" />
