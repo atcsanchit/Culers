@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
-import type { Player, PlayerMatchStats, PlayerStats } from '../types';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { Player, PlayerMatchStats, PlayerStats, StatRow } from '../types';
 import type { PlayerOpenOrigin, PlayerStatsContext } from '../store/BarcaState';
+import { useBarca } from '../store/BarcaState';
 import {
 	fetchPlayerMatchStats,
 	fetchPlayerStats,
@@ -9,7 +10,7 @@ import {
 	LIVE_POLL_MS,
 } from '../lib/api';
 import { useProfileMotion } from '../lib/motion';
-import { CAMP_NOU_BG, playerInitials, playerPhotoSrc } from '../lib/photos';
+import { CAMP_NOU_BG, attachSquadIdentity, playerInitials, playerPhotoSrc } from '../lib/photos';
 
 type Props = {
 	player: Player | null;
@@ -38,7 +39,32 @@ function resolveSofaId(player: Player): number | undefined {
 	return undefined;
 }
 
-export function PlayerStatsModal({ player, origin, statsContext, onClose }: Props) {
+function StatsHeroGrid({ rows, motion }: { rows: StatRow[]; motion: string }) {
+	return (
+		<div className="stats-hero-grid">
+			{rows.map((row, i) => (
+				<div
+					key={row.key}
+					className={`stats-hero-cell ${row.available !== false ? 'available' : 'missing'} ${motion === 'idle' ? 'profile-stat-cell-visible' : ''}`}
+					style={{ '--stat-i': i } as React.CSSProperties}
+				>
+					<strong className="stat-value">{row.available === false ? '—' : row.value}</strong>
+					<span className="stat-label">{row.label}</span>
+				</div>
+			))}
+		</div>
+	);
+}
+
+export function PlayerStatsModal({ player: openedPlayer, origin, statsContext, onClose }: Props) {
+	const { data } = useBarca();
+	const resolvedPlayer = useMemo(
+		() =>
+			openedPlayer && data?.squad.players.length
+				? attachSquadIdentity(openedPlayer, data.squad.players)
+				: openedPlayer,
+		[openedPlayer, data?.squad.players],
+	);
 	const isMatchContext = statsContext.mode === 'live' || statsContext.mode === 'match';
 	const isLiveMatch = statsContext.mode === 'live';
 	const isLegend = statsContext.mode === 'legend';
@@ -55,22 +81,25 @@ export function PlayerStatsModal({ player, origin, statsContext, onClose }: Prop
 	const [stats, setStats] = useState<PlayerStats | null>(null);
 	const [matchStats, setMatchStats] = useState<PlayerMatchStats | null>(null);
 	const [initialLoading, setInitialLoading] = useState(false);
+	const [seasonLoading, setSeasonLoading] = useState(false);
+	const [seasonError, setSeasonError] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [tab, setTab] = useState<StatsTab>(defaultTab);
 	const [photoOk, setPhotoOk] = useState(false);
 	const pollRef = useRef<number | null>(null);
-	const { motion, requestClose } = useProfileMotion(player?.id ?? null, onClose);
+	const { motion, requestClose } = useProfileMotion(resolvedPlayer?.id ?? null, onClose);
 
-	const photo = player ? playerPhotoSrc(player) : '';
+	const photo = resolvedPlayer ? playerPhotoSrc(resolvedPlayer) : '';
 
 	useEffect(() => {
-		if (!player) return;
+		if (!resolvedPlayer) return;
 		setTab(defaultTab);
 		setPhotoOk(false);
-	}, [player?.id, defaultTab]);
+		setSeasonError(null);
+	}, [resolvedPlayer?.id, defaultTab]);
 
 	useEffect(() => {
-		if (!player) return;
+		if (!resolvedPlayer) return;
 		const onKey = (e: KeyboardEvent) => {
 			if (e.key === 'Escape') requestClose();
 		};
@@ -80,16 +109,16 @@ export function PlayerStatsModal({ player, origin, statsContext, onClose }: Prop
 			window.removeEventListener('keydown', onKey);
 			document.body.style.overflow = '';
 		};
-	}, [player, requestClose]);
+	}, [resolvedPlayer, requestClose]);
 
 	useEffect(() => {
-		if (!player || !matchFixtureId) {
+		if (!resolvedPlayer || !matchFixtureId) {
 			setMatchStats(null);
 			return;
 		}
 
-		const sofaId = resolveSofaId(player);
-		if (!player.fcbId && !sofaId && !player.name) {
+		const sofaId = resolveSofaId(resolvedPlayer);
+		if (!resolvedPlayer.fcbId && !sofaId && !resolvedPlayer.name) {
 			setMatchStats(null);
 			setError('No player id to load match stats.');
 			setInitialLoading(false);
@@ -106,9 +135,9 @@ export function PlayerStatsModal({ player, origin, statsContext, onClose }: Prop
 			try {
 				const next = await fetchPlayerMatchStats({
 					fixtureId: matchFixtureId,
-					fcbId: player.fcbId,
+					fcbId: resolvedPlayer.fcbId,
 					sofaId,
-					playerName: player.name,
+					playerName: resolvedPlayer.name,
 				});
 				if (cancelled) return;
 				setMatchStats((prev) => {
@@ -137,58 +166,77 @@ export function PlayerStatsModal({ player, origin, statsContext, onClose }: Prop
 				pollRef.current = null;
 			}
 		};
-	}, [player?.fcbId, player?.sofaId, player?.id, player?.name, matchFixtureId, isLiveMatch]);
+	}, [resolvedPlayer?.fcbId, resolvedPlayer?.sofaId, resolvedPlayer?.id, resolvedPlayer?.name, matchFixtureId, isLiveMatch]);
 
 	useEffect(() => {
-		if (!player || isLegend) {
+		if (!resolvedPlayer || isLegend) {
 			setStats(null);
+			setSeasonLoading(false);
 			if (isLegend) {
 				setInitialLoading(false);
 				setError(null);
 			}
 			return;
 		}
-		// Always load season/career when we have an id so tabs work alongside Match.
-		const sofaId = resolveSofaId(player);
-		if (player.fcbId) {
-			setStats(null);
-			if (!matchFixtureId) {
-				setInitialLoading(true);
-				setError(null);
-			}
-			void fetchPlayerStats(player.fcbId)
-				.then(setStats)
+
+		const sofaId = resolveSofaId(resolvedPlayer);
+		let cancelled = false;
+
+		if (resolvedPlayer.fcbId) {
+			setSeasonLoading(true);
+			void fetchPlayerStats(resolvedPlayer.fcbId)
+				.then((next) => {
+					if (!cancelled) {
+						setStats(next);
+						setSeasonError(null);
+					}
+				})
 				.catch(() => {
-					if (!matchFixtureId) setError('Could not load stats from FC Barcelona official API.');
+					if (!cancelled) setSeasonError('Could not load season / Barça career stats.');
 				})
 				.finally(() => {
-					if (!matchFixtureId) setInitialLoading(false);
+					if (!cancelled) {
+						setSeasonLoading(false);
+						if (!matchFixtureId) setInitialLoading(false);
+					}
 				});
-			return;
+			return () => {
+				cancelled = true;
+			};
 		}
+
 		if (sofaId) {
-			setStats(null);
-			if (!matchFixtureId) {
-				setInitialLoading(true);
-				setError(null);
-			}
+			setSeasonLoading(true);
 			void fetchLaMasiaPlayerStats(sofaId)
-				.then(setStats)
+				.then((next) => {
+					if (!cancelled) {
+						setStats(next);
+						setSeasonError(null);
+					}
+				})
 				.catch(() => {
-					if (!matchFixtureId) setError('Could not load Atlètic stats from SofaScore.');
+					if (!cancelled) setSeasonError('Could not load Atlètic season stats.');
 				})
 				.finally(() => {
-					if (!matchFixtureId) setInitialLoading(false);
+					if (!cancelled) {
+						setSeasonLoading(false);
+						if (!matchFixtureId) setInitialLoading(false);
+					}
 				});
-			return;
+			return () => {
+				cancelled = true;
+			};
 		}
+
 		if (!matchFixtureId) {
 			setError('No stats ID — fetch latest to link this player.');
 			setInitialLoading(false);
 		}
-	}, [player?.fcbId, player?.sofaId, player?.id, isLegend, matchFixtureId]);
+		setSeasonLoading(false);
+	}, [resolvedPlayer?.fcbId, resolvedPlayer?.sofaId, resolvedPlayer?.id, isLegend, matchFixtureId]);
 
-	if (!player) return null;
+	if (!resolvedPlayer) return null;
+	const player = resolvedPlayer;
 
 	const sofaId = resolveSofaId(player);
 	const legendRows =
@@ -307,57 +355,33 @@ export function PlayerStatsModal({ player, origin, statsContext, onClose }: Prop
 						</div>
 					)}
 
-					{initialLoading && !rows.length && (
-						<p className="muted loading-msg">
-							{tab === 'match'
-								? 'Loading match stats…'
-								: sofaId && !player.fcbId
-									? 'Loading Atlètic stats from SofaScore…'
-									: 'Loading from FC Barcelona official…'}
-						</p>
+					{(tab === 'season' || tab === 'career') && seasonLoading && !rows.length && (
+						<p className="muted loading-msg">Loading season & Barça career from FC Barcelona official…</p>
 					)}
-					{error && !rows.length && <p className="fetch-error">{error}</p>}
+					{(tab === 'season' || tab === 'career') && seasonError && !rows.length && (
+						<p className="fetch-error">{seasonError}</p>
+					)}
+					{initialLoading && tab === 'match' && !rows.length && (
+						<p className="muted loading-msg">Loading match stats…</p>
+					)}
+					{error && tab === 'match' && !rows.length && <p className="fetch-error">{error}</p>}
 					{!initialLoading && !error && tab === 'match' && !rows.length && (
 						<p className="muted loading-msg">No match stats available for this player yet.</p>
 					)}
 
 					{tab === 'match' && matchStats?.heatmap && matchStats.heatmap.length > 0 && (
 						<div className="player-match-heatmap" aria-hidden>
-							{matchStats.heatmap.slice(0, 80).map((p, i) => (
-								<span key={i} style={{ left: `${p.x}%`, top: `${100 - p.y}%` }} />
+							{matchStats.heatmap.slice(0, 80).map((dot, i) => (
+								<span key={i} style={{ left: `${dot.x}%`, top: `${100 - dot.y}%` }} />
 							))}
 						</div>
 					)}
 
-					{tab === 'match' && rows.length > 0 ? (
+					{rows.length > 0 && (
 						<>
-							<h3 className="rivalry-h2h-label" style={{ margin: '0.25rem 0 0.5rem' }}>
-								Top stats
-							</h3>
-							<ul className="match-top-stats">
-								{rows.map((row) => (
-									<li key={row.key}>
-										<span className="label">{row.label}</span>
-										<span className="value">{row.available === false ? '—' : row.value}</span>
-									</li>
-								))}
-							</ul>
+							{tab === 'match' && <h3 className="match-live-stats-label">Top stats</h3>}
+							<StatsHeroGrid rows={rows} motion={motion} />
 						</>
-					) : (
-						rows.length > 0 && (
-							<div className="stats-hero-grid">
-								{rows.map((row, i) => (
-									<div
-										key={row.key}
-										className={`stats-hero-cell ${row.available !== false ? 'available' : 'missing'} ${motion === 'idle' ? 'profile-stat-cell-visible' : ''}`}
-										style={{ '--stat-i': i } as React.CSSProperties}
-									>
-										<strong>{row.available === false ? '—' : row.value}</strong>
-										<span>{row.label}</span>
-									</div>
-								))}
-							</div>
-						)
 					)}
 
 					{tab === 'match' && matchStats?.fetchedAt && (

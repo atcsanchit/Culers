@@ -61,9 +61,10 @@ export function MatchPage() {
 		const merged = {
 			...(fromSquad ?? player),
 			...player,
-			fcbId: player.fcbId ?? fromSquad?.fcbId,
+			fcbId: fromSquad?.fcbId ?? player.fcbId,
 			sofaId: sofaId ?? fromSquad?.sofaId,
 			photo: player.photo || fromSquad?.photo || '',
+			nationality: player.nationality || fromSquad?.nationality || '',
 		};
 
 		if (fixture && (isViewingLive || isFinished(fixture.status) || fixture.kind === 'past')) {
@@ -87,15 +88,16 @@ export function MatchPage() {
 					p.name.includes(rated.name.split(' ').slice(-1)[0]!)),
 		);
 		openPlayerStats(
-			fromSquad ?? {
-				id: rated.id,
-				name: rated.name,
-				position: rated.position,
-				number: rated.number,
-				nationality: '',
-				photo: rated.photo ?? '',
-				birthDate: '',
-				sofaId: rated.sofaId,
+			{
+				id: fromSquad?.id ?? rated.id,
+				name: fromSquad?.name ?? rated.name,
+				position: rated.position || fromSquad?.position || '',
+				number: rated.number || fromSquad?.number || '',
+				nationality: fromSquad?.nationality ?? '',
+				photo: rated.photo ?? fromSquad?.photo ?? '',
+				birthDate: fromSquad?.birthDate ?? '',
+				sofaId: rated.sofaId ?? fromSquad?.sofaId,
+				fcbId: fromSquad?.fcbId,
 			},
 			origin,
 			{ mode: isViewingLive ? 'live' : 'match', fixtureId },

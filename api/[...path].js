@@ -1868,26 +1868,28 @@ async function fetchFcbLiveSnapshot() {
   };
 }
 async function fetchFcbPlayerStats(fcbId) {
-  const [seasonData, careerData] = await Promise.all([
+  const [ligaData, uclData, careerData] = await Promise.all([
     fcbFetch(`/stats/player/${fcbId}?compSeasons=${LA_LIGA_COMP_SEASON}&teams=${BARCA_TEAM_ID}&altIds=true`),
+    fcbFetch(`/stats/player/${fcbId}?compSeasons=${UCL_COMP_SEASON}&teams=${BARCA_TEAM_ID}&altIds=true`),
     fcbFetch(`/stats/player/${fcbId}?teams=${BARCA_TEAM_ID}&altIds=true`)
   ]);
-  const entity = seasonData?.entity ?? careerData?.entity;
+  const entity = ligaData?.entity ?? uclData?.entity ?? careerData?.entity;
   const name = String(entity?.name?.display ?? "Player");
   const posInfo = entity?.info?.positionInfo;
   const position = typeof posInfo === "string" ? posInfo : String(posInfo ?? "");
   const number = entity?.info?.shirtNum != null ? String(Math.trunc(Number((entity?.info).shirtNum))) : "";
-  const pick = (data) => {
-    const stats = data?.stats ?? [];
-    const map = {};
-    for (const s of stats) {
-      const key = String(s.name ?? "");
-      if (key) map[key] = Number(s.value ?? 0);
+  const mergeMaps = (...maps) => {
+    const out = {};
+    for (const map of maps) {
+      for (const [key, value] of Object.entries(map)) {
+        if (!Number.isFinite(value)) continue;
+        out[key] = (out[key] ?? 0) + value;
+      }
     }
-    return map;
+    return out;
   };
-  const seasonRaw = pick(seasonData);
-  const careerRaw = pick(careerData);
+  const seasonRaw = mergeMaps(pickStatMap(ligaData), pickStatMap(uclData));
+  const careerRaw = pickStatMap(careerData);
   const highlightKeys = [
     "appearances",
     "game_started",
@@ -1905,12 +1907,14 @@ async function fetchFcbPlayerStats(fcbId) {
     "saves",
     "clean_sheet"
   ];
+  const showZero = /* @__PURE__ */ new Set(["appearances", "game_started", "goals", "goal_assist", "mins_played"]);
   const toRows = (raw) => highlightKeys.map((k) => {
-    const has = raw[k] != null && raw[k] > 0;
+    const v = raw[k];
+    const has = v != null && (showZero.has(k) || v > 0);
     return {
       key: k,
       label: STAT_LABELS[k] ?? k.replaceAll("_", " "),
-      value: has ? raw[k] : "\u2014",
+      value: has ? v : "\u2014",
       available: has
     };
   });

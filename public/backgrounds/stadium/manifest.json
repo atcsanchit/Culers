@@ -1,5 +1,11 @@
 {
   "venues": {
+    "1346": {
+      "groundId": 1346,
+      "name": "Baku Olympic Stadium",
+      "path": "/backgrounds/stadium/venues/1346-baku-olympic-stadium.jpg",
+      "source": "Bundled stadium photo"
+    },
     "2580": {
       "groundId": 2580,
       "name": "Mendizorroza",
@@ -140,5 +146,5 @@
     }
   },
   "fixtures": {},
-  "updatedAt": "2026-09-07T19:18:18.966Z"
+  "updatedAt": "2026-09-09T17:57:41.094Z"
 }
