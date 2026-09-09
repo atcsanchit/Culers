@@ -24,6 +24,7 @@ export const DATA_SOURCES = {
 	social: [
 		{ id: 'sofascore-lineup', label: 'SofaScore — confirmed lineups', url: 'https://www.sofascore.com/team/football/fc-barcelona/2817' },
 		{ id: 'fcb-instagram', label: '@fcbarcelona on Instagram', endpoint: '/api/social/instagram' },
+		{ id: 'fcb-masia-instagram', label: '@fcbmasia on Instagram', endpoint: '/api/social/instagram?user=fcbmasia' },
 		{ id: 'fcb-x', label: '@FCBarcelona on X', endpoint: '/api/social/x' },
 	],
 	playerStats: [

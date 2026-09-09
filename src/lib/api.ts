@@ -85,7 +85,7 @@ export async function fetchLineup(fixtureId?: string): Promise<LineupData> {
 }
 
 export async function fetchLaMasia(): Promise<LaMasiaHub> {
-	const res = await fetch('/api/la-masia');
+	const res = await fetch('/api/la-masia', { cache: 'no-store' });
 	if (!res.ok) throw new Error('Failed to fetch La Masia squad');
 	return res.json();
 }
@@ -108,8 +108,9 @@ export async function fetchSocialHub(): Promise<SocialHubData> {
 	return res.json();
 }
 
-export async function fetchInstagramFeed(): Promise<InstagramFeed> {
-	const res = await fetch('/api/social/instagram');
+export async function fetchInstagramFeed(user?: string): Promise<InstagramFeed> {
+	const qs = user ? `?user=${encodeURIComponent(user)}` : '';
+	const res = await fetch(`/api/social/instagram${qs}`, { cache: 'no-store' });
 	if (!res.ok) throw new Error('Failed to fetch Instagram feed');
 	return res.json();
 }
@@ -197,6 +198,9 @@ export function isLiveStatus(status: string) {
 		s.includes('2h') ||
 		s.includes('ht') ||
 		s.includes('in play') ||
+		s.includes('inprogress') ||
+		s.includes('in progress') ||
+		s.includes('halftime') ||
 		s.includes('extra')
 	);
 }

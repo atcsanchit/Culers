@@ -566,6 +566,8 @@ var ROOT = path4.dirname(fileURLToPath(import.meta.url));
 var PYTHON = path4.join(ROOT, ".venv-sofascore", "bin", "python");
 var SCRIPT = path4.join(ROOT, "scripts", "sofascore-api.py");
 var SOFASCORE_BARCA_TEAM_ID = 2817;
+var SOFASCORE_ATLETIC_TEAM_ID = 24343;
+var SOFASCORE_JUVENIL_A_TEAM_ID = 90128;
 var SOFASCORE_TEAM_IDS = {
   barcelona: 2817,
   valencia: 2828,
@@ -772,6 +774,8 @@ function parseEvent(raw) {
   const type = raw.statusType;
   const ts = Number(raw.startTimestamp ?? 0);
   const kickoff = ts ? new Date(ts * 1e3) : null;
+  const tournament = raw.tournament;
+  const unique = tournament?.uniqueTournament;
   return {
     id: Number(raw.id ?? 0),
     date: eventDate(raw),
@@ -785,7 +789,8 @@ function parseEvent(raw) {
     awayScore,
     isHome: false,
     opponent: "",
-    statusType: String(type?.type ?? status?.type ?? "")
+    statusType: String(type?.type ?? status?.type ?? ""),
+    competition: String(unique?.name ?? tournament?.name ?? "")
   };
 }
 function withTeamPerspective(event, teamId) {
@@ -822,6 +827,16 @@ async function listTeamEventsForTeam(teamId, kind, page = 0) {
 }
 async function listTeamEvents(kind, page = 0) {
   return listTeamEventsForTeam(SOFASCORE_BARCA_TEAM_ID, kind, page);
+}
+async function fetchTeamLastAndNext(teamId) {
+  const [nextRows, lastRows] = await Promise.all([
+    listTeamEventsForTeam(teamId, "next"),
+    listTeamEventsForTeam(teamId, "last")
+  ]);
+  return {
+    next: nextRows[0] ? withTeamPerspective(nextRows[0], teamId) : null,
+    last: lastRows[0] ? withTeamPerspective(lastRows[0], teamId) : null
+  };
 }
 async function findSofaScoreEvent(options) {
   const [next, last] = await Promise.all([listTeamEvents("next"), listTeamEvents("last")]);
@@ -3003,13 +3018,22 @@ var CACHE_DIR = path5.join(ROOT2, ".cache", "instagram");
 var IS_SERVERLESS2 = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 var BARCA_X_HANDLE = "FCBarcelona";
 var BARCA_INSTAGRAM_USER = "fcbarcelona";
-function proxyInstagramImage(id) {
-  return `/api/social/instagram/image?id=${encodeURIComponent(id)}`;
+var MASIA_INSTAGRAM_USER = "fcbmasia";
+var INSTAGRAM_USERS = /* @__PURE__ */ new Set([BARCA_INSTAGRAM_USER, MASIA_INSTAGRAM_USER]);
+function sanitizeInstagramUser(raw) {
+  const user = String(raw ?? BARCA_INSTAGRAM_USER).toLowerCase().replace(/[^a-z0-9._]/g, "");
+  return INSTAGRAM_USERS.has(user) ? user : BARCA_INSTAGRAM_USER;
 }
-async function runInstagramScraper() {
+function proxyInstagramImage(id, user = BARCA_INSTAGRAM_USER) {
+  return `/api/social/instagram/image?user=${encodeURIComponent(user)}&id=${encodeURIComponent(id)}`;
+}
+function instagramCacheFile(user, id) {
+  return path5.join(CACHE_DIR, user, `${id}.jpg`);
+}
+async function runInstagramScraper(username = BARCA_INSTAGRAM_USER) {
   if (IS_SERVERLESS2) return null;
   return new Promise((resolve) => {
-    const child = spawn2(PYTHON2, [INSTAGRAM_SCRIPT, BARCA_INSTAGRAM_USER], { cwd: ROOT2 });
+    const child = spawn2(PYTHON2, [INSTAGRAM_SCRIPT, username], { cwd: ROOT2 });
     let stdout = "";
     const timer = setTimeout(() => {
       child.kill("SIGKILL");
@@ -3068,41 +3092,55 @@ async function fetchBarcaSocialHub() {
     note: instagram ? void 0 : "Instagram stats loaded with fallback \u2014 run npm run setup:sofascore for live scrape."
   };
 }
-async function fetchBarcaInstagramFeed() {
-  const data = await runInstagramScraper();
-  const profilePath = path5.join(CACHE_DIR, "profile.jpg");
+async function fetchInstagramFeedFor(rawUser) {
+  const username = sanitizeInstagramUser(rawUser);
+  const data = await runInstagramScraper(username);
   let profileImage = "";
   try {
-    await readFile(profilePath);
-    profileImage = proxyInstagramImage("profile");
+    await readFile(instagramCacheFile(username, "profile"));
+    profileImage = proxyInstagramImage("profile", username);
   } catch {
-    profileImage = "";
+    if (username === BARCA_INSTAGRAM_USER) {
+      try {
+        await readFile(path5.join(CACHE_DIR, "profile.jpg"));
+        profileImage = proxyInstagramImage("profile", username);
+      } catch {
+        profileImage = "";
+      }
+    }
   }
+  const fallbackFollowers = username === MASIA_INSTAGRAM_USER ? "6M+" : "148M";
   return {
-    username: BARCA_INSTAGRAM_USER,
-    profileUrl: `https://www.instagram.com/${BARCA_INSTAGRAM_USER}/`,
+    username,
+    profileUrl: `https://www.instagram.com/${username}/`,
     profileImage,
-    followersLabel: data?.followersLabel ?? "148M",
+    followersLabel: data?.followersLabel ?? (data ? void 0 : fallbackFollowers),
     postsLabel: data?.postsLabel,
     posts: (data?.posts ?? []).filter((post) => post.cached !== false).map((post) => ({
       id: post.id,
       url: post.url,
       caption: post.caption,
-      image: proxyInstagramImage(post.id)
+      image: proxyInstagramImage(post.id, username)
     })),
     fetchedAt: (/* @__PURE__ */ new Date()).toISOString(),
-    source: "Instagram \u2014 @fcbarcelona (public previews)"
+    source: `Instagram \u2014 @${username} (public previews)`
   };
 }
-async function streamInstagramImage(id) {
+async function streamInstagramImage(id, rawUser) {
   const safeId = id.replace(/[^a-zA-Z0-9_-]/g, "");
-  const filePath = path5.join(CACHE_DIR, `${safeId}.jpg`);
-  try {
-    const body = await readFile(filePath);
-    return { body, contentType: "image/jpeg" };
-  } catch {
-    return null;
+  const username = sanitizeInstagramUser(rawUser);
+  const paths = [instagramCacheFile(username, safeId)];
+  if (username === BARCA_INSTAGRAM_USER) {
+    paths.push(path5.join(CACHE_DIR, `${safeId}.jpg`));
   }
+  for (const filePath of paths) {
+    try {
+      const body = await readFile(filePath);
+      return { body, contentType: "image/jpeg" };
+    } catch {
+    }
+  }
+  return null;
 }
 async function fetchBarcaXFeed() {
   const [timeline, profile] = await Promise.all([
@@ -3515,7 +3553,8 @@ var FIRST_TEAM_ACADEMY_KEYS = [
   "jesse bisiwu",
   "bisiwu",
   "eder aller",
-  "aller"
+  "aller",
+  "toni fernandez"
 ];
 function normalizeNameKey(name) {
   return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
@@ -3560,12 +3599,10 @@ function fromFallback() {
     statsAvailable: Boolean(p.sofaId)
   }));
 }
-async function fetchAtleticLive() {
-  const rows = await sofaFetchTeamPlayers(24343);
-  if (!rows?.length) return null;
+function mapSofaSquad(rows, group) {
   return sortLaMasia(
     rows.map((p) => ({
-      id: `atletic-${p.id}`,
+      id: `${group}-${p.id}`,
       sofaId: p.id,
       name: p.name,
       position: mapSofaPos(p.position),
@@ -3573,10 +3610,42 @@ async function fetchAtleticLive() {
       nationality: p.nationality,
       photo: p.id ? `https://img.sofascore.com/api/v1/player/${p.id}/image` : "",
       birthDate: p.birthDate,
-      group: "atletic",
+      group,
       statsAvailable: Boolean(p.id)
     }))
   );
+}
+async function fetchAtleticLive() {
+  const rows = await sofaFetchTeamPlayers(SOFASCORE_ATLETIC_TEAM_ID);
+  if (!rows?.length) return null;
+  return mapSofaSquad(rows, "atletic");
+}
+async function fetchJuvenilLive() {
+  const rows = await sofaFetchTeamPlayers(SOFASCORE_JUVENIL_A_TEAM_ID);
+  if (!rows?.length) return null;
+  return mapSofaSquad(rows, "juvenil");
+}
+function eventToMatch(event) {
+  if (!event) return null;
+  return {
+    opponent: event.opponent,
+    isHome: event.isHome,
+    date: event.date,
+    time: event.time,
+    competition: event.competition || "",
+    homeScore: event.homeScore,
+    awayScore: event.awayScore,
+    status: event.statusType || ""
+  };
+}
+async function fetchWeekendTeam(teamId, id, label) {
+  const pack = await fetchTeamLastAndNext(teamId);
+  return {
+    id,
+    label,
+    last: eventToMatch(pack.last),
+    next: eventToMatch(pack.next)
+  };
 }
 function filterFirstTeamAcademy(squad) {
   return sortLaMasia(
@@ -3596,14 +3665,77 @@ function filterFirstTeamAcademy(squad) {
 }
 async function fetchLaMasiaHub(firstTeamSquad) {
   const firstTeam = filterFirstTeamAcademy(firstTeamSquad);
-  const live = await fetchAtleticLive().catch(() => null);
+  const [live, juvenilLive, atleticWeekend, juvenilWeekend] = await Promise.all([
+    fetchAtleticLive().catch(() => null),
+    fetchJuvenilLive().catch(() => null),
+    fetchWeekendTeam(SOFASCORE_ATLETIC_TEAM_ID, "atletic", "Bar\xE7a Atl\xE8tic").catch(() => ({
+      id: "atletic",
+      label: "Bar\xE7a Atl\xE8tic",
+      last: null,
+      next: null
+    })),
+    fetchWeekendTeam(SOFASCORE_JUVENIL_A_TEAM_ID, "juvenil", "Juvenil A").catch(() => ({
+      id: "juvenil",
+      label: "Juvenil A",
+      last: null,
+      next: null
+    }))
+  ]);
   const atletic = live?.length ? live : fromFallback();
+  const juvenil = juvenilLive?.length ? juvenilLive : [];
+  const notes = [];
+  if (!live?.length) notes.push("Live Atl\xE8tic feed unavailable \u2014 showing a cached Bar\xE7a Atl\xE8tic snapshot.");
+  if (!juvenil.length) notes.push("Juvenil A roster did not load this time.");
   return {
     firstTeam,
     atletic,
+    juvenil,
+    pathway: [
+      {
+        id: "infantil",
+        label: "Infantil",
+        ages: "U12\u2013U14",
+        live: false,
+        count: null,
+        note: "Train at Joan Gamper. Not in this live feed."
+      },
+      {
+        id: "cadet",
+        label: "Cadet",
+        ages: "U15\u2013U16",
+        live: false,
+        count: null,
+        note: "Same campus, same language. Not in this live feed."
+      },
+      {
+        id: "juvenil",
+        label: "Juvenil A",
+        ages: "U19",
+        live: true,
+        count: juvenil.length || null,
+        note: "Divisi\xF3n de Honor + UEFA Youth League."
+      },
+      {
+        id: "atletic",
+        label: "Atl\xE8tic",
+        ages: "B team",
+        live: true,
+        count: atletic.length || null,
+        note: "Segunda Federaci\xF3n. Home: Estadi Johan Cruyff."
+      },
+      {
+        id: "first-team",
+        label: "First team",
+        ages: "Camp Nou",
+        live: true,
+        count: firstTeam.length || null,
+        note: "Academy products on the senior roster."
+      }
+    ],
+    weekend: [atleticWeekend, juvenilWeekend],
     fetchedAt: (/* @__PURE__ */ new Date()).toISOString(),
-    source: live?.length ? "La Masia \u2014 first-team academy filter + Barcelona Atl\xE8tic (SofaScore)" : "La Masia \u2014 first-team academy filter + Barcelona Atl\xE8tic snapshot fallback",
-    note: live?.length ? void 0 : "Live Atl\xE8tic feed unavailable here \u2014 showing the latest cached Bar\xE7a Atl\xE8tic snapshot."
+    source: live?.length ? "La Masia pathway \u2014 Juvenil A, Bar\xE7a Atl\xE8tic, and first-team academy (SofaScore)" : "La Masia pathway \u2014 first-team academy + Bar\xE7a Atl\xE8tic snapshot fallback",
+    note: notes.length ? notes.join(" ") : void 0
   };
 }
 var SOFA_STAT_LABELS = {
@@ -4574,12 +4706,13 @@ async function dispatchCulersApi(url, options = {}) {
       return jsonResult(await fetchBarcaSocialHub());
     }
     if (url.pathname === "/api/social/instagram") {
-      return jsonResult(await fetchBarcaInstagramFeed());
+      const user = sanitizeInstagramUser(url.searchParams.get("user"));
+      return jsonResult(await fetchInstagramFeedFor(user));
     }
     if (url.pathname === "/api/social/instagram/image") {
       const id = url.searchParams.get("id");
       if (!id) return jsonResult({ error: "id required" }, 400);
-      const image = await streamInstagramImage(id);
+      const image = await streamInstagramImage(id, url.searchParams.get("user"));
       if (!image) return jsonResult({ error: "Image not found" }, 404);
       return {
         status: 200,

@@ -7,6 +7,9 @@ const PYTHON = path.join(ROOT, '.venv-sofascore', 'bin', 'python');
 const SCRIPT = path.join(ROOT, 'scripts', 'sofascore-api.py');
 
 export const SOFASCORE_BARCA_TEAM_ID = 2817;
+export const SOFASCORE_ATLETIC_TEAM_ID = 24343;
+/** Juvenil A / Barcelona U19 (División de Honor + UEFA Youth League). */
+export const SOFASCORE_JUVENIL_A_TEAM_ID = 90128;
 
 /** SofaScore team IDs for La Liga sides on Barça's calendar. */
 const SOFASCORE_TEAM_IDS: Record<string, number> = {
@@ -103,6 +106,7 @@ export type SofaScoreEvent = {
 	isHome: boolean;
 	opponent: string;
 	statusType?: string;
+	competition?: string;
 };
 
 function normalizeName(name: string) {
@@ -282,6 +286,8 @@ function parseEvent(raw: Json): SofaScoreEvent | null {
 	const type = raw.statusType as Json | undefined;
 	const ts = Number(raw.startTimestamp ?? 0);
 	const kickoff = ts ? new Date(ts * 1000) : null;
+	const tournament = raw.tournament as Json | undefined;
+	const unique = tournament?.uniqueTournament as Json | undefined;
 
 	return {
 		id: Number(raw.id ?? 0),
@@ -297,6 +303,7 @@ function parseEvent(raw: Json): SofaScoreEvent | null {
 		isHome: false,
 		opponent: '',
 		statusType: String(type?.type ?? status?.type ?? ''),
+		competition: String(unique?.name ?? tournament?.name ?? ''),
 	};
 }
 
@@ -339,6 +346,20 @@ async function listTeamEventsForTeam(teamId: number, kind: 'next' | 'last', page
 
 async function listTeamEvents(kind: 'next' | 'last', page = 0) {
 	return listTeamEventsForTeam(SOFASCORE_BARCA_TEAM_ID, kind, page);
+}
+
+export async function fetchTeamLastAndNext(teamId: number): Promise<{
+	last: SofaScoreEvent | null;
+	next: SofaScoreEvent | null;
+}> {
+	const [nextRows, lastRows] = await Promise.all([
+		listTeamEventsForTeam(teamId, 'next'),
+		listTeamEventsForTeam(teamId, 'last'),
+	]);
+	return {
+		next: nextRows[0] ? withTeamPerspective(nextRows[0], teamId) : null,
+		last: lastRows[0] ? withTeamPerspective(lastRows[0], teamId) : null,
+	};
 }
 
 export async function findSofaScoreEvent(options: {

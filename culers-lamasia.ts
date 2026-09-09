@@ -1,4 +1,11 @@
-import { sofaFetchPlayerStatistics, sofaFetchTeamPlayers } from './culers-sofascore.ts';
+import {
+	SOFASCORE_ATLETIC_TEAM_ID,
+	SOFASCORE_JUVENIL_A_TEAM_ID,
+	fetchTeamLastAndNext,
+	sofaFetchPlayerStatistics,
+	sofaFetchTeamPlayers,
+	type SofaScoreEvent,
+} from './culers-sofascore.ts';
 import atleticFallback from './culers-lamasia-atletic-fallback.json' with { type: 'json' };
 
 export type LaMasiaPlayer = {
@@ -11,15 +18,45 @@ export type LaMasiaPlayer = {
 	nationality: string;
 	photo: string;
 	birthDate: string;
-	/** first-team academy product vs Barça Atlètic */
-	group: 'first-team' | 'atletic';
+	/** first-team academy product vs Barça Atlètic vs Juvenil A */
+	group: 'first-team' | 'atletic' | 'juvenil';
 	/** Can open Opta/FCB player stats */
 	statsAvailable: boolean;
+};
+
+export type LaMasiaMatch = {
+	opponent: string;
+	isHome: boolean;
+	date: string;
+	time: string;
+	competition: string;
+	homeScore: number | null;
+	awayScore: number | null;
+	status: string;
+};
+
+export type LaMasiaWeekendTeam = {
+	id: 'atletic' | 'juvenil';
+	label: string;
+	last: LaMasiaMatch | null;
+	next: LaMasiaMatch | null;
+};
+
+export type LaMasiaPathwayRung = {
+	id: 'infantil' | 'cadet' | 'juvenil' | 'atletic' | 'first-team';
+	label: string;
+	ages: string;
+	live: boolean;
+	count: number | null;
+	note: string;
 };
 
 export type LaMasiaHub = {
 	firstTeam: LaMasiaPlayer[];
 	atletic: LaMasiaPlayer[];
+	juvenil: LaMasiaPlayer[];
+	pathway: LaMasiaPathwayRung[];
+	weekend: LaMasiaWeekendTeam[];
 	fetchedAt: string;
 	source: string;
 	note?: string;
@@ -64,6 +101,7 @@ const FIRST_TEAM_ACADEMY_KEYS = [
 	'bisiwu',
 	'eder aller',
 	'aller',
+	'toni fernandez',
 ];
 
 function normalizeNameKey(name: string) {
@@ -120,12 +158,13 @@ function fromFallback(): LaMasiaPlayer[] {
 	}));
 }
 
-async function fetchAtleticLive(): Promise<LaMasiaPlayer[] | null> {
-	const rows = await sofaFetchTeamPlayers(24343);
-	if (!rows?.length) return null;
+function mapSofaSquad(
+	rows: Awaited<ReturnType<typeof sofaFetchTeamPlayers>>,
+	group: 'atletic' | 'juvenil',
+): LaMasiaPlayer[] {
 	return sortLaMasia(
 		rows.map((p) => ({
-			id: `atletic-${p.id}`,
+			id: `${group}-${p.id}`,
 			sofaId: p.id,
 			name: p.name,
 			position: mapSofaPos(p.position),
@@ -133,10 +172,50 @@ async function fetchAtleticLive(): Promise<LaMasiaPlayer[] | null> {
 			nationality: p.nationality,
 			photo: p.id ? `https://img.sofascore.com/api/v1/player/${p.id}/image` : '',
 			birthDate: p.birthDate,
-			group: 'atletic' as const,
+			group,
 			statsAvailable: Boolean(p.id),
 		})),
 	);
+}
+
+async function fetchAtleticLive(): Promise<LaMasiaPlayer[] | null> {
+	const rows = await sofaFetchTeamPlayers(SOFASCORE_ATLETIC_TEAM_ID);
+	if (!rows?.length) return null;
+	return mapSofaSquad(rows, 'atletic');
+}
+
+async function fetchJuvenilLive(): Promise<LaMasiaPlayer[] | null> {
+	const rows = await sofaFetchTeamPlayers(SOFASCORE_JUVENIL_A_TEAM_ID);
+	if (!rows?.length) return null;
+	return mapSofaSquad(rows, 'juvenil');
+}
+
+function eventToMatch(event: SofaScoreEvent | null): LaMasiaMatch | null {
+	if (!event) return null;
+	return {
+		opponent: event.opponent,
+		isHome: event.isHome,
+		date: event.date,
+		time: event.time,
+		competition: event.competition || '',
+		homeScore: event.homeScore,
+		awayScore: event.awayScore,
+		status: event.statusType || '',
+	};
+}
+
+async function fetchWeekendTeam(
+	teamId: number,
+	id: 'atletic' | 'juvenil',
+	label: string,
+): Promise<LaMasiaWeekendTeam> {
+	const pack = await fetchTeamLastAndNext(teamId);
+	return {
+		id,
+		label,
+		last: eventToMatch(pack.last),
+		next: eventToMatch(pack.next),
+	};
 }
 
 export function filterFirstTeamAcademy(squad: SquadPlayer[]): LaMasiaPlayer[] {
@@ -160,19 +239,80 @@ export function filterFirstTeamAcademy(squad: SquadPlayer[]): LaMasiaPlayer[] {
 
 export async function fetchLaMasiaHub(firstTeamSquad: SquadPlayer[]): Promise<LaMasiaHub> {
 	const firstTeam = filterFirstTeamAcademy(firstTeamSquad);
-	const live = await fetchAtleticLive().catch(() => null);
+	const [live, juvenilLive, atleticWeekend, juvenilWeekend] = await Promise.all([
+		fetchAtleticLive().catch(() => null),
+		fetchJuvenilLive().catch(() => null),
+		fetchWeekendTeam(SOFASCORE_ATLETIC_TEAM_ID, 'atletic', 'Barça Atlètic').catch(() => ({
+			id: 'atletic' as const,
+			label: 'Barça Atlètic',
+			last: null,
+			next: null,
+		})),
+		fetchWeekendTeam(SOFASCORE_JUVENIL_A_TEAM_ID, 'juvenil', 'Juvenil A').catch(() => ({
+			id: 'juvenil' as const,
+			label: 'Juvenil A',
+			last: null,
+			next: null,
+		})),
+	]);
 	const atletic = live?.length ? live : fromFallback();
+	const juvenil = juvenilLive?.length ? juvenilLive : [];
+	const notes: string[] = [];
+	if (!live?.length) notes.push('Live Atlètic feed unavailable — showing a cached Barça Atlètic snapshot.');
+	if (!juvenil.length) notes.push('Juvenil A roster did not load this time.');
 
 	return {
 		firstTeam,
 		atletic,
+		juvenil,
+		pathway: [
+			{
+				id: 'infantil',
+				label: 'Infantil',
+				ages: 'U12–U14',
+				live: false,
+				count: null,
+				note: 'Train at Joan Gamper. Not in this live feed.',
+			},
+			{
+				id: 'cadet',
+				label: 'Cadet',
+				ages: 'U15–U16',
+				live: false,
+				count: null,
+				note: 'Same campus, same language. Not in this live feed.',
+			},
+			{
+				id: 'juvenil',
+				label: 'Juvenil A',
+				ages: 'U19',
+				live: true,
+				count: juvenil.length || null,
+				note: 'División de Honor + UEFA Youth League.',
+			},
+			{
+				id: 'atletic',
+				label: 'Atlètic',
+				ages: 'B team',
+				live: true,
+				count: atletic.length || null,
+				note: 'Segunda Federación. Home: Estadi Johan Cruyff.',
+			},
+			{
+				id: 'first-team',
+				label: 'First team',
+				ages: 'Camp Nou',
+				live: true,
+				count: firstTeam.length || null,
+				note: 'Academy products on the senior roster.',
+			},
+		],
+		weekend: [atleticWeekend, juvenilWeekend],
 		fetchedAt: new Date().toISOString(),
 		source: live?.length
-			? 'La Masia — first-team academy filter + Barcelona Atlètic (SofaScore)'
-			: 'La Masia — first-team academy filter + Barcelona Atlètic snapshot fallback',
-		note: live?.length
-			? undefined
-			: 'Live Atlètic feed unavailable here — showing the latest cached Barça Atlètic snapshot.',
+			? 'La Masia pathway — Juvenil A, Barça Atlètic, and first-team academy (SofaScore)'
+			: 'La Masia pathway — first-team academy + Barça Atlètic snapshot fallback',
+		note: notes.length ? notes.join(' ') : undefined,
 	};
 }
 

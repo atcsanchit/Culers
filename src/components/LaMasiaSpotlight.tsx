@@ -33,15 +33,16 @@ export function LaMasiaSpotlight({ squad, onOpenPlayer }: Props) {
 	const spotlight = LA_MASIA_SPOTLIGHTS[idx]!;
 	const fromSquad = findSquadMatch(spotlight, squad);
 	const isAlumni = spotlight.status === 'alumni';
+	const isProspect = spotlight.status === 'prospect';
 	const record = spotlight.barcaRecord;
-	const alumniPhoto = isAlumni ? spotlight.photoUrl?.trim() : '';
+	const extraPhoto = isAlumni || isProspect ? spotlight.photoUrl?.trim() : '';
 	const canOpen =
 		Boolean(onOpenPlayer) &&
-		(Boolean(fromSquad) || (isAlumni && Boolean(record)));
+		(Boolean(fromSquad) || (isAlumni && Boolean(record)) || (isProspect && Boolean(spotlight.sofaId)));
 
 	useEffect(() => {
 		setAlumniPhotoOk(false);
-	}, [spotlight.id, alumniPhoto]);
+	}, [spotlight.id, extraPhoto]);
 
 	const open = (e: MouseEvent) => {
 		if (!onOpenPlayer || !canOpen) return;
@@ -58,6 +59,10 @@ export function LaMasiaSpotlight({ squad, onOpenPlayer }: Props) {
 		}
 		if (fromSquad) {
 			onOpenPlayer(fromSquad, origin, { mode: 'career', initialTab: 'career' });
+			return;
+		}
+		if (isProspect && spotlight.sofaId) {
+			onOpenPlayer(alumniSpotlightToPlayer(spotlight), origin, { mode: 'career', initialTab: 'career' });
 		}
 	};
 
@@ -90,7 +95,7 @@ export function LaMasiaSpotlight({ squad, onOpenPlayer }: Props) {
 				</button>
 			</div>
 
-			<div className={`la-masia-spotlight${canOpen ? ' is-clickable' : ''}${isAlumni ? ' is-alumni' : ''}`}>
+			<div className={`la-masia-spotlight${canOpen ? ' is-clickable' : ''}${isAlumni ? ' is-alumni' : ''}${isProspect ? ' is-prospect' : ''}`}>
 				<img src={BARCA_CREST} alt="" className="fixture-crest-watermark" aria-hidden />
 				<button
 					type="button"
@@ -101,10 +106,10 @@ export function LaMasiaSpotlight({ squad, onOpenPlayer }: Props) {
 					<div className="la-masia-photo">
 						{fromSquad ? (
 							<PlayerAvatar player={fromSquad} size="lg" />
-						) : alumniPhoto ? (
+						) : extraPhoto ? (
 							<>
 								<img
-									src={alumniPhoto}
+									src={extraPhoto}
 									alt=""
 									className={`la-masia-alumni-photo${alumniPhotoOk ? '' : ' is-loading'}`}
 									onLoad={() => setAlumniPhotoOk(true)}
@@ -125,6 +130,7 @@ export function LaMasiaSpotlight({ squad, onOpenPlayer }: Props) {
 					<div className="la-masia-copy">
 						<span className="culture-tag">{spotlight.generation}</span>
 						{isAlumni && <span className="la-masia-alumni-pill">Barça legend</span>}
+						{isProspect && <span className="la-masia-alumni-pill la-masia-prospect-pill">Watch this weekend</span>}
 						<strong className="culture-title">
 							{fromSquad?.number ? `#${fromSquad.number} ` : ''}
 							{spotlight.name}
@@ -134,7 +140,7 @@ export function LaMasiaSpotlight({ squad, onOpenPlayer }: Props) {
 						<span className="la-masia-debut muted">{spotlight.debutNote}</span>
 						{canOpen && (
 							<span className="la-masia-cta">
-								{isAlumni ? 'View club record →' : 'View Barça career →'}
+								{isAlumni ? 'View club record →' : isProspect ? 'View academy stats →' : 'View Barça career →'}
 							</span>
 						)}
 					</div>
