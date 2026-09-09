@@ -709,6 +709,7 @@ var SOFA_SEARCH_ALIASES = {
   psg: "paris saint-germain",
   sporting: "sporting cp"
 };
+var sofaFetchSucceeded = false;
 function normalizeName(name) {
   return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z\s]/g, " ").replace(/\s+/g, " ").trim();
 }
@@ -791,24 +792,67 @@ async function sofaFetchDirect(apiPath) {
   try {
     const res = await fetch(`https://api.sofascore.com/api/v1${path7}`, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; Culers/1.0)",
-        Accept: "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept: "application/json,text/plain,*/*",
+        "Accept-Language": "en-US,en;q=0.9",
+        Origin: "https://www.sofascore.com",
         Referer: "https://www.sofascore.com/"
       },
       signal: AbortSignal.timeout(1e4)
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn(`[sofascore] direct ${res.status} ${path7}`);
+      return null;
+    }
     return await res.json();
-  } catch {
+  } catch (err) {
+    console.warn("[sofascore] direct failed", path7, err);
+    return null;
+  }
+}
+async function sofaFetchViaVercelPython(apiPath) {
+  const host = process.env.VERCEL_URL?.replace(/^https?:\/\//, "");
+  if (!host) return null;
+  const path7 = apiPath.startsWith("/") ? apiPath : `/${apiPath}`;
+  try {
+    const res = await fetch(`https://${host}/api/sofascore-fetch?path=${encodeURIComponent(path7)}`, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(2e4)
+    });
+    if (!res.ok) {
+      console.warn(`[sofascore] vercel-python ${res.status} ${path7}`);
+      return null;
+    }
+    return await res.json();
+  } catch (err) {
+    console.warn("[sofascore] vercel-python failed", path7, err);
     return null;
   }
 }
 async function sofaFetch(apiPath) {
   if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME && await isSofaScoreReady()) {
     const viaPython = await sofaFetchPython(apiPath);
-    if (viaPython) return viaPython;
+    if (viaPython) {
+      sofaFetchSucceeded = true;
+      return viaPython;
+    }
   }
-  return sofaFetchDirect(apiPath);
+  if (process.env.VERCEL) {
+    const viaVercelPython = await sofaFetchViaVercelPython(apiPath);
+    if (viaVercelPython && viaVercelPython.error == null) {
+      sofaFetchSucceeded = true;
+      return viaVercelPython;
+    }
+  }
+  const direct = await sofaFetchDirect(apiPath);
+  if (direct) sofaFetchSucceeded = true;
+  return direct;
+}
+function sofaScoreReachable() {
+  return sofaFetchSucceeded;
+}
+function resetSofaScoreReachable() {
+  sofaFetchSucceeded = false;
 }
 function sofaMarketValueEur(player) {
   const raw = player.proposedMarketValueRaw;
@@ -4132,6 +4176,7 @@ function isFinishedMatch(match) {
   return /finished|closed|ended/i.test(match.status);
 }
 async function fetchLiveBoard() {
+  resetSofaScoreReachable();
   const [liveRaw, scheduledRaw] = await Promise.all([
     fetchSofaScoreLiveFootballEvents().catch(() => []),
     fetchScheduledWindow()
@@ -4147,7 +4192,7 @@ async function fetchLiveBoard() {
     history: historyGroups,
     fetchedAt: (/* @__PURE__ */ new Date()).toISOString(),
     source: "SofaScore live football + last 24 hours",
-    note: !live.length && !history.length ? "No live or last-24-hour matches in European leagues, MLS, UCL/UEL, or internationals." : void 0
+    note: !live.length && !history.length ? sofaScoreReachable() ? "No live or last-24-hour matches in European leagues, MLS, UCL/UEL, or internationals." : "SofaScore blocked this host (common on Vercel without Chrome impersonation). Live matches should appear after the Python proxy is deployed." : void 0
   };
 }
 async function fetchLiveMatchDetail(eventId) {

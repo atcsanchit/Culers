@@ -79,6 +79,8 @@ const SOFA_SEARCH_ALIASES: Record<string, string> = {
 
 type Json = Record<string, unknown>;
 
+let sofaFetchSucceeded = false;
+
 type RawPlayer = {
 	id: string;
 	fcbId?: number;
@@ -204,15 +206,43 @@ async function sofaFetchDirect(apiPath: string): Promise<Json | null> {
 	try {
 		const res = await fetch(`https://api.sofascore.com/api/v1${path}`, {
 			headers: {
-				'User-Agent': 'Mozilla/5.0 (compatible; Culers/1.0)',
-				Accept: 'application/json',
+				'User-Agent':
+					'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+				Accept: 'application/json,text/plain,*/*',
+				'Accept-Language': 'en-US,en;q=0.9',
+				Origin: 'https://www.sofascore.com',
 				Referer: 'https://www.sofascore.com/',
 			},
 			signal: AbortSignal.timeout(10_000),
 		});
-		if (!res.ok) return null;
+		if (!res.ok) {
+			console.warn(`[sofascore] direct ${res.status} ${path}`);
+			return null;
+		}
 		return (await res.json()) as Json;
-	} catch {
+	} catch (err) {
+		console.warn('[sofascore] direct failed', path, err);
+		return null;
+	}
+}
+
+/** Vercel Python function (`api/sofascore-fetch.py`) — curl_cffi Chrome impersonation. */
+async function sofaFetchViaVercelPython(apiPath: string): Promise<Json | null> {
+	const host = process.env.VERCEL_URL?.replace(/^https?:\/\//, '');
+	if (!host) return null;
+	const path = apiPath.startsWith('/') ? apiPath : `/${apiPath}`;
+	try {
+		const res = await fetch(`https://${host}/api/sofascore-fetch?path=${encodeURIComponent(path)}`, {
+			headers: { Accept: 'application/json' },
+			signal: AbortSignal.timeout(20_000),
+		});
+		if (!res.ok) {
+			console.warn(`[sofascore] vercel-python ${res.status} ${path}`);
+			return null;
+		}
+		return (await res.json()) as Json;
+	} catch (err) {
+		console.warn('[sofascore] vercel-python failed', path, err);
 		return null;
 	}
 }
@@ -221,9 +251,29 @@ async function sofaFetch(apiPath: string): Promise<Json | null> {
 	// Skip Python venv on Vercel/Lambda — spawn can hang until maxDuration.
 	if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME && (await isSofaScoreReady())) {
 		const viaPython = await sofaFetchPython(apiPath);
-		if (viaPython) return viaPython;
+		if (viaPython) {
+			sofaFetchSucceeded = true;
+			return viaPython;
+		}
 	}
-	return sofaFetchDirect(apiPath);
+	if (process.env.VERCEL) {
+		const viaVercelPython = await sofaFetchViaVercelPython(apiPath);
+		if (viaVercelPython && viaVercelPython.error == null) {
+			sofaFetchSucceeded = true;
+			return viaVercelPython;
+		}
+	}
+	const direct = await sofaFetchDirect(apiPath);
+	if (direct) sofaFetchSucceeded = true;
+	return direct;
+}
+
+export function sofaScoreReachable() {
+	return sofaFetchSucceeded;
+}
+
+export function resetSofaScoreReachable() {
+	sofaFetchSucceeded = false;
 }
 
 export type SofaTeamPlayer = {
