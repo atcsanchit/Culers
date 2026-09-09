@@ -33,6 +33,14 @@ export function AppNav() {
 			))}
 			<button
 				type="button"
+				className={`nav-item nav-item-live ${tab === 'live' ? 'active' : ''}`}
+				onClick={() => setTab('live')}
+			>
+				<span className="nav-icon">◉</span>
+				<span>Live</span>
+			</button>
+			<button
+				type="button"
 				className={`nav-item nav-item-right ${tab === FOOTBALL_NEWS_TAB.id ? 'active' : ''}`}
 				onClick={() => setTab(FOOTBALL_NEWS_TAB.id)}
 			>

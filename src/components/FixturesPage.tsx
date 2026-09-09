@@ -130,12 +130,12 @@ export function HomePage() {
 			{/* Fallback only when no upcoming briefing — avoid duplicating next match + form */}
 			{!hasBriefing && (
 				<div className="home-grid">
-					<div className="home-block glass-panel match-spotlight">
+					<div className="home-block glass-panel pop-card match-spotlight">
 						<span className="panel-label">Next up</span>
 						<h3>Next match</h3>
 						<p className="muted">No upcoming fixture loaded.</p>
 					</div>
-					<div className="home-block glass-panel match-spotlight">
+					<div className="home-block glass-panel pop-card match-spotlight">
 						<span className="panel-label">Form</span>
 						<h3>Recent results</h3>
 						<RecentFormCarousel

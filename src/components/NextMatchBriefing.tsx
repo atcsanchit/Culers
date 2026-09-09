@@ -233,7 +233,7 @@ export function NextMatchBriefing({ fixtures, squad, onOpenFixture, onGoMatchDay
 
 	return (
 		<section
-			className={`next-briefing glass-panel${phase === 'near' ? ' is-near' : ' is-far'}${rivalry ? ` is-rivalry rivalry-row-${rivalry.id}` : ''}`}
+			className={`next-briefing glass-panel pop-card${phase === 'near' ? ' is-near' : ' is-far'}${rivalry ? ` is-rivalry rivalry-row-${rivalry.id}` : ''}`}
 			aria-label="Next match briefing"
 			style={{ '--briefing-ground': `url(${wallpaper})` } as CSSProperties}
 		>

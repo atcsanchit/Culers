@@ -316,6 +316,118 @@ function withTeamPerspective(event: SofaScoreEvent, teamId: number): SofaScoreEv
 	};
 }
 
+export function parseSofaEventId(fixtureId: string | null | undefined): number | null {
+	if (!fixtureId) return null;
+	const match = /^(?:sofa-)?(\d+)$/i.exec(fixtureId.trim());
+	if (!match) return null;
+	const id = Number(match[1]);
+	return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+export async function fetchSofaScoreEventById(eventId: number): Promise<SofaScoreEvent | null> {
+	const data = await sofaFetch(`/event/${eventId}`);
+	const raw = (data?.event as Json | undefined) ?? data;
+	if (!raw || typeof raw !== 'object') return null;
+	const parsed = parseEvent(raw);
+	if (!parsed?.id) return null;
+	return {
+		...parsed,
+		isHome: true,
+		opponent: parsed.awayTeam,
+	};
+}
+
+async function resolveSofaEventForFixture(options: {
+	fixtureId: string;
+	opponent?: string;
+	date?: string;
+	prefer?: 'upcoming' | 'finished' | 'any';
+}): Promise<SofaScoreEvent | null> {
+	const id = parseSofaEventId(options.fixtureId);
+	if (id) return fetchSofaScoreEventById(id);
+	return findSofaScoreEvent({
+		opponent: options.opponent,
+		date: options.date,
+		prefer: options.prefer ?? 'any',
+	});
+}
+
+export async function fetchSofaScoreLiveFootballEvents(): Promise<Json[]> {
+	const football = await sofaFetch('/sport/football/events/live');
+	const fromFootball = (football?.events as Json[]) ?? [];
+	if (fromFootball.length) return fromFootball;
+	const numbered = await sofaFetch('/sport/1/events/live');
+	return (numbered?.events as Json[]) ?? [];
+}
+
+export async function fetchSofaScoreTeamEventsRaw(
+	teamId: number,
+	kind: 'last' | 'next',
+	page = 0,
+): Promise<Json[]> {
+	const data = await sofaFetch(`/team/${teamId}/events/${kind}/${page}`);
+	return (data?.events as Json[]) ?? [];
+}
+
+export async function fetchSofaScoreScheduledFootball(dateYmd: string): Promise<Json[]> {
+	const football = await sofaFetch(`/sport/football/scheduled-events/${dateYmd}`);
+	const fromFootball = (football?.events as Json[]) ?? [];
+	if (fromFootball.length) return fromFootball;
+	const midnight = Math.floor(Date.parse(`${dateYmd}T00:00:00Z`) / 1000);
+	if (Number.isFinite(midnight) && midnight > 0) {
+		const byUnix = await sofaFetch(`/sport/football/scheduled-events/${midnight}`);
+		const fromUnix = (byUnix?.events as Json[]) ?? [];
+		if (fromUnix.length) return fromUnix;
+	}
+	const numbered = await sofaFetch(`/sport/1/scheduled-events/${dateYmd}`);
+	return (numbered?.events as Json[]) ?? [];
+}
+
+export type SofaIncident = {
+	minute: string;
+	type: string;
+	player: string;
+	team: string;
+	detail: string;
+	homeScore: number | null;
+	awayScore: number | null;
+};
+
+export async function fetchSofaScoreEventIncidents(eventId: number): Promise<SofaIncident[]> {
+	const data = await sofaFetch(`/event/${eventId}/incidents`);
+	const rows = (data?.incidents as Json[]) ?? [];
+	const out: SofaIncident[] = [];
+	for (const row of rows) {
+		const kind = String(row.incidentType ?? row.incidentClass ?? '').toLowerCase();
+		if (!kind || kind === 'period' || kind === 'injuryTime' || kind === 'injurytime') continue;
+		const player = (row.player as Json | undefined) ?? (row.playerIn as Json | undefined);
+		const assist = row.assist1 as Json | undefined;
+		const playerOut = row.playerOut as Json | undefined;
+		let type = kind;
+		if (kind.includes('goal')) type = 'goal';
+		else if (kind.includes('card')) {
+			const cls = String(row.incidentClass ?? '').toLowerCase();
+			type = cls.includes('red') || kind.includes('red') ? 'red card' : 'yellow';
+		} else if (kind.includes('sub')) type = 'substitution';
+		const homeScore = row.homeScore != null ? Number(row.homeScore) : null;
+		const awayScore = row.awayScore != null ? Number(row.awayScore) : null;
+		out.push({
+			minute: String(row.time ?? row.injuryTime ?? ''),
+			type,
+			player: String(player?.name ?? playerOut?.name ?? ''),
+			team: row.isHome ? 'home' : 'away',
+			detail: assist?.name
+				? `Assist: ${String(assist.name)}`
+				: playerOut?.name && kind.includes('sub')
+					? `On for ${String(playerOut.name)}`
+					: String(row.incidentClass ?? ''),
+			homeScore: Number.isFinite(homeScore as number) ? homeScore : null,
+			awayScore: Number.isFinite(awayScore as number) ? awayScore : null,
+		});
+	}
+	return out;
+}
+
 export function resolveSofaScoreTeamId(teamName: string): number | null {
 	const key = normalizeName(teamName);
 	const aliasKey = SOFA_SEARCH_ALIASES[key] ?? key;
@@ -955,7 +1067,8 @@ export async function fetchSofaScoreMatchRatings(options: {
 	away: ReturnType<typeof sideFromLineup>;
 	source: string;
 } | null> {
-	const event = await findSofaScoreEvent({
+	const event = await resolveSofaEventForFixture({
+		fixtureId: options.fixtureId,
 		opponent: options.opponent,
 		date: options.date,
 		prefer: options.prefer ?? 'any',
@@ -1178,7 +1291,8 @@ export async function fetchSofaScorePlayerMatchStats(options: {
 } | null> {
 	if (!options.sofaId && !options.playerName) return null;
 
-	const event = await findSofaScoreEvent({
+	const event = await resolveSofaEventForFixture({
+		fixtureId: options.fixtureId,
 		opponent: options.opponent,
 		date: options.date,
 		prefer: 'any',

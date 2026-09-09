@@ -426,6 +426,20 @@ function resolveStadiumPathFromManifest(manifest, fixtureId, groundId) {
   if (groundId && manifest?.venues[String(groundId)]?.path) return manifest.venues[String(groundId)].path;
   return "";
 }
+function normalizeVenueName(name) {
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+function findStadiumPathByVenueName(manifest, venueName) {
+  if (!manifest?.venues || !venueName.trim()) return "";
+  const needle = normalizeVenueName(venueName);
+  if (!needle) return "";
+  for (const venue of Object.values(manifest.venues)) {
+    const hay = normalizeVenueName(venue.name);
+    if (!hay) continue;
+    if (hay === needle || hay.includes(needle) || needle.includes(hay)) return venue.path;
+  }
+  return "";
+}
 function localStadiumFileExists(root, publicPath) {
   if (!publicPath.startsWith("/backgrounds/stadium/")) return false;
   const rel = publicPath.replace(/^\/backgrounds\/stadium\//, "");
@@ -555,6 +569,70 @@ async function fetchStadiumBackground(input) {
   } catch (err) {
     console.warn("[stadium]", err);
     return CAMP_NOU_BG;
+  }
+}
+var clubGroundCache = /* @__PURE__ */ new Map();
+function isBarcaClubName(name) {
+  const k = normalizeVenue(name).replace(/^fc\s+/, "");
+  return k === "barcelona" || k === "barca" || k === "fc barcelona" || k.includes("barcelona");
+}
+function pickSoccerTeam(teams, query) {
+  const needle = normalizeVenue(query);
+  const soccer = teams.filter((t) => !t.strSport || /soccer|football/i.test(t.strSport));
+  const pool = soccer.length ? soccer : teams;
+  return pool.find((t) => normalizeVenue(t.strTeam ?? "") === needle) || pool.find((t) => {
+    const n = normalizeVenue(t.strTeam ?? "");
+    return n.includes(needle) || needle.includes(n);
+  }) || pool[0];
+}
+async function fetchClubHomeGroundBackground(teamName) {
+  const team = teamName.trim();
+  if (!team) return { team: "", venue: "", backgroundImage: "" };
+  const cacheKey = normalizeVenue(team);
+  if (clubGroundCache.has(cacheKey)) return clubGroundCache.get(cacheKey);
+  if (isBarcaClubName(team)) {
+    const barca = { team, venue: "Spotify Camp Nou", backgroundImage: CAMP_NOU_BG };
+    clubGroundCache.set(cacheKey, barca);
+    return barca;
+  }
+  const empty = { team, venue: "", backgroundImage: "" };
+  try {
+    const res = await fetch(`${THESPORTSDB2}/searchteams.php?t=${encodeURIComponent(team)}`, {
+      headers: { "User-Agent": "Culers/1.0 (local Barcelona fan app)" }
+    });
+    if (!res.ok) {
+      clubGroundCache.set(cacheKey, empty);
+      return empty;
+    }
+    const data = await res.json();
+    const picked = pickSoccerTeam(data.teams ?? [], team);
+    const venue = picked?.strStadium?.trim() || "";
+    const thumb = picked?.strStadiumThumb?.trim() || "";
+    const manifest = loadStadiumManifest(PROJECT_ROOT);
+    const fromBundle = venue ? findStadiumPathByVenueName(manifest, venue) : "";
+    if (fromBundle) {
+      const hit = { team: picked?.strTeam?.trim() || team, venue, backgroundImage: fromBundle };
+      clubGroundCache.set(cacheKey, hit);
+      return hit;
+    }
+    if (venue) {
+      const tsdbVenue = await fetchTheSportsDbVenuePhoto(venue);
+      if (tsdbVenue) {
+        const hit = { team: picked?.strTeam?.trim() || team, venue, backgroundImage: tsdbVenue };
+        clubGroundCache.set(cacheKey, hit);
+        return hit;
+      }
+    }
+    if (thumb) {
+      const hit = { team: picked?.strTeam?.trim() || team, venue, backgroundImage: thumb };
+      clubGroundCache.set(cacheKey, hit);
+      return hit;
+    }
+    clubGroundCache.set(cacheKey, empty);
+    return empty;
+  } catch {
+    clubGroundCache.set(cacheKey, empty);
+    return empty;
   }
 }
 
@@ -800,6 +878,88 @@ function withTeamPerspective(event, teamId) {
     isHome,
     opponent: isHome ? event.awayTeam : event.homeTeam
   };
+}
+function parseSofaEventId(fixtureId) {
+  if (!fixtureId) return null;
+  const match = /^(?:sofa-)?(\d+)$/i.exec(fixtureId.trim());
+  if (!match) return null;
+  const id = Number(match[1]);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+async function fetchSofaScoreEventById(eventId) {
+  const data = await sofaFetch(`/event/${eventId}`);
+  const raw = data?.event ?? data;
+  if (!raw || typeof raw !== "object") return null;
+  const parsed = parseEvent(raw);
+  if (!parsed?.id) return null;
+  return {
+    ...parsed,
+    isHome: true,
+    opponent: parsed.awayTeam
+  };
+}
+async function resolveSofaEventForFixture(options) {
+  const id = parseSofaEventId(options.fixtureId);
+  if (id) return fetchSofaScoreEventById(id);
+  return findSofaScoreEvent({
+    opponent: options.opponent,
+    date: options.date,
+    prefer: options.prefer ?? "any"
+  });
+}
+async function fetchSofaScoreLiveFootballEvents() {
+  const football = await sofaFetch("/sport/football/events/live");
+  const fromFootball = football?.events ?? [];
+  if (fromFootball.length) return fromFootball;
+  const numbered = await sofaFetch("/sport/1/events/live");
+  return numbered?.events ?? [];
+}
+async function fetchSofaScoreTeamEventsRaw(teamId, kind, page = 0) {
+  const data = await sofaFetch(`/team/${teamId}/events/${kind}/${page}`);
+  return data?.events ?? [];
+}
+async function fetchSofaScoreScheduledFootball(dateYmd) {
+  const football = await sofaFetch(`/sport/football/scheduled-events/${dateYmd}`);
+  const fromFootball = football?.events ?? [];
+  if (fromFootball.length) return fromFootball;
+  const midnight = Math.floor(Date.parse(`${dateYmd}T00:00:00Z`) / 1e3);
+  if (Number.isFinite(midnight) && midnight > 0) {
+    const byUnix = await sofaFetch(`/sport/football/scheduled-events/${midnight}`);
+    const fromUnix = byUnix?.events ?? [];
+    if (fromUnix.length) return fromUnix;
+  }
+  const numbered = await sofaFetch(`/sport/1/scheduled-events/${dateYmd}`);
+  return numbered?.events ?? [];
+}
+async function fetchSofaScoreEventIncidents(eventId) {
+  const data = await sofaFetch(`/event/${eventId}/incidents`);
+  const rows = data?.incidents ?? [];
+  const out = [];
+  for (const row of rows) {
+    const kind = String(row.incidentType ?? row.incidentClass ?? "").toLowerCase();
+    if (!kind || kind === "period" || kind === "injuryTime" || kind === "injurytime") continue;
+    const player = row.player ?? row.playerIn;
+    const assist = row.assist1;
+    const playerOut = row.playerOut;
+    let type = kind;
+    if (kind.includes("goal")) type = "goal";
+    else if (kind.includes("card")) {
+      const cls = String(row.incidentClass ?? "").toLowerCase();
+      type = cls.includes("red") || kind.includes("red") ? "red card" : "yellow";
+    } else if (kind.includes("sub")) type = "substitution";
+    const homeScore = row.homeScore != null ? Number(row.homeScore) : null;
+    const awayScore = row.awayScore != null ? Number(row.awayScore) : null;
+    out.push({
+      minute: String(row.time ?? row.injuryTime ?? ""),
+      type,
+      player: String(player?.name ?? playerOut?.name ?? ""),
+      team: row.isHome ? "home" : "away",
+      detail: assist?.name ? `Assist: ${String(assist.name)}` : playerOut?.name && kind.includes("sub") ? `On for ${String(playerOut.name)}` : String(row.incidentClass ?? ""),
+      homeScore: Number.isFinite(homeScore) ? homeScore : null,
+      awayScore: Number.isFinite(awayScore) ? awayScore : null
+    });
+  }
+  return out;
 }
 function resolveSofaScoreTeamId(teamName) {
   const key = normalizeName(teamName);
@@ -1220,7 +1380,8 @@ function sideFromLineup(side, teamName, teamId, motmId) {
   };
 }
 async function fetchSofaScoreMatchRatings(options) {
-  const event = await findSofaScoreEvent({
+  const event = await resolveSofaEventForFixture({
+    fixtureId: options.fixtureId,
     opponent: options.opponent,
     date: options.date,
     prefer: options.prefer ?? "any"
@@ -1391,7 +1552,8 @@ function findLineupPlayerRow(lineupsRaw, options) {
 }
 async function fetchSofaScorePlayerMatchStats(options) {
   if (!options.sofaId && !options.playerName) return null;
-  const event = await findSofaScoreEvent({
+  const event = await resolveSofaEventForFixture({
+    fixtureId: options.fixtureId,
     opponent: options.opponent,
     date: options.date,
     prefer: "any"
@@ -3833,6 +3995,191 @@ async function fetchLaMasiaPlayerStats(sofaId) {
   };
 }
 
+// culers-live-board.ts
+var EUROPE_LEAGUE_IDS = /* @__PURE__ */ new Set([
+  8,
+  // LaLiga
+  17,
+  // Premier League
+  35,
+  // Bundesliga
+  23,
+  // Serie A
+  34,
+  // Ligue 1
+  37,
+  // Eredivisie
+  238,
+  // Liga Portugal
+  38,
+  // Belgian Pro League
+  52,
+  // Super Lig
+  36,
+  // Scottish Premiership
+  18,
+  // Championship
+  215
+  // Swiss Super League
+]);
+var UCL_IDS = /* @__PURE__ */ new Set([7, 465, 1331]);
+var UEL_IDS = /* @__PURE__ */ new Set([679, 17015, 17016]);
+var MLS_IDS = /* @__PURE__ */ new Set([242]);
+var GROUP_ORDER = ["ucl", "uel", "europe", "mls", "international"];
+var GROUP_LABEL = {
+  ucl: "UEFA Champions League",
+  uel: "Europa League & Conference",
+  europe: "European leagues",
+  mls: "MLS",
+  international: "International"
+};
+function uniqueId(raw) {
+  const tournament = raw.tournament;
+  const unique = tournament?.uniqueTournament ?? tournament;
+  return Number(unique?.id ?? 0);
+}
+function competitionName(raw) {
+  const tournament = raw.tournament;
+  const unique = tournament?.uniqueTournament;
+  return String(unique?.name ?? tournament?.name ?? "");
+}
+function classifyCompetition(comp, uniqueTournamentId = 0) {
+  const name = comp.trim();
+  if (UCL_IDS.has(uniqueTournamentId) || /champions league/i.test(name) && !/youth|women|femenin|femenil/i.test(name)) {
+    return "ucl";
+  }
+  if (UEL_IDS.has(uniqueTournamentId) || /europa league|conference league/i.test(name) && !/youth|women/i.test(name)) {
+    return "uel";
+  }
+  if (MLS_IDS.has(uniqueTournamentId) || /^mls\b|major league soccer/i.test(name)) return "mls";
+  if (EUROPE_LEAGUE_IDS.has(uniqueTournamentId)) return "europe";
+  if (/world\s*cup|euro\b|copa am[eé]rica|nations league|gold cup|afcon|africa cup|asian cup|olympics|qualif/i.test(
+    name
+  )) {
+    return "international";
+  }
+  return null;
+}
+function classify(raw) {
+  const id = uniqueId(raw);
+  const byComp = classifyCompetition(competitionName(raw), id);
+  if (byComp) return byComp;
+  const home = raw.homeTeam;
+  const away = raw.awayTeam;
+  if (Boolean(home?.national) && Boolean(away?.national)) return "international";
+  return null;
+}
+function scoreOf(side) {
+  if (!side) return null;
+  if (side.display != null) {
+    const n2 = Number(side.display);
+    return Number.isFinite(n2) ? n2 : null;
+  }
+  const n = Number(side.current ?? side.period1 ?? NaN);
+  return Number.isFinite(n) ? n : null;
+}
+function mapLiveMatch(raw) {
+  const group = classify(raw);
+  if (!group) return null;
+  const id = Number(raw.id ?? 0);
+  const home = raw.homeTeam;
+  const away = raw.awayTeam;
+  if (!id || !home || !away) return null;
+  const status = raw.status;
+  const venue = raw.venue;
+  const statusType = String(status?.type ?? "");
+  const finished = /finished|closed|ended/i.test(statusType);
+  return {
+    id,
+    homeTeam: String(home.name ?? ""),
+    awayTeam: String(away.name ?? ""),
+    homeScore: scoreOf(raw.homeScore),
+    awayScore: scoreOf(raw.awayScore),
+    competition: competitionName(raw),
+    group,
+    clock: finished ? "FT" : String(status?.description ?? status?.type ?? "LIVE"),
+    status: statusType || (finished ? "finished" : "inprogress"),
+    venue: String(venue?.name ?? venue?.stadium?.name ?? ""),
+    startTimestamp: Number(raw.startTimestamp ?? 0)
+  };
+}
+function groupMatches(matches) {
+  return GROUP_ORDER.map((id) => ({
+    id,
+    label: GROUP_LABEL[id],
+    matches: matches.filter((m) => m.group === id)
+  }));
+}
+function utcYmd(d) {
+  return d.toISOString().slice(0, 10);
+}
+async function fetchScheduledWindow() {
+  const now = /* @__PURE__ */ new Date();
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1e3);
+  const dates = [.../* @__PURE__ */ new Set([utcYmd(now), utcYmd(yesterday)])];
+  const [pages, barcaLast] = await Promise.all([
+    Promise.all(dates.map((ymd) => fetchSofaScoreScheduledFootball(ymd).catch(() => []))),
+    fetchSofaScoreTeamEventsRaw(SOFASCORE_BARCA_TEAM_ID, "last").catch(() => [])
+  ]);
+  const byId = /* @__PURE__ */ new Map();
+  for (const row of [...pages.flat(), ...barcaLast]) {
+    const id = Number(row.id ?? 0);
+    if (id) byId.set(id, row);
+  }
+  return [...byId.values()];
+}
+function isFinishedMatch(match) {
+  return /finished|closed|ended/i.test(match.status);
+}
+async function fetchLiveBoard() {
+  const [liveRaw, scheduledRaw] = await Promise.all([
+    fetchSofaScoreLiveFootballEvents().catch(() => []),
+    fetchScheduledWindow()
+  ]);
+  const live = liveRaw.map(mapLiveMatch).filter(Boolean);
+  const liveIds = new Set(live.map((m) => m.id));
+  const cutoff = Math.floor(Date.now() / 1e3) - 28 * 60 * 60;
+  const history = scheduledRaw.map(mapLiveMatch).filter(Boolean).filter((m) => isFinishedMatch(m) && !liveIds.has(m.id) && m.startTimestamp >= cutoff).sort((a, b) => b.startTimestamp - a.startTimestamp);
+  const groups = groupMatches(live);
+  const historyGroups = groupMatches(history);
+  return {
+    groups,
+    history: historyGroups,
+    fetchedAt: (/* @__PURE__ */ new Date()).toISOString(),
+    source: "SofaScore live football + last 24 hours",
+    note: !live.length && !history.length ? "No live or last-24-hour matches in European leagues, MLS, UCL/UEL, or internationals." : void 0
+  };
+}
+async function fetchLiveMatchDetail(eventId) {
+  const [rawList, event, incidents] = await Promise.all([
+    fetchSofaScoreLiveFootballEvents(),
+    fetchSofaScoreEventById(eventId),
+    fetchSofaScoreEventIncidents(eventId)
+  ]);
+  const fromLive = rawList.map(mapLiveMatch).find((m) => m?.id === eventId) ?? null;
+  const fromEvent = event ? {
+    id: event.id,
+    homeTeam: event.homeTeam,
+    awayTeam: event.awayTeam,
+    homeScore: event.homeScore,
+    awayScore: event.awayScore,
+    competition: event.competition || "Football",
+    group: classifyCompetition(event.competition || "") ?? "europe",
+    clock: /finished|closed|ended/i.test(event.statusType ?? "") ? "FT" : event.statusType || "LIVE",
+    status: event.statusType || "inprogress",
+    venue: "",
+    startTimestamp: event.startTimestamp
+  } : null;
+  const match = fromLive ?? fromEvent;
+  if (!match) return null;
+  return {
+    match,
+    events: incidents,
+    clock: match.clock,
+    fetchedAt: (/* @__PURE__ */ new Date()).toISOString()
+  };
+}
+
 // culers-transferroom.ts
 var HUBSPOT_PORTAL = "6939831";
 var BLOG_RSS = "https://blog.transferroom.com/rss.xml";
@@ -4619,6 +4966,16 @@ async function dispatchCulersApi(url, options = {}) {
     if (url.pathname === "/api/live") {
       return jsonResult(await fetchLive());
     }
+    if (url.pathname === "/api/live-board") {
+      return jsonResult(await fetchLiveBoard());
+    }
+    if (url.pathname === "/api/live-match") {
+      const eventId = Number(url.searchParams.get("eventId"));
+      if (!eventId) return jsonResult({ error: "eventId required" }, 400);
+      const detail = await fetchLiveMatchDetail(eventId);
+      if (!detail) return jsonResult({ error: "Match not found" }, 404);
+      return jsonResult(detail);
+    }
     if (url.pathname === "/api/lineup") {
       const squad = await fetchSquad();
       const fixtures = await fetchFixtures();
@@ -4642,7 +4999,8 @@ async function dispatchCulersApi(url, options = {}) {
       if (!fixtureId || !fcbId && !sofaId && !playerName) {
         return jsonResult({ error: "fixtureId and fcbId, sofaId, or playerName required" }, 400);
       }
-      const fixture = (await fetchFcbFixtures()).find((f) => f.id === fixtureId) ?? await fetchFcbFixtureById(fixtureId);
+      const sofaEventId = parseSofaEventId(fixtureId);
+      const fixture = sofaEventId ? null : (await fetchFcbFixtures()).find((f) => f.id === fixtureId) ?? await fetchFcbFixtureById(fixtureId);
       if (sofaId || playerName) {
         const sofaStats = await fetchSofaScorePlayerMatchStats({
           fixtureId,
@@ -4661,6 +5019,11 @@ async function dispatchCulersApi(url, options = {}) {
     if (url.pathname === "/api/match-ratings") {
       const fixtureId = url.searchParams.get("fixtureId");
       if (!fixtureId) return jsonResult({ error: "fixtureId required" }, 400);
+      if (parseSofaEventId(fixtureId)) {
+        const board2 = await fetchSofaScoreMatchRatings({ fixtureId, prefer: "any" });
+        if (!board2) return jsonResult({ error: "Ratings unavailable for this fixture" }, 404);
+        return jsonResult(board2);
+      }
       const fixtures = await fetchFcbFixtures();
       const fixture = fixtures.find((f) => f.id === fixtureId) ?? await fetchFcbFixtureById(fixtureId);
       if (!fixture) return jsonResult({ error: "Fixture not found" }, 404);
@@ -4731,6 +5094,11 @@ async function dispatchCulersApi(url, options = {}) {
         images: listHomeBackgrounds(projectRoot),
         updatedAt: (/* @__PURE__ */ new Date()).toISOString()
       });
+    }
+    if (url.pathname === "/api/club-ground") {
+      const team = String(url.searchParams.get("team") || "").trim();
+      if (!team) return jsonResult({ error: "team required" }, 400);
+      return jsonResult(await fetchClubHomeGroundBackground(team));
     }
     return jsonResult({ error: "Not found" }, 404);
   } catch (err) {

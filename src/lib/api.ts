@@ -1,4 +1,4 @@
-import type { FetchPayload, InstagramFeed, LaMasiaHub, LineupData, LiveData, MatchRatingsBoard, MatchSummary, PlayerMatchStats, PlayerStats, SocialHubData, TransfersHub, XFeed } from '../types';
+import type { FetchPayload, InstagramFeed, LaMasiaHub, LineupData, LiveBoardDetail, LiveBoardHub, LiveData, MatchRatingsBoard, MatchSummary, PlayerMatchStats, PlayerStats, SocialHubData, TransfersHub, XFeed } from '../types';
 
 export const LIVE_POLL_MS = 10_000;
 
@@ -41,6 +41,18 @@ export async function fetchAll(): Promise<FetchPayload> {
 export async function fetchLive(): Promise<LiveData> {
 	const res = await fetch('/api/live');
 	if (!res.ok) throw new Error('Failed to fetch live data');
+	return res.json();
+}
+
+export async function fetchLiveBoard(): Promise<LiveBoardHub> {
+	const res = await fetch('/api/live-board', { cache: 'no-store' });
+	if (!res.ok) throw new Error('Failed to fetch live matches');
+	return res.json();
+}
+
+export async function fetchLiveMatch(eventId: number): Promise<LiveBoardDetail> {
+	const res = await fetch(`/api/live-match?eventId=${eventId}`, { cache: 'no-store' });
+	if (!res.ok) throw new Error('Failed to fetch live match');
 	return res.json();
 }
 
@@ -118,6 +130,16 @@ export async function fetchInstagramFeed(user?: string): Promise<InstagramFeed> 
 export async function fetchXFeed(): Promise<XFeed> {
 	const res = await fetch('/api/social/x');
 	if (!res.ok) throw new Error('Failed to fetch X feed');
+	return res.json();
+}
+
+export async function fetchClubGround(team: string): Promise<{
+	team: string;
+	venue: string;
+	backgroundImage: string;
+}> {
+	const res = await fetch(`/api/club-ground?team=${encodeURIComponent(team)}`);
+	if (!res.ok) return { team, venue: '', backgroundImage: '' };
 	return res.json();
 }
 

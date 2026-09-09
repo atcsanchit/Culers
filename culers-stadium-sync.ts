@@ -329,6 +329,28 @@ export function resolveStadiumPathFromManifest(
 	return '';
 }
 
+function normalizeVenueName(name: string) {
+	return name
+		.normalize('NFD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.toLowerCase()
+		.replace(/[^a-z0-9\s]/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim();
+}
+
+export function findStadiumPathByVenueName(manifest: StadiumManifest | null, venueName: string): string {
+	if (!manifest?.venues || !venueName.trim()) return '';
+	const needle = normalizeVenueName(venueName);
+	if (!needle) return '';
+	for (const venue of Object.values(manifest.venues)) {
+		const hay = normalizeVenueName(venue.name);
+		if (!hay) continue;
+		if (hay === needle || hay.includes(needle) || needle.includes(hay)) return venue.path;
+	}
+	return '';
+}
+
 export function localStadiumFileExists(root: string, publicPath: string): boolean {
 	if (!publicPath.startsWith('/backgrounds/stadium/')) return false;
 	const rel = publicPath.replace(/^\/backgrounds\/stadium\//, '');

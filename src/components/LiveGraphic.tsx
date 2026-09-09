@@ -4,6 +4,7 @@ import type { TimelineEvent } from '../types';
 type Props = {
 	events: TimelineEvent[];
 	clock?: string;
+	live?: boolean;
 	homeScore?: number | null;
 	awayScore?: number | null;
 	homeLabel?: string;
@@ -40,6 +41,7 @@ function eventKind(type: string): 'goal' | 'card' | 'sub' | 'other' {
 export function LiveGraphic({
 	events,
 	clock,
+	live = true,
 	homeScore = null,
 	awayScore = null,
 	homeLabel = 'Barcelona',
@@ -65,11 +67,11 @@ export function LiveGraphic({
 
 	return (
 		<div className="live-graphic">
-			<div className={`live-score-ticker${tick ? ' is-tick' : ''}`}>
+			<div className={`live-score-ticker pop-card${tick ? ' is-tick' : ''}${live ? '' : ' is-ft'}`}>
 				<div className="live-ticker-meta">
-					<span className="pulse" />
-					<span>LIVE</span>
-					<span className="live-ticker-clock">{clock ?? '—'}</span>
+					{live ? <span className="pulse" /> : null}
+					<span>{live ? 'LIVE' : 'FT'}</span>
+					{live && <span className="live-ticker-clock">{clock ?? '—'}</span>}
 				</div>
 				<div className="live-ticker-score">
 					<span className="live-ticker-team">{homeLabel}</span>
@@ -80,13 +82,17 @@ export function LiveGraphic({
 					</span>
 					<span className="live-ticker-team">{awayLabel}</span>
 				</div>
-				<p className="live-caption">Score & events refresh every 10s</p>
+				<p className="live-caption">
+					{live ? 'Score & events refresh every 10s' : 'Full time — events from this match'}
+				</p>
 			</div>
 
-			<div className="timeline-panel">
+			<div className="timeline-panel pop-card is-quiet">
 				<h3>Match events</h3>
 				{recent.length === 0 ? (
-					<p className="muted">Waiting for events… stay on this page while the match runs.</p>
+					<p className="muted">
+						{live ? 'Waiting for events… stay on this page while the match runs.' : 'No match events recorded.'}
+					</p>
 				) : (
 					<>
 						{(goals.length > 0 || cards.length > 0 || subs.length > 0) && (

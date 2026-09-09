@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
+	findStadiumPathByVenueName,
 	fixturePublicPath,
 	loadStadiumManifest,
 	localStadiumFileExists,
@@ -173,5 +174,98 @@ export async function fetchStadiumBackground(input: StadiumPhotoInput): Promise<
 	} catch (err) {
 		console.warn('[stadium]', err);
 		return CAMP_NOU_BG;
+	}
+}
+
+const clubGroundCache = new Map<string, { team: string; venue: string; backgroundImage: string }>();
+
+function isBarcaClubName(name: string) {
+	const k = normalizeVenue(name).replace(/^fc\s+/, '');
+	return k === 'barcelona' || k === 'barca' || k === 'fc barcelona' || k.includes('barcelona');
+}
+
+type TsdbTeam = {
+	strTeam?: string;
+	strSport?: string;
+	strStadium?: string;
+	strStadiumThumb?: string;
+	strStadiumLocation?: string;
+};
+
+function pickSoccerTeam(teams: TsdbTeam[], query: string): TsdbTeam | undefined {
+	const needle = normalizeVenue(query);
+	const soccer = teams.filter((t) => !t.strSport || /soccer|football/i.test(t.strSport));
+	const pool = soccer.length ? soccer : teams;
+	return (
+		pool.find((t) => normalizeVenue(t.strTeam ?? '') === needle) ||
+		pool.find((t) => {
+			const n = normalizeVenue(t.strTeam ?? '');
+			return n.includes(needle) || needle.includes(n);
+		}) ||
+		pool[0]
+	);
+}
+
+/**
+ * Home-ground wallpaper for a player's club (player stats panel).
+ * Barça → Camp Nou grass. Everyone else → bundled stadium or TheSportsDB stadium photo.
+ */
+export async function fetchClubHomeGroundBackground(
+	teamName: string,
+): Promise<{ team: string; venue: string; backgroundImage: string }> {
+	const team = teamName.trim();
+	if (!team) return { team: '', venue: '', backgroundImage: '' };
+
+	const cacheKey = normalizeVenue(team);
+	if (clubGroundCache.has(cacheKey)) return clubGroundCache.get(cacheKey)!;
+
+	if (isBarcaClubName(team)) {
+		const barca = { team, venue: 'Spotify Camp Nou', backgroundImage: CAMP_NOU_BG };
+		clubGroundCache.set(cacheKey, barca);
+		return barca;
+	}
+
+	const empty = { team, venue: '', backgroundImage: '' };
+	try {
+		const res = await fetch(`${THESPORTSDB}/searchteams.php?t=${encodeURIComponent(team)}`, {
+			headers: { 'User-Agent': 'Culers/1.0 (local Barcelona fan app)' },
+		});
+		if (!res.ok) {
+			clubGroundCache.set(cacheKey, empty);
+			return empty;
+		}
+		const data = (await res.json()) as { teams?: TsdbTeam[] | null };
+		const picked = pickSoccerTeam(data.teams ?? [], team);
+		const venue = picked?.strStadium?.trim() || '';
+		const thumb = picked?.strStadiumThumb?.trim() || '';
+
+		const manifest = loadStadiumManifest(PROJECT_ROOT);
+		const fromBundle = venue ? findStadiumPathByVenueName(manifest, venue) : '';
+		if (fromBundle) {
+			const hit = { team: picked?.strTeam?.trim() || team, venue, backgroundImage: fromBundle };
+			clubGroundCache.set(cacheKey, hit);
+			return hit;
+		}
+
+		if (venue) {
+			const tsdbVenue = await fetchTheSportsDbVenuePhoto(venue);
+			if (tsdbVenue) {
+				const hit = { team: picked?.strTeam?.trim() || team, venue, backgroundImage: tsdbVenue };
+				clubGroundCache.set(cacheKey, hit);
+				return hit;
+			}
+		}
+
+		if (thumb) {
+			const hit = { team: picked?.strTeam?.trim() || team, venue, backgroundImage: thumb };
+			clubGroundCache.set(cacheKey, hit);
+			return hit;
+		}
+
+		clubGroundCache.set(cacheKey, empty);
+		return empty;
+	} catch {
+		clubGroundCache.set(cacheKey, empty);
+		return empty;
 	}
 }
