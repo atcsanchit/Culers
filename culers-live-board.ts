@@ -5,6 +5,8 @@ import {
 	fetchSofaScoreLiveFootballEvents,
 	fetchSofaScoreScheduledFootball,
 	fetchSofaScoreTeamEventsRaw,
+	sofaScoreReachable,
+	resetSofaScoreReachable,
 } from './culers-sofascore.ts';
 
 type Json = Record<string, unknown>;
@@ -200,6 +202,7 @@ function isFinishedMatch(match: LiveBoardMatch) {
 }
 
 export async function fetchLiveBoard(): Promise<LiveBoardHub> {
+	resetSofaScoreReachable();
 	const [liveRaw, scheduledRaw] = await Promise.all([
 		fetchSofaScoreLiveFootballEvents().catch(() => [] as Json[]),
 		fetchScheduledWindow(),
@@ -220,7 +223,9 @@ export async function fetchLiveBoard(): Promise<LiveBoardHub> {
 		source: 'SofaScore live football + last 24 hours',
 		note:
 			!live.length && !history.length
-				? 'No live or last-24-hour matches in European leagues, MLS, UCL/UEL, or internationals.'
+				? sofaScoreReachable()
+					? 'No live or last-24-hour matches in European leagues, MLS, UCL/UEL, or internationals.'
+					: 'SofaScore blocked this host (common on Vercel without Chrome impersonation). Live matches should appear after the Python proxy is deployed.'
 				: undefined,
 	};
 }
