@@ -28,7 +28,7 @@ function ratingTier(rating: number) {
 
 function resolveSofaId(player: Player): number | undefined {
 	if (player.sofaId) return player.sofaId;
-	const fromId = /^sofa-(\d+)$/i.exec(player.id);
+	const fromId = /^(?:sofa|espn)-(\d+)$/i.exec(player.id);
 	if (fromId) return Number(fromId[1]);
 	return undefined;
 }

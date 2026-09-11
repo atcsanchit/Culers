@@ -236,7 +236,7 @@ export function SquadHubPage() {
 									</a>
 								</div>
 								<p className="muted la-masia-pathway-lead">
-									Official academy feed — scores graphics, kick-offs, and the kids. Weekend results above stay on SofaScore.
+									Official academy feed — scores graphics, kick-offs, and the kids.
 								</p>
 								{igLoading && !igFeed && <p className="muted loading-msg">Loading @fcbmasia…</p>}
 								{igFeed?.posts.length ? (

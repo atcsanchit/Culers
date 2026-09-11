@@ -7,11 +7,6 @@
 		"api/[...path].js": {
 			"maxDuration": 60,
 			"memory": 1024
-		},
-		"api/sofascore-fetch.py": {
-			"maxDuration": 30,
-			"memory": 1024,
-			"excludeFiles": "{node_modules/**,dist/**,public/**,.venv-sofascore/**}"
 		}
 	}
 }

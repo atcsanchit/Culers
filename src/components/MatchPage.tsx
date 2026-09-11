@@ -49,7 +49,7 @@ export function MatchPage() {
 		player: Parameters<typeof openPlayerStats>[0],
 		origin?: Parameters<typeof openPlayerStats>[1],
 	) => {
-		const sofaFromId = /^sofa-(\d+)$/i.exec(player.id);
+		const sofaFromId = /^(?:sofa|espn)-(\d+)$/i.exec(player.id);
 		const sofaId = player.sofaId ?? (sofaFromId ? Number(sofaFromId[1]) : undefined);
 		const fromSquad = data.squad.players.find(
 			(p) =>
@@ -161,7 +161,7 @@ export function MatchPage() {
 				<p>
 					{liveMatch
 						? 'Select the live fixture for real-time score, XI, and ratings — updates every 10 seconds.'
-						: 'Scoreboard, confirmed XI, and SofaScore ratings — tap a player for match stats.'}
+						: 'Scoreboard, confirmed XI, and match ratings — tap a player for match stats.'}
 				</p>
 			</div>
 
@@ -258,11 +258,11 @@ export function MatchPage() {
 					liveEvents={isViewingLive ? data.live.events : undefined}
 				/>
 			)}
-			{lineupLoading && <p className="muted fetch-meta">Refreshing lineup from SofaScore…</p>}
+			{lineupLoading && <p className="muted fetch-meta">Refreshing lineup from ESPN / Google Sports…</p>}
 
 			{showRatingsPitch && fixture && (
 				<details className="match-ratings-details">
-					<summary>Both-teams SofaScore ratings</summary>
+					<summary>Both-teams match ratings</summary>
 					<MatchRatingsPitch
 						fixtureId={fixture.id}
 						pollKey={isViewingLive ? lastLiveAt : fixture.id}

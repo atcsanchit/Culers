@@ -144,9 +144,9 @@ export function NextMatchBriefing({ fixtures, squad, onOpenFixture, onGoMatchDay
 	const watchSource =
 		localBarcaWatch?.length && fixture
 			? fixture.isHome
-				? 'Barça: your ratings · Opp: SofaScore · last 2'
-				: 'Opp: SofaScore · Barça: your ratings · last 2'
-			: watchPack?.source ?? 'SofaScore avg rating · last 2 matches';
+				? 'Barça: your ratings · Opp: ESPN · last 2'
+				: 'Opp: ESPN · Barça: your ratings · last 2'
+			: watchPack?.source ?? 'ESPN / Google Sports performance · last 2 matches';
 
 	const [barcaGoals, setBarcaGoals] = useState(2);
 	const [oppGoals, setOppGoals] = useState(1);

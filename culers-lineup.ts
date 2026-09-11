@@ -1,5 +1,5 @@
 import { fetchFcbBarcaLineup } from './culers-fcb.ts';
-import { fetchSofaScoreBarcaLineup, findSofaScoreEvent } from './culers-sofascore.ts';
+import { fetchEspnBarcaLineup, findEspnBarcaEvent } from './culers-espn.ts';
 
 const BARCA_TEAM_ID = '133739';
 const BARCA_TEAM_NAME = 'Barcelona';
@@ -107,18 +107,18 @@ async function fetchEventLineup(eventId: string, squad: RawPlayer[]) {
 	return { starters: starters.slice(0, 11), bench };
 }
 
-async function fetchSofaScoreLineup(
+async function fetchEspnLineup(
 	squad: RawPlayer[],
 	options: { opponent?: string; date?: string; prefer: 'upcoming' | 'finished' },
 ) {
-	const event = await findSofaScoreEvent({
+	const event = await findEspnBarcaEvent({
 		opponent: options.opponent,
 		date: options.date,
 		prefer: options.prefer,
 	});
 	if (!event) return null;
 
-	const lineup = await fetchSofaScoreBarcaLineup(event.id, squad);
+	const lineup = await fetchEspnBarcaLineup(event.id, squad);
 	if (!lineup) return null;
 
 	return { event, lineup };
@@ -179,7 +179,7 @@ export async function buildLineup(
 ): Promise<LineupResult> {
 	const fixtureId = options.fixtureId ?? options.eventId ?? null;
 	const preferFinished = options.fixtureKind === 'past';
-	const sofaPrefer = preferFinished ? 'finished' : 'upcoming';
+	const espnPrefer = preferFinished ? 'finished' : 'upcoming';
 
 	// Live match — FC Barcelona official first (updates with substitutions)
 	if (options.fixtureKind === 'live' && fixtureId) {
@@ -198,22 +198,22 @@ export async function buildLineup(
 		}
 	}
 
-	// 1. SofaScore — primary source
-	const sofa = await fetchSofaScoreLineup(squadPlayers, {
+	// 1. ESPN / Google Sports confirmed XI
+	const espn = await fetchEspnLineup(squadPlayers, {
 		opponent: options.opponent,
 		date: options.matchDate,
-		prefer: sofaPrefer,
+		prefer: espnPrefer,
 	});
-	if (sofa && sofa.lineup.starters.length >= 8) {
+	if (espn && espn.lineup.starters.length >= 8) {
 		return confirmedResult({
 			matchDay: Boolean(options.matchDay),
 			eventId: fixtureId,
-			opponent: options.opponent ?? sofa.event.opponent,
-			formation: sofa.lineup.formation || '4-3-3',
-			starters: sofa.lineup.starters,
-			bench: sofa.lineup.bench,
-			source: 'SofaScore',
-			confirmed: sofa.lineup.confirmed,
+			opponent: options.opponent ?? espn.event.opponent,
+			formation: espn.lineup.formation || '4-3-3',
+			starters: espn.lineup.starters,
+			bench: espn.lineup.bench,
+			source: 'ESPN / Google Sports',
+			confirmed: espn.lineup.confirmed,
 		});
 	}
 
@@ -236,17 +236,17 @@ export async function buildLineup(
 
 	// 3. Upcoming with no published XI → last match lineup (never news guesses)
 	if (options.matchDay || options.fixtureKind === 'upcoming') {
-		const lastSofa = await fetchSofaScoreLineup(squadPlayers, { prefer: 'finished' });
-		if (lastSofa && lastSofa.lineup.starters.length >= 8) {
+		const lastEspn = await fetchEspnLineup(squadPlayers, { prefer: 'finished' });
+		if (lastEspn && lastEspn.lineup.starters.length >= 8) {
 			return lastMatchResult({
 				matchDay: Boolean(options.matchDay),
 				eventId: fixtureId,
 				opponent: options.opponent ?? null,
-				formation: lastSofa.lineup.formation || '4-3-3',
-				starters: lastSofa.lineup.starters,
-				bench: lastSofa.lineup.bench,
-				source: 'SofaScore (last match)',
-				note: `No lineup published yet for vs ${options.opponent ?? 'next opponent'} — showing last match XI from SofaScore.`,
+				formation: lastEspn.lineup.formation || '4-3-3',
+				starters: lastEspn.lineup.starters,
+				bench: lastEspn.lineup.bench,
+				source: 'ESPN / Google Sports (last match)',
+				note: `No lineup published yet for vs ${options.opponent ?? 'next opponent'} — showing last match XI from ESPN.`,
 			});
 		}
 

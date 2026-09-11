@@ -1,11 +1,4 @@
-import {
-	SOFASCORE_ATLETIC_TEAM_ID,
-	SOFASCORE_JUVENIL_A_TEAM_ID,
-	fetchTeamLastAndNext,
-	sofaFetchPlayerStatistics,
-	sofaFetchTeamPlayers,
-	type SofaScoreEvent,
-} from './culers-sofascore.ts';
+import { fetchEspnAthleteStats } from './culers-espn.ts';
 import atleticFallback from './culers-lamasia-atletic-fallback.json' with { type: 'json' };
 
 export type LaMasiaPlayer = {
@@ -151,71 +144,27 @@ function fromFallback(): LaMasiaPlayer[] {
 		position: p.position,
 		number: p.number,
 		nationality: p.nationality,
-		photo: p.photo,
+		photo: p.photo && !/sofascore\.com/i.test(p.photo) ? p.photo : '',
 		birthDate: p.birthDate || '',
 		group: 'atletic' as const,
-		statsAvailable: Boolean(p.sofaId),
+		statsAvailable: false,
 	}));
 }
 
-function mapSofaSquad(
-	rows: Awaited<ReturnType<typeof sofaFetchTeamPlayers>>,
-	group: 'atletic' | 'juvenil',
-): LaMasiaPlayer[] {
-	return sortLaMasia(
-		rows.map((p) => ({
-			id: `${group}-${p.id}`,
-			sofaId: p.id,
-			name: p.name,
-			position: mapSofaPos(p.position),
-			number: p.number,
-			nationality: p.nationality,
-			photo: p.id ? `https://img.sofascore.com/api/v1/player/${p.id}/image` : '',
-			birthDate: p.birthDate,
-			group,
-			statsAvailable: Boolean(p.id),
-		})),
-	);
-}
-
 async function fetchAtleticLive(): Promise<LaMasiaPlayer[] | null> {
-	const rows = await sofaFetchTeamPlayers(SOFASCORE_ATLETIC_TEAM_ID);
-	if (!rows?.length) return null;
-	return mapSofaSquad(rows, 'atletic');
+	return null;
 }
 
 async function fetchJuvenilLive(): Promise<LaMasiaPlayer[] | null> {
-	const rows = await sofaFetchTeamPlayers(SOFASCORE_JUVENIL_A_TEAM_ID);
-	if (!rows?.length) return null;
-	return mapSofaSquad(rows, 'juvenil');
-}
-
-function eventToMatch(event: SofaScoreEvent | null): LaMasiaMatch | null {
-	if (!event) return null;
-	return {
-		opponent: event.opponent,
-		isHome: event.isHome,
-		date: event.date,
-		time: event.time,
-		competition: event.competition || '',
-		homeScore: event.homeScore,
-		awayScore: event.awayScore,
-		status: event.statusType || '',
-	};
+	return null;
 }
 
 async function fetchWeekendTeam(
-	teamId: number,
+	_teamId: number,
 	id: 'atletic' | 'juvenil',
 	label: string,
 ): Promise<LaMasiaWeekendTeam> {
-	const pack = await fetchTeamLastAndNext(teamId);
-	return {
-		id,
-		label,
-		last: eventToMatch(pack.last),
-		next: eventToMatch(pack.next),
-	};
+	return { id, label, last: null, next: null };
 }
 
 export function filterFirstTeamAcademy(squad: SquadPlayer[]): LaMasiaPlayer[] {
@@ -242,18 +191,8 @@ export async function fetchLaMasiaHub(firstTeamSquad: SquadPlayer[]): Promise<La
 	const [live, juvenilLive, atleticWeekend, juvenilWeekend] = await Promise.all([
 		fetchAtleticLive().catch(() => null),
 		fetchJuvenilLive().catch(() => null),
-		fetchWeekendTeam(SOFASCORE_ATLETIC_TEAM_ID, 'atletic', 'Barça Atlètic').catch(() => ({
-			id: 'atletic' as const,
-			label: 'Barça Atlètic',
-			last: null,
-			next: null,
-		})),
-		fetchWeekendTeam(SOFASCORE_JUVENIL_A_TEAM_ID, 'juvenil', 'Juvenil A').catch(() => ({
-			id: 'juvenil' as const,
-			label: 'Juvenil A',
-			last: null,
-			next: null,
-		})),
+		fetchWeekendTeam(0, 'atletic', 'Barça Atlètic'),
+		fetchWeekendTeam(0, 'juvenil', 'Juvenil A'),
 	]);
 	const atletic = live?.length ? live : fromFallback();
 	const juvenil = juvenilLive?.length ? juvenilLive : [];
@@ -309,9 +248,7 @@ export async function fetchLaMasiaHub(firstTeamSquad: SquadPlayer[]): Promise<La
 		],
 		weekend: [atleticWeekend, juvenilWeekend],
 		fetchedAt: new Date().toISOString(),
-		source: live?.length
-			? 'La Masia pathway — Juvenil A, Barça Atlètic, and first-team academy (SofaScore)'
-			: 'La Masia pathway — first-team academy + Barça Atlètic snapshot fallback',
+		source: 'La Masia pathway — first-team academy (FCB) + Barça Atlètic snapshot',
 		note: notes.length ? notes.join(' ') : undefined,
 	};
 }
@@ -382,11 +319,11 @@ function rowsFromStats(stats: Record<string, number>): StatRow[] {
 	});
 }
 
-/** SofaScore season + career totals for an Atlètic / reserve player. */
+/** ESPN athlete season totals when the id is an ESPN athlete id. */
 export async function fetchLaMasiaPlayerStats(sofaId: number) {
-	const pack = await sofaFetchPlayerStatistics(sofaId);
+	const pack = await fetchEspnAthleteStats(sofaId);
 	if (!pack || !pack.seasons.length) {
-		throw new Error('No SofaScore stats found for this player');
+		throw new Error('No ESPN / Google Sports stats found for this player');
 	}
 
 	const seasonIdx = preferSeasonIndex(pack.seasons);
@@ -423,6 +360,6 @@ export async function fetchLaMasiaPlayerStats(sofaId: number) {
 		seasonLabel: `${latest.competition} · ${latest.year}`,
 		season,
 		career,
-		source: 'SofaScore — Barça Atlètic / youth competition stats (not FCB Opta)',
+		source: 'ESPN / Google Sports — athlete stats (not FCB Opta)',
 	};
 }

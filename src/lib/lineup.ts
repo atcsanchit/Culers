@@ -88,7 +88,7 @@ export const SLOT_DEFAULTS: Record<PitchSlot, string[]> = {
 };
 
 /**
- * SofaScore lineups only expose G/D/M/F — enrich with known Barça roles so pitch
+ * ESPN lineups often only expose G/D/M/F — enrich with known Barça roles so pitch
  * placement matches how the XI actually lines up.
  */
 export function inferDetailedPosition(name: string, coarsePosition = ''): string {

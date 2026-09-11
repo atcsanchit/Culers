@@ -1,6 +1,6 @@
 import { fetchTeamBadge, normalizeTeamKey } from './culers-team-badges.ts';
 import { fetchStadiumBackground } from './culers-stadium-photos.ts';
-import { fetchSofaScorePreviewMatch, fetchSofaScorePlayersToWatch, resolveSofaScoreTeamId, SOFASCORE_BARCA_TEAM_ID } from './culers-sofascore.ts';
+import { ESPN_BARCA_TEAM_ID, fetchEspnPreviewMatch, fetchEspnPlayersToWatch, resolveEspnTeamIdSync } from './culers-espn.ts';
 
 const FCB_API = 'https://api-fcb.pulselive.com/football';
 const FCB_ORIGIN = 'https://www.fcbarcelona.com';
@@ -1081,17 +1081,17 @@ function referenceLabel(match: TeamMatchRef, live: boolean) {
 	return live ? `Live ${side} ${match.opponent}${score}` : `Last match ${side} ${match.opponent}${score}`;
 }
 
-function sofaPreviewToTeamRef(sofa: import('./culers-sofascore.ts').SofaPreviewMatch): TeamMatchRef {
+function espnPreviewToTeamRef(preview: import('./culers-espn.ts').EspnPreviewMatch): TeamMatchRef {
 	return {
-		id: String(sofa.eventId),
-		homeTeam: sofa.homeTeam,
-		awayTeam: sofa.awayTeam,
-		isHome: sofa.isHome,
-		opponent: sofa.opponent,
-		date: sofa.date,
-		time: sofa.time,
-		homeScore: sofa.homeScore,
-		awayScore: sofa.awayScore,
+		id: String(preview.eventId),
+		homeTeam: preview.homeTeam,
+		awayTeam: preview.awayTeam,
+		isHome: preview.isHome,
+		opponent: preview.opponent,
+		date: preview.date,
+		time: preview.time,
+		homeScore: preview.homeScore,
+		awayScore: preview.awayScore,
 	};
 }
 
@@ -1151,7 +1151,7 @@ export async function fetchFcbFixturePreview(
 	}
 
 	const opponentName = isBarcaHome ? awayTeam : homeTeam;
-	const opponentSofaId = resolveSofaScoreTeamId(opponentName);
+	const opponentEspnId = resolveEspnTeamIdSync(opponentName);
 
 	let barcaStats: Record<string, number> = {};
 	let barcaExtras: Awaited<ReturnType<typeof fetchFcbMatchExtras>> = null;
@@ -1167,37 +1167,37 @@ export async function fetchFcbFixturePreview(
 	barcaExtras = fcbBarcaExtras;
 
 	if (!barcaRef || !statsHaveValues(barcaStats)) {
-		const sofaBarca = await fetchSofaScorePreviewMatch(SOFASCORE_BARCA_TEAM_ID).catch(() => null);
-		if (sofaBarca) {
-			if (!barcaRef) barcaRef = sofaPreviewToTeamRef(sofaBarca);
-			if (!statsHaveValues(barcaStats) && sofaBarca.stats) barcaStats = sofaBarca.stats;
-			if (!barcaExtras && sofaBarca.events.length) {
+		const espnBarca = await fetchEspnPreviewMatch(ESPN_BARCA_TEAM_ID).catch(() => null);
+		if (espnBarca) {
+			if (!barcaRef) barcaRef = espnPreviewToTeamRef(espnBarca);
+			if (!statsHaveValues(barcaStats) && espnBarca.stats) barcaStats = espnBarca.stats;
+			if (!barcaExtras && espnBarca.events.length) {
 				barcaExtras = {
-					homeTeam: sofaBarca.homeTeam,
-					awayTeam: sofaBarca.awayTeam,
-					homeTeamId: sofaBarca.isHome ? barcaTeamId : 0,
-					awayTeamId: sofaBarca.isHome ? 0 : barcaTeamId,
-					events: sofaBarca.events,
-					lineups: sofaBarca.isHome
-						? { home: sofaBarca.lineups, away: { starters: [], subs: [] } }
-						: { home: { starters: [], subs: [] }, away: sofaBarca.lineups },
+					homeTeam: espnBarca.homeTeam,
+					awayTeam: espnBarca.awayTeam,
+					homeTeamId: espnBarca.isHome ? barcaTeamId : 0,
+					awayTeamId: espnBarca.isHome ? 0 : barcaTeamId,
+					events: espnBarca.events,
+					lineups: espnBarca.isHome
+						? { home: espnBarca.lineups, away: { starters: [], subs: [] } }
+						: { home: { starters: [], subs: [] }, away: espnBarca.lineups },
 				};
 			}
 		}
 	}
 
-	const oppSofa = opponentSofaId ? await fetchSofaScorePreviewMatch(opponentSofaId).catch(() => null) : null;
+	const oppEspn = opponentEspnId ? await fetchEspnPreviewMatch(opponentEspnId).catch(() => null) : null;
 	const oppFetched = oppSeasonal;
-	let oppRef = oppFetched?.ref ?? (oppSofa ? sofaPreviewToTeamRef(oppSofa) : null);
+	let oppRef = oppFetched?.ref ?? (oppEspn ? espnPreviewToTeamRef(oppEspn) : null);
 	const oppStatsFromFcb = oppFetched?.stats ?? {};
 	const resolvedOppStats =
-		oppSofa?.stats && statsHaveValues(oppSofa.stats)
-			? oppSofa.stats
+		oppEspn?.stats && statsHaveValues(oppEspn.stats)
+			? oppEspn.stats
 			: statsHaveValues(oppStatsFromFcb)
 				? oppStatsFromFcb
 				: {};
-	const oppHasXi = Boolean(oppSofa?.lineups.starters.length);
-	const oppHasEvents = Boolean(oppSofa?.events.length);
+	const oppHasXi = Boolean(oppEspn?.lineups.starters.length);
+	const oppHasEvents = Boolean(oppEspn?.events.length);
 	const previewBarcaOnly = !statsHaveValues(resolvedOppStats) && !oppHasXi && !oppHasEvents;
 
 	const barcaSideTeamId = barcaTeamId;
@@ -1225,10 +1225,10 @@ export async function fetchFcbFixturePreview(
 		}
 	}
 
-	if (!previewBarcaOnly && oppSofa) {
-		const oppLineup = oppSofa.lineups;
-		const oppEvents = oppSofa.events;
-		const oppMatchTeams = { home: oppSofa.homeTeam, away: oppSofa.awayTeam };
+	if (!previewBarcaOnly && oppEspn) {
+		const oppLineup = oppEspn.lineups;
+		const oppEvents = oppEspn.events;
+		const oppMatchTeams = { home: oppEspn.homeTeam, away: oppEspn.awayTeam };
 		if (isBarcaHome) {
 			awayPreviewLineup = oppLineup;
 			previewAwayEvents = oppEvents;
@@ -1256,7 +1256,7 @@ export async function fetchFcbFixturePreview(
 	}
 
 	const barcaNote = barcaRef ? referenceLabel(barcaRef, barcaLive) : '';
-	const oppRefForLabel = previewBarcaOnly ? null : oppRef ?? (oppSofa ? sofaPreviewToTeamRef(oppSofa) : null);
+	const oppRefForLabel = previewBarcaOnly ? null : oppRef ?? (oppEspn ? espnPreviewToTeamRef(oppEspn) : null);
 	const oppNote = oppRefForLabel ? referenceLabel(oppRefForLabel, false) : '';
 	const previewHomeNote = isBarcaHome ? barcaNote : oppNote;
 	const previewAwayNote = isBarcaHome ? oppNote : barcaNote;
@@ -1273,17 +1273,17 @@ export async function fetchFcbFixturePreview(
 		awayTeam,
 	});
 
-	const barcaWatch = await fetchSofaScorePlayersToWatch(SOFASCORE_BARCA_TEAM_ID, 2, 3).catch(() => []);
+	const barcaWatch = await fetchEspnPlayersToWatch(ESPN_BARCA_TEAM_ID, 2, 3).catch(() => []);
 	const oppWatch =
-		previewBarcaOnly || !opponentSofaId
+		previewBarcaOnly || !opponentEspnId
 			? []
-			: await fetchSofaScorePlayersToWatch(opponentSofaId, 2, 3).catch(() => []);
+			: await fetchEspnPlayersToWatch(opponentEspnId, 2, 3).catch(() => []);
 	const playersToWatch = {
 		home: isBarcaHome ? barcaWatch : oppWatch,
 		away: isBarcaHome ? oppWatch : barcaWatch,
 		source: previewBarcaOnly
 			? 'Barça last-match form only — opponent not on the official feed yet'
-			: 'SofaScore avg rating · last 2 matches',
+			: 'ESPN / Google Sports performance · last 2 matches',
 	};
 
 	return {
@@ -1316,6 +1316,6 @@ export async function fetchFcbFixturePreview(
 		playersToWatch,
 		source: previewBarcaOnly
 			? `Preview — Barça last match from FC Barcelona official (Opta). ${opponentName} form is not on that feed yet.`
-			: 'Preview — Opta stats from each team’s latest match (Barça uses live data when a match is in progress). Opponent stats via SofaScore when not on FCB feed.',
+			: 'Preview — Opta stats from each team’s latest match (Barça uses live data when a match is in progress). Opponent stats via ESPN / Google Sports when not on the FCB feed.',
 	};
 }

@@ -1,13 +1,14 @@
 import {
-	SOFASCORE_BARCA_TEAM_ID,
-	fetchSofaScoreEventById,
-	fetchSofaScoreEventIncidents,
-	fetchSofaScoreLiveFootballEvents,
-	fetchSofaScoreScheduledFootball,
-	fetchSofaScoreTeamEventsRaw,
-	sofaScoreReachable,
-	resetSofaScoreReachable,
-} from './culers-sofascore.ts';
+	fetchEspnEventById,
+	fetchEspnEventIncidents,
+	fetchEspnLiveAndRecentEvents,
+	fetchSportsDbLiveSoccer,
+	fetchSportsDbSoccerDay,
+	mapEspnRawToLiveShape,
+	mapSportsDbEventToLiveShape,
+	resetStatsSourceReachable,
+	statsSourceReachable,
+} from './culers-espn.ts';
 
 type Json = Record<string, unknown>;
 
@@ -58,26 +59,6 @@ export type LiveBoardDetail = {
 	fetchedAt: string;
 };
 
-/** Top European leagues (uniqueTournament ids). */
-const EUROPE_LEAGUE_IDS = new Set([
-	8, // LaLiga
-	17, // Premier League
-	35, // Bundesliga
-	23, // Serie A
-	34, // Ligue 1
-	37, // Eredivisie
-	238, // Liga Portugal
-	38, // Belgian Pro League
-	52, // Super Lig
-	36, // Scottish Premiership
-	18, // Championship
-	215, // Swiss Super League
-]);
-
-const UCL_IDS = new Set([7, 465, 1331]);
-const UEL_IDS = new Set([679, 17015, 17016]);
-const MLS_IDS = new Set([242]);
-
 const GROUP_ORDER: LiveBoardGroupId[] = ['ucl', 'uel', 'europe', 'mls', 'international'];
 const GROUP_LABEL: Record<LiveBoardGroupId, string> = {
 	ucl: 'UEFA Champions League',
@@ -87,31 +68,19 @@ const GROUP_LABEL: Record<LiveBoardGroupId, string> = {
 	international: 'International',
 };
 
-function uniqueId(raw: Json): number {
-	const tournament = raw.tournament as Json | undefined;
-	const unique = (tournament?.uniqueTournament as Json | undefined) ?? tournament;
-	return Number(unique?.id ?? 0);
-}
-
-function competitionName(raw: Json): string {
-	const tournament = raw.tournament as Json | undefined;
-	const unique = tournament?.uniqueTournament as Json | undefined;
-	return String(unique?.name ?? tournament?.name ?? '');
-}
-
 export function classifyCompetition(comp: string, uniqueTournamentId = 0): LiveBoardGroupId | null {
+	void uniqueTournamentId;
 	const name = comp.trim();
-	if (UCL_IDS.has(uniqueTournamentId) || (/champions league/i.test(name) && !/youth|women|femenin|femenil/i.test(name))) {
-		return 'ucl';
-	}
+	if (/champions league/i.test(name) && !/youth|women|femenin|femenil/i.test(name)) return 'ucl';
+	if (/europa league|conference league/i.test(name) && !/youth|women/i.test(name)) return 'uel';
+	if (/^mls\b|major league soccer/i.test(name)) return 'mls';
 	if (
-		UEL_IDS.has(uniqueTournamentId) ||
-		(/europa league|conference league/i.test(name) && !/youth|women/i.test(name))
+		/la\s*liga|premier league|bundesliga|serie a|ligue 1|eredivisie|liga portugal|pro league|super lig|scottish premiership|championship|swiss super/i.test(
+			name,
+		)
 	) {
-		return 'uel';
+		return 'europe';
 	}
-	if (MLS_IDS.has(uniqueTournamentId) || /^mls\b|major league soccer/i.test(name)) return 'mls';
-	if (EUROPE_LEAGUE_IDS.has(uniqueTournamentId)) return 'europe';
 	if (
 		/world\s*cup|euro\b|copa am[eé]rica|nations league|gold cup|afcon|africa cup|asian cup|olympics|qualif/i.test(
 			name,
@@ -123,10 +92,13 @@ export function classifyCompetition(comp: string, uniqueTournamentId = 0): LiveB
 }
 
 function classify(raw: Json): LiveBoardGroupId | null {
-	const id = uniqueId(raw);
-	const byComp = classifyCompetition(competitionName(raw), id);
+	const tagged = raw._culersGroup as LiveBoardGroupId | undefined;
+	if (tagged) return tagged;
+	const tournament = raw.tournament as Json | undefined;
+	const unique = (tournament?.uniqueTournament as Json | undefined) ?? tournament;
+	const name = String(raw._competitionName ?? unique?.name ?? tournament?.name ?? '');
+	const byComp = classifyCompetition(name, Number(unique?.id ?? 0));
 	if (byComp) return byComp;
-
 	const home = raw.homeTeam as Json | undefined;
 	const away = raw.awayTeam as Json | undefined;
 	if (Boolean(home?.national) && Boolean(away?.national)) return 'international';
@@ -160,7 +132,12 @@ function mapLiveMatch(raw: Json): LiveBoardMatch | null {
 		awayTeam: String(away.name ?? ''),
 		homeScore: scoreOf(raw.homeScore as Json | undefined),
 		awayScore: scoreOf(raw.awayScore as Json | undefined),
-		competition: competitionName(raw),
+		competition: String(
+			raw._competitionName ??
+				((raw.tournament as Json | undefined)?.uniqueTournament as Json | undefined)?.name ??
+				(raw.tournament as Json | undefined)?.name ??
+				'',
+		),
 		group,
 		clock: finished ? 'FT' : String(status?.description ?? status?.type ?? 'LIVE'),
 		status: statusType || (finished ? 'finished' : 'inprogress'),
@@ -181,62 +158,65 @@ function utcYmd(d: Date) {
 	return d.toISOString().slice(0, 10);
 }
 
-async function fetchScheduledWindow(): Promise<Json[]> {
-	const now = new Date();
-	const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-	const dates = [...new Set([utcYmd(now), utcYmd(yesterday)])];
-	const [pages, barcaLast] = await Promise.all([
-		Promise.all(dates.map((ymd) => fetchSofaScoreScheduledFootball(ymd).catch(() => [] as Json[]))),
-		fetchSofaScoreTeamEventsRaw(SOFASCORE_BARCA_TEAM_ID, 'last').catch(() => [] as Json[]),
-	]);
-	const byId = new Map<number, Json>();
-	for (const row of [...pages.flat(), ...barcaLast]) {
-		const id = Number(row.id ?? 0);
-		if (id) byId.set(id, row);
-	}
-	return [...byId.values()];
-}
-
 function isFinishedMatch(match: LiveBoardMatch) {
 	return /finished|closed|ended/i.test(match.status);
 }
 
-export async function fetchLiveBoard(): Promise<LiveBoardHub> {
-	resetSofaScoreReachable();
-	const [liveRaw, scheduledRaw] = await Promise.all([
-		fetchSofaScoreLiveFootballEvents().catch(() => [] as Json[]),
-		fetchScheduledWindow(),
+async function espnShapes(): Promise<Json[]> {
+	const raw = await fetchEspnLiveAndRecentEvents().catch(() => [] as Json[]);
+	return raw.map(mapEspnRawToLiveShape);
+}
+
+async function sportsDbShapes(): Promise<Json[]> {
+	const now = new Date();
+	const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+	const [live, today, yday] = await Promise.all([
+		fetchSportsDbLiveSoccer().catch(() => [] as Json[]),
+		fetchSportsDbSoccerDay(utcYmd(now)).catch(() => [] as Json[]),
+		fetchSportsDbSoccerDay(utcYmd(yesterday)).catch(() => [] as Json[]),
 	]);
-	const live = liveRaw.map(mapLiveMatch).filter(Boolean) as LiveBoardMatch[];
+	return [...live, ...today, ...yday].map(mapSportsDbEventToLiveShape);
+}
+
+export async function fetchLiveBoard(): Promise<LiveBoardHub> {
+	resetStatsSourceReachable();
+	let shapes = await espnShapes();
+	let source = 'ESPN / Google Sports scoreboards (live + last 24 hours)';
+	if (!shapes.length) {
+		shapes = await sportsDbShapes();
+		source = 'TheSportsDB live + day results (ESPN scoreboard unavailable)';
+	}
+
+	const mapped = shapes.map(mapLiveMatch).filter(Boolean) as LiveBoardMatch[];
+	const live = mapped.filter((m) => !isFinishedMatch(m) && /inprogress|live/i.test(m.status));
 	const liveIds = new Set(live.map((m) => m.id));
 	const cutoff = Math.floor(Date.now() / 1000) - 28 * 60 * 60;
-	const history = (scheduledRaw.map(mapLiveMatch).filter(Boolean) as LiveBoardMatch[])
+	const history = mapped
 		.filter((m) => isFinishedMatch(m) && !liveIds.has(m.id) && m.startTimestamp >= cutoff)
 		.sort((a, b) => b.startTimestamp - a.startTimestamp);
-	const groups = groupMatches(live);
-	const historyGroups = groupMatches(history);
 
 	return {
-		groups,
-		history: historyGroups,
+		groups: groupMatches(live),
+		history: groupMatches(history),
 		fetchedAt: new Date().toISOString(),
-		source: 'SofaScore live football + last 24 hours',
+		source,
 		note:
 			!live.length && !history.length
-				? sofaScoreReachable()
+				? statsSourceReachable()
 					? 'No live or last-24-hour matches in European leagues, MLS, UCL/UEL, or internationals.'
-					: 'SofaScore blocked this host (common on Vercel without Chrome impersonation). Live matches should appear after the Python proxy is deployed.'
+					: 'Live score hosts were blocked or empty. Trying ESPN, then TheSportsDB — refresh after a minute.'
 				: undefined,
 	};
 }
 
 export async function fetchLiveMatchDetail(eventId: number): Promise<LiveBoardDetail | null> {
-	const [rawList, event, incidents] = await Promise.all([
-		fetchSofaScoreLiveFootballEvents(),
-		fetchSofaScoreEventById(eventId),
-		fetchSofaScoreEventIncidents(eventId),
+	const [board, event, incidents] = await Promise.all([
+		fetchLiveBoard(),
+		fetchEspnEventById(eventId),
+		fetchEspnEventIncidents(eventId).catch(() => []),
 	]);
-	const fromLive = rawList.map(mapLiveMatch).find((m) => m?.id === eventId) ?? null;
+	const fromBoard =
+		[...board.groups, ...board.history].flatMap((g) => g.matches).find((m) => m.id === eventId) ?? null;
 	const fromEvent = event
 		? {
 				id: event.id,
@@ -246,13 +226,13 @@ export async function fetchLiveMatchDetail(eventId: number): Promise<LiveBoardDe
 				awayScore: event.awayScore,
 				competition: event.competition || 'Football',
 				group: classifyCompetition(event.competition || '') ?? ('europe' as const),
-				clock: /finished|closed|ended/i.test(event.statusType ?? '') ? 'FT' : event.statusType || 'LIVE',
+				clock: /finished|closed|ended/i.test(event.statusType ?? '') ? 'FT' : event.clock || event.statusType || 'LIVE',
 				status: event.statusType || 'inprogress',
-				venue: '',
+				venue: event.venue || '',
 				startTimestamp: event.startTimestamp,
 			}
 		: null;
-	const match = fromLive ?? fromEvent;
+	const match = fromBoard ?? fromEvent;
 	if (!match) return null;
 	return {
 		match,

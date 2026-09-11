@@ -25,7 +25,7 @@ export type LaMasiaSpotlight = {
 	status: 'current' | 'alumni' | 'prospect';
 	/** Portrait for alumni who are no longer on the squad feed */
 	photoUrl?: string;
-	/** SofaScore id for Atlètic / Juvenil names not on the first-team feed */
+	/** Stats-provider id for Atlètic / Juvenil names not on the first-team feed */
 	sofaId?: number;
 	/** Club records for players who left (or full career legends) */
 	barcaRecord?: BarcaClubRecord;
@@ -183,7 +183,6 @@ export const LA_MASIA_SPOTLIGHTS: LaMasiaSpotlight[] = [
 		debutNote: 'Watch this weekend at Estadi Johan Cruyff — next in line, not a museum piece.',
 		status: 'prospect',
 		sofaId: 1590761,
-		photoUrl: 'https://img.sofascore.com/api/v1/player/1590761/image',
 	},
 	{
 		id: 'oscar-gistau',
@@ -195,7 +194,6 @@ export const LA_MASIA_SPOTLIGHTS: LaMasiaSpotlight[] = [
 		debutNote: 'Watch this weekend — Atlètic or U19, same campus, same ask.',
 		status: 'prospect',
 		sofaId: 1539491,
-		photoUrl: 'https://img.sofascore.com/api/v1/player/1539491/image',
 	},
 	{
 		id: 'xavi-espart',
@@ -207,7 +205,6 @@ export const LA_MASIA_SPOTLIGHTS: LaMasiaSpotlight[] = [
 		debutNote: 'Watch this weekend: first-team minutes when they come, Atlètic when they don’t.',
 		status: 'prospect',
 		sofaId: 1546073,
-		photoUrl: 'https://img.sofascore.com/api/v1/player/1546073/image',
 	},
 	{
 		id: 'messi',

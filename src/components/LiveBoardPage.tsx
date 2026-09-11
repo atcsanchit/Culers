@@ -295,7 +295,7 @@ export function LiveBoardPage() {
 							/>
 
 							<details className="match-ratings-details" open>
-								<summary>Both-teams SofaScore ratings</summary>
+								<summary>Both-teams match ratings</summary>
 								<MatchRatingsPitch
 									fixtureId={fixtureId}
 									pollKey={detail?.fetchedAt ?? selected.id}
