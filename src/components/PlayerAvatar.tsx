@@ -9,7 +9,7 @@ type Props = {
 	size?: 'sm' | 'md' | 'lg';
 };
 
-/** Crest + shirt number when SofaScore / remote photo is missing or fails. */
+/** Crest + shirt number when a remote photo is missing or fails. */
 export function PlayerAvatar({ player, className = '', imgClassName = '', size = 'md' }: Props) {
 	const src = playerPhotoSrc(player);
 	const [failed, setFailed] = useState(false);

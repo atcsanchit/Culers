@@ -3,4 +3,5 @@ dist
 .DS_Store
 *.local
 .venv-sofascore
+.venv-instagram
 .cache

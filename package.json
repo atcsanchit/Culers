@@ -9,7 +9,7 @@
 		"build": "tsc -b && vite build && node scripts/bundle-vercel-api.mjs",
 		"build:api": "node scripts/bundle-vercel-api.mjs",
 		"sync:stadiums": "npx tsx scripts/sync-stadiums.ts",
-		"setup:sofascore": "python3 -m venv .venv-sofascore && .venv-sofascore/bin/pip install curl_cffi",
+		"setup:instagram": "python3 -m venv .venv-instagram && .venv-instagram/bin/pip install -r requirements.txt",
 		"lint": "oxlint",
 		"preview": "vite preview"
 	},

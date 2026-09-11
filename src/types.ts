@@ -37,7 +37,7 @@ export type NewsItem = {
 export type Player = {
 	id: string;
 	fcbId?: number;
-	/** SofaScore id — used for Barça Atlètic / reserve stats */
+	/** ESPN / Google Sports athlete id when known */
 	sofaId?: number;
 	name: string;
 	position: string;

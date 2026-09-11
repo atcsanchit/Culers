@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { fetchTwitterProfile, fetchTwitterTimeline } from './culers-twitter.ts';
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
-const PYTHON = path.join(ROOT, '.venv-sofascore', 'bin', 'python');
+const PYTHON = path.join(ROOT, '.venv-instagram', 'bin', 'python');
 const INSTAGRAM_SCRIPT = path.join(ROOT, 'scripts', 'instagram-scrape.py');
 const CACHE_DIR = path.join(ROOT, '.cache', 'instagram');
 const IS_SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
@@ -127,7 +127,7 @@ export async function fetchBarcaSocialHub(): Promise<SocialHubData> {
 	return {
 		platforms,
 		fetchedAt: new Date().toISOString(),
-		note: instagram ? undefined : 'Instagram stats loaded with fallback — run npm run setup:sofascore for live scrape.',
+		note: instagram ? undefined : 'Instagram stats loaded with fallback — run npm run setup:instagram for live scrape.',
 	};
 }
 

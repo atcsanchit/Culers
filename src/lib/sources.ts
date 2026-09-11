@@ -7,11 +7,11 @@ export const DATA_SOURCES = {
 		{ id: 'fabrizio-x', label: '@FabrizioRomano on X (api.fxtwitter.com)', url: 'https://x.com/FabrizioRomano' },
 	],
 	live: [
-		{ id: 'thesportsdb-live', label: 'TheSportsDB live scores', endpoint: '/api/live' },
-		{ id: 'sofascore-live-board', label: 'SofaScore live board — Europe, MLS, UCL, UEL, internationals', endpoint: '/api/live-board' },
+		{ id: 'thesportsdb-live', label: 'TheSportsDB live scores (fallback)', endpoint: '/api/live' },
+		{ id: 'espn-live-board', label: 'ESPN / Google Sports live board — Europe, MLS, UCL, UEL, internationals', endpoint: '/api/live-board' },
 	],
 	lineup: [
-		{ id: 'sofascore-lineup', label: 'SofaScore — confirmed lineups', url: 'https://www.sofascore.com/team/football/fc-barcelona/2817' },
+		{ id: 'espn-lineup', label: 'ESPN / Google Sports — confirmed lineups', endpoint: '/api/lineup' },
 		{ id: 'fcb-lineup', label: 'FC Barcelona official lineups (PulseLive)', endpoint: '/api/lineup' },
 	],
 	squad: [
@@ -20,10 +20,9 @@ export const DATA_SOURCES = {
 	transfers: [
 		{ id: 'transferroom', label: 'TransferRoom — intel, blog, window tracker, xTV', url: 'https://www.transferroom.com/' },
 		{ id: 'wiki-season', label: 'Wikipedia — current Barça season transfers', url: 'https://en.wikipedia.org/wiki/2026–27_FC_Barcelona_season' },
-		{ id: 'sofascore-values', label: 'SofaScore proposed market values', endpoint: '/api/transfers' },
+		{ id: 'espn-roster', label: 'ESPN first-team roster (no public market values)', endpoint: '/api/transfers' },
 	],
 	social: [
-		{ id: 'sofascore-lineup', label: 'SofaScore — confirmed lineups', url: 'https://www.sofascore.com/team/football/fc-barcelona/2817' },
 		{ id: 'fcb-instagram', label: '@fcbarcelona on Instagram', endpoint: '/api/social/instagram' },
 		{ id: 'fcb-masia-instagram', label: '@fcbmasia on Instagram', endpoint: '/api/social/instagram?user=fcbmasia' },
 		{ id: 'fcb-x', label: '@FCBarcelona on X', endpoint: '/api/social/x' },

@@ -24,7 +24,7 @@ function ratingClass(rating: number | null) {
 	return 'poor';
 }
 
-/** Re-place XI using role hints (Gordon LW, Raphinha ST, Yamal RW) — SofaScore only sends G/D/M/F. */
+/** Re-place XI using role hints (Gordon LW, Raphinha ST, Yamal RW) — ESPN often only sends G/D/M/F. */
 function placeSide(side: MatchRatingsSide): MatchRatingsSide {
 	const key = formationKeyFromString(side.formation);
 	const asPlayers = side.starters.map((p) => ({
@@ -157,7 +157,7 @@ export function MatchRatingsPitch({ fixtureId, pollKey, onPlayerClick }: Props) 
 			.catch(() => {
 				if (!cancelled) {
 					setBoard(null);
-					setError('SofaScore ratings unavailable for this fixture.');
+					setError('Match ratings unavailable for this fixture.');
 				}
 			})
 			.finally(() => {
@@ -171,7 +171,7 @@ export function MatchRatingsPitch({ fixtureId, pollKey, onPlayerClick }: Props) 
 	const display = useMemo(() => (board ? placeBoard(board) : null), [board]);
 
 	if (loading && !display) {
-		return <p className="muted mrp-status">Loading SofaScore match ratings…</p>;
+		return <p className="muted mrp-status">Loading match ratings…</p>;
 	}
 	if (error && !display) {
 		return <p className="muted mrp-status">{error}</p>;

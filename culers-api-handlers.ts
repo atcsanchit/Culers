@@ -7,7 +7,7 @@ import { enrichPlayerPhotos } from './culers-photos.ts';
 import { fetchInstagramFeedFor, fetchBarcaSocialHub, fetchBarcaXFeed, streamInstagramImage, sanitizeInstagramUser } from './culers-social.ts';
 import { fetchFabrizioProfile, fetchFabrizioRomanoNews, fetchReshadProfile, fetchReshadRahmanNews } from './culers-twitter.ts';
 import { fetchLaMasiaHub, fetchLaMasiaPlayerStats } from './culers-lamasia.ts';
-import { fetchSofaScoreMatchRatings, fetchSofaScorePlayerMatchStats, parseSofaEventId } from './culers-sofascore.ts';
+import { fetchEspnMatchRatings, fetchEspnPlayerMatchStats, parseEspnEventId } from './culers-espn.ts';
 import { fetchLiveBoard, fetchLiveMatchDetail } from './culers-live-board.ts';
 import { fetchClubHomeGroundBackground } from './culers-stadium-photos.ts';
 import { fetchTransfersHub, attachNewsToTransferRumors } from './culers-transfers.ts';
@@ -334,7 +334,7 @@ async function fetchAll() {
 		transfers,
 		sources: [
 			'FC Barcelona official — api-fcb.pulselive.com (La Liga & UCL fixtures, squad, player stats)',
-			'SofaScore — confirmed lineups (api.sofascore.com)',
+			'ESPN / Google Sports — live scores, lineups, match performance',
 			'@ReshadRahman on X — api.fxtwitter.com',
 			'@FabrizioRomano on X — api.fxtwitter.com',
 			'TransferRoom — public intel, blog, window tracker',
@@ -426,19 +426,19 @@ export async function dispatchCulersApi(
 			if (!fixtureId || (!fcbId && !sofaId && !playerName)) {
 				return jsonResult({ error: 'fixtureId and fcbId, sofaId, or playerName required' }, 400);
 			}
-			const sofaEventId = parseSofaEventId(fixtureId);
-			const fixture = sofaEventId
+			const espnEventId = parseEspnEventId(fixtureId);
+			const fixture = espnEventId
 				? null
 				: (await fetchFcbFixtures()).find((f) => f.id === fixtureId) ?? (await fetchFcbFixtureById(fixtureId));
 			if (sofaId || playerName) {
-				const sofaStats = await fetchSofaScorePlayerMatchStats({
+				const espnStats = await fetchEspnPlayerMatchStats({
 					fixtureId,
 					sofaId: sofaId || undefined,
 					playerName: playerName || undefined,
 					opponent: fixture?.opponent,
 					date: fixture?.date,
 				});
-				if (sofaStats) return jsonResult({ ...sofaStats, fcbId: fcbId || undefined });
+				if (espnStats) return jsonResult({ ...espnStats, fcbId: fcbId || undefined });
 			}
 			if (fcbId) {
 				return jsonResult(await fetchFcbPlayerMatchStats(fcbId, fixtureId));
@@ -448,8 +448,8 @@ export async function dispatchCulersApi(
 		if (url.pathname === '/api/match-ratings') {
 			const fixtureId = url.searchParams.get('fixtureId');
 			if (!fixtureId) return jsonResult({ error: 'fixtureId required' }, 400);
-			if (parseSofaEventId(fixtureId)) {
-				const board = await fetchSofaScoreMatchRatings({ fixtureId, prefer: 'any' });
+			if (parseEspnEventId(fixtureId)) {
+				const board = await fetchEspnMatchRatings({ fixtureId, prefer: 'any' });
 				if (!board) return jsonResult({ error: 'Ratings unavailable for this fixture' }, 404);
 				return jsonResult(board);
 			}
@@ -458,7 +458,7 @@ export async function dispatchCulersApi(
 			if (!fixture) return jsonResult({ error: 'Fixture not found' }, 404);
 			const prefer =
 				fixture.kind === 'live' ? ('any' as const) : fixture.kind === 'past' ? ('finished' as const) : ('upcoming' as const);
-			const board = await fetchSofaScoreMatchRatings({
+			const board = await fetchEspnMatchRatings({
 				fixtureId,
 				opponent: fixture.opponent,
 				date: fixture.date,

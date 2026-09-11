@@ -4347,7 +4347,7 @@ a {
 	z-index: 1;
 }
 
-/* SofaScore / Atlètic headshots are low-res — keep panel full-bleed, contain the photo */
+/* Academy / Atlètic headshots can be low-res — keep panel full-bleed, contain the photo */
 .modal-photo-panel.is-compact-photo::before {
 	background: rgba(0, 10, 28, 0.55);
 }
@@ -5042,7 +5042,7 @@ a {
 	overflow: auto;
 }
 
-/* Rich match stats panel (SofaScore-style compare bars) */
+/* Rich match stats panel (compare bars) */
 .match-stats-rich-panel {
 	background: linear-gradient(
 		135deg,

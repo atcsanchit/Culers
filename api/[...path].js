@@ -3,7 +3,7 @@
 
 // culers-api-handlers.ts
 import fs4 from "node:fs";
-import path6 from "node:path";
+import path5 from "node:path";
 
 // culers-home-backgrounds.ts
 import fs from "node:fs";
@@ -636,80 +636,78 @@ async function fetchClubHomeGroundBackground(teamName) {
   }
 }
 
-// culers-sofascore.ts
-import { spawn } from "node:child_process";
-import path4 from "node:path";
-import { fileURLToPath } from "node:url";
-var ROOT = path4.dirname(fileURLToPath(import.meta.url));
-var PYTHON = path4.join(ROOT, ".venv-sofascore", "bin", "python");
-var SCRIPT = path4.join(ROOT, "scripts", "sofascore-api.py");
-var SOFASCORE_BARCA_TEAM_ID = 2817;
-var SOFASCORE_ATLETIC_TEAM_ID = 24343;
-var SOFASCORE_JUVENIL_A_TEAM_ID = 90128;
-var SOFASCORE_TEAM_IDS = {
-  barcelona: 2817,
-  valencia: 2828,
-  rayo: 2818,
-  "rayo vallecano": 2818,
-  "real madrid": 2829,
-  "atletico madrid": 2836,
-  atletico: 2836,
-  sevilla: 2833,
-  "real sociedad": 2824,
-  villarreal: 2819,
-  "real betis": 2816,
-  betis: 2816,
-  getafe: 2859,
-  girona: 24264,
-  mallorca: 2826,
-  osasuna: 2820,
-  athletic: 2825,
-  "athletic club": 2825,
-  "athletic bilbao": 2825,
-  espanyol: 2814,
-  leganes: 2815,
-  legan\u00E9s: 2815,
-  "deportivo de la coruna": 2832,
-  "deportivo la coruna": 2832,
-  "deportivo de a coruna": 2832,
-  alaves: 2885,
-  alav\u00E9s: 2885,
-  "celta vigo": 2821,
-  celta: 2821,
-  elche: 2846,
-  "racing de santander": 2835,
-  "real racing club": 2835,
-  racing: 2835,
-  // UEFA Champions League
-  feyenoord: 2959,
-  galatasaray: 3061,
-  como: 2704,
-  "como 1907": 2704,
-  inter: 2697,
-  porto: 3002,
-  "fc porto": 3002,
-  "manchester city": 17,
-  "man city": 17,
-  "paris saint-germain": 1644,
-  psg: 1644,
-  "aston villa": 40,
-  "sporting cp": 3001,
-  "sporting lisbon": 3001,
-  sporting: 3001,
-  sabah: 267828,
-  "sabah fk": 267828,
-  "sabah baku": 267828
+// culers-espn.ts
+var BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+var ESPN_BARCA_TEAM_ID = 83;
+var ESPN_HOSTS = ["https://site.api.espn.com", "https://site.web.api.espn.com"];
+var SCOREBOARD_LEAGUES = [
+  { slug: "uefa.champions", label: "UEFA Champions League", group: "ucl" },
+  { slug: "uefa.europa", label: "UEFA Europa League", group: "uel" },
+  { slug: "uefa.europa.conf", label: "UEFA Conference League", group: "uel" },
+  { slug: "esp.1", label: "LaLiga", group: "europe" },
+  { slug: "eng.1", label: "Premier League", group: "europe" },
+  { slug: "ger.1", label: "Bundesliga", group: "europe" },
+  { slug: "ita.1", label: "Serie A", group: "europe" },
+  { slug: "fra.1", label: "Ligue 1", group: "europe" },
+  { slug: "ned.1", label: "Eredivisie", group: "europe" },
+  { slug: "por.1", label: "Liga Portugal", group: "europe" },
+  { slug: "bel.1", label: "Belgian Pro League", group: "europe" },
+  { slug: "tur.1", label: "S\xFCper Lig", group: "europe" },
+  { slug: "sco.1", label: "Scottish Premiership", group: "europe" },
+  { slug: "eng.2", label: "EFL Championship", group: "europe" },
+  { slug: "sui.1", label: "Swiss Super League", group: "europe" },
+  { slug: "usa.1", label: "MLS", group: "mls" },
+  { slug: "fifa.world", label: "FIFA World Cup", group: "international" },
+  { slug: "uefa.nations", label: "UEFA Nations League", group: "international" },
+  { slug: "conmebol.america", label: "Copa Am\xE9rica", group: "international" },
+  { slug: "uefa.euro", label: "UEFA Euro", group: "international" }
+];
+var ESPN_TEAM_IDS = {
+  barcelona: 83,
+  valencia: 94,
+  "rayo vallecano": 378,
+  rayo: 378,
+  "real madrid": 86,
+  "atletico madrid": 1068,
+  atletico: 1068,
+  sevilla: 243,
+  "real sociedad": 89,
+  villarreal: 102,
+  "real betis": 244,
+  betis: 244,
+  getafe: 2922,
+  girona: 9812,
+  mallorca: 84,
+  osasuna: 97,
+  athletic: 93,
+  "athletic club": 93,
+  "athletic bilbao": 93,
+  espanyol: 88,
+  alaves: 96,
+  alav\u00E9s: 96,
+  "celta vigo": 85,
+  celta: 85,
+  elche: 3751,
+  "manchester city": 382,
+  "man city": 382,
+  "paris saint-germain": 160,
+  psg: 160,
+  inter: 110,
+  porto: 437,
+  "fc porto": 437,
+  "sporting cp": 2250,
+  "sporting lisbon": 2250,
+  "aston villa": 362,
+  feyenoord: 142,
+  galatasaray: 432
 };
-var SOFA_SEARCH_ALIASES = {
-  racing: "racing de santander",
-  "real racing club": "racing de santander",
-  sabah: "sabah fk",
-  "como 1907": "como",
-  "man city": "manchester city",
-  psg: "paris saint-germain",
-  sporting: "sporting cp"
-};
-var sofaFetchSucceeded = false;
+var espnReachable = false;
+function statsSourceReachable() {
+  return espnReachable;
+}
+function resetStatsSourceReachable() {
+  espnReachable = false;
+}
 function normalizeName(name) {
   return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z\s]/g, " ").replace(/\s+/g, " ").trim();
 }
@@ -724,11 +722,6 @@ function opponentMatches(a, b) {
   const rl = rt[rt.length - 1];
   return Boolean(ll && rl && (ll === rl || left.includes(rl) || right.includes(ll)));
 }
-function eventDate(raw) {
-  const ts = Number(raw.startTimestamp ?? 0);
-  if (!ts) return "";
-  return new Date(ts * 1e3).toISOString().slice(0, 10);
-}
 function datesClose(a, b) {
   if (!a || !b) return false;
   if (a === b) return true;
@@ -736,183 +729,87 @@ function datesClose(a, b) {
   const db = (/* @__PURE__ */ new Date(`${b}T12:00:00Z`)).getTime();
   return Math.abs(da - db) <= 864e5;
 }
-function mapSofaPosition(code) {
-  switch (code.toUpperCase()) {
-    case "G":
-      return "Goalkeeper";
-    case "D":
-      return "Defender";
-    case "M":
-      return "Midfielder";
-    case "F":
-      return "Forward";
-    default:
-      return code || "Unknown";
-  }
-}
-async function sofaFetchPython(apiPath, timeoutMs = 1e4) {
-  return new Promise((resolve) => {
-    const child = spawn(PYTHON, [SCRIPT, apiPath], { cwd: ROOT });
-    let stdout = "";
-    let stderr = "";
-    let settled = false;
-    const done = (value) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(timer);
-      resolve(value);
-    };
-    const timer = setTimeout(() => {
-      child.kill("SIGKILL");
-      done(null);
-    }, timeoutMs);
-    child.stdout.on("data", (chunk) => {
-      stdout += String(chunk);
-    });
-    child.stderr.on("data", (chunk) => {
-      stderr += String(chunk);
-    });
-    child.on("error", () => done(null));
-    child.on("close", (code) => {
-      if (code !== 0) {
-        if (stderr) console.warn("[sofascore]", stderr.trim());
-        done(null);
-        return;
+async function fetchPublicJson(urls) {
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, {
+        headers: {
+          "User-Agent": BROWSER_UA,
+          Accept: "application/json"
+        }
+      });
+      if (res.status === 403 || res.status === 429 || res.status === 451) {
+        console.warn(`[stats] blocked ${res.status} ${url}`);
+        continue;
       }
-      try {
-        done(JSON.parse(stdout));
-      } catch {
-        done(null);
-      }
-    });
-  });
-}
-async function sofaFetchDirect(apiPath) {
-  const path7 = apiPath.startsWith("/") ? apiPath : `/${apiPath}`;
-  try {
-    const res = await fetch(`https://api.sofascore.com/api/v1${path7}`, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        Accept: "application/json,text/plain,*/*",
-        "Accept-Language": "en-US,en;q=0.9",
-        Origin: "https://www.sofascore.com",
-        Referer: "https://www.sofascore.com/"
-      },
-      signal: AbortSignal.timeout(1e4)
-    });
-    if (!res.ok) {
-      console.warn(`[sofascore] direct ${res.status} ${path7}`);
-      return null;
-    }
-    return await res.json();
-  } catch (err) {
-    console.warn("[sofascore] direct failed", path7, err);
-    return null;
-  }
-}
-async function sofaFetchViaVercelPython(apiPath) {
-  const host = process.env.VERCEL_URL?.replace(/^https?:\/\//, "");
-  if (!host) return null;
-  const path7 = apiPath.startsWith("/") ? apiPath : `/${apiPath}`;
-  try {
-    const res = await fetch(`https://${host}/api/sofascore-fetch?path=${encodeURIComponent(path7)}`, {
-      headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(2e4)
-    });
-    if (!res.ok) {
-      console.warn(`[sofascore] vercel-python ${res.status} ${path7}`);
-      return null;
-    }
-    return await res.json();
-  } catch (err) {
-    console.warn("[sofascore] vercel-python failed", path7, err);
-    return null;
-  }
-}
-async function sofaFetch(apiPath) {
-  if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME && await isSofaScoreReady()) {
-    const viaPython = await sofaFetchPython(apiPath);
-    if (viaPython) {
-      sofaFetchSucceeded = true;
-      return viaPython;
+      if (!res.ok) continue;
+      const data = await res.json();
+      espnReachable = true;
+      return data;
+    } catch (err) {
+      console.warn("[stats] fetch failed", url, err);
     }
   }
-  if (process.env.VERCEL) {
-    const viaVercelPython = await sofaFetchViaVercelPython(apiPath);
-    if (viaVercelPython && viaVercelPython.error == null) {
-      sofaFetchSucceeded = true;
-      return viaVercelPython;
-    }
-  }
-  const direct = await sofaFetchDirect(apiPath);
-  if (direct) sofaFetchSucceeded = true;
-  return direct;
+  return null;
 }
-function sofaScoreReachable() {
-  return sofaFetchSucceeded;
+async function espnPath(path6, query = "") {
+  const suffix = query ? `${path6}?${query}` : path6;
+  return fetchPublicJson(ESPN_HOSTS.map((host) => `${host}${suffix}`));
 }
-function resetSofaScoreReachable() {
-  sofaFetchSucceeded = false;
+function parseEspnEventId(fixtureId) {
+  if (!fixtureId) return null;
+  const match = /^(?:espn-)?(\d{8,})$/i.exec(fixtureId.trim());
+  if (!match) return null;
+  const id = Number(match[1]);
+  return Number.isFinite(id) && id > 0 ? id : null;
 }
-function sofaMarketValueEur(player) {
-  const raw = player.proposedMarketValueRaw;
-  const fromRaw = Number(raw?.value ?? 0);
-  if (Number.isFinite(fromRaw) && fromRaw > 0) return fromRaw;
-  const n = Number(player.proposedMarketValue ?? 0);
-  return Number.isFinite(n) && n > 0 ? n : void 0;
+function mapEspnPosition(code) {
+  const c = code.toUpperCase();
+  if (c === "G" || /goal/i.test(code)) return "Goalkeeper";
+  if (c === "D" || /defen/i.test(code)) return "Defender";
+  if (c === "M" || /mid/i.test(code)) return "Midfielder";
+  if (c === "F" || /forward|attack|wing|strik/i.test(code)) return "Forward";
+  return code || "Unknown";
 }
-async function sofaFetchTeamPlayers(teamId) {
-  const data = await sofaFetch(`/team/${teamId}/players`);
-  const rows = data?.players ?? [];
-  return rows.map((row) => {
-    const player = row.player ?? row;
-    const id = Number(player.id ?? 0);
-    if (!id) return null;
-    const country = player.country;
-    return {
-      id,
-      name: String(player.name ?? ""),
-      position: String(player.position ?? ""),
-      number: player.jerseyNumber != null || player.shirtNumber != null ? String(player.jerseyNumber ?? player.shirtNumber) : "",
-      nationality: String(country?.name ?? ""),
-      birthDate: "",
-      marketValueEur: sofaMarketValueEur(player)
-    };
-  }).filter(Boolean);
+function num(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
 }
-function parseEvent(raw) {
-  const home = raw.homeTeam;
-  const away = raw.awayTeam;
-  if (!home || !away) return null;
-  const homeTeamId = Number(home.id ?? 0);
-  const awayTeamId = Number(away.id ?? 0);
-  const homeTeam = String(home.name ?? "");
-  const awayTeam = String(away.name ?? "");
-  const homeScoreRaw = raw.homeScore;
-  const awayScoreRaw = raw.awayScore;
-  const homeScore = homeScoreRaw?.display != null ? Number(homeScoreRaw.display) : null;
-  const awayScore = awayScoreRaw?.display != null ? Number(awayScoreRaw.display) : null;
-  const status = raw.status;
-  const type = raw.statusType;
-  const ts = Number(raw.startTimestamp ?? 0);
-  const kickoff = ts ? new Date(ts * 1e3) : null;
-  const tournament = raw.tournament;
-  const unique = tournament?.uniqueTournament;
+function eventFromEspn(ev, leagueName = "", leagueSlug = "") {
+  const id = Number(ev.id ?? 0);
+  const competition = ev.competitions;
+  const c = competition?.[0] ?? ev;
+  const comps = c.competitors ?? [];
+  const home = comps.find((x) => String(x.homeAway) === "home");
+  const away = comps.find((x) => String(x.homeAway) === "away");
+  if (!id || !home || !away) return null;
+  const homeTeam = home.team;
+  const awayTeam = away.team;
+  const status = c.status?.type;
+  const dateIso = String(ev.date ?? c.date ?? "");
+  const start = dateIso ? Math.floor(new Date(dateIso).getTime() / 1e3) : 0;
+  const state = String(status?.state ?? "");
+  const completed = Boolean(status?.completed) || state === "post";
+  const inplay = state === "in";
+  const venue = c.venue;
   return {
-    id: Number(raw.id ?? 0),
-    date: eventDate(raw),
-    time: kickoff ? kickoff.toISOString().slice(11, 19) : "",
-    startTimestamp: Number.isFinite(ts) ? ts : 0,
-    homeTeam,
-    awayTeam,
-    homeTeamId,
-    awayTeamId,
-    homeScore,
-    awayScore,
-    isHome: false,
-    opponent: "",
-    statusType: String(type?.type ?? status?.type ?? ""),
-    competition: String(unique?.name ?? tournament?.name ?? "")
+    id,
+    date: dateIso.slice(0, 10),
+    time: dateIso.slice(11, 19),
+    startTimestamp: start,
+    homeTeam: String(homeTeam?.displayName ?? homeTeam?.name ?? ""),
+    awayTeam: String(awayTeam?.displayName ?? awayTeam?.name ?? ""),
+    homeTeamId: Number(homeTeam?.id ?? home.id ?? 0),
+    awayTeamId: Number(awayTeam?.id ?? away.id ?? 0),
+    homeScore: num(home.score),
+    awayScore: num(away.score),
+    isHome: true,
+    opponent: String(awayTeam?.displayName ?? ""),
+    statusType: completed ? "finished" : inplay ? "inprogress" : String(status?.name ?? status?.state ?? "scheduled"),
+    competition: leagueName || String(ev.season?.displayName ?? ""),
+    venue: String(venue?.fullName ?? ""),
+    clock: completed ? "FT" : String(c.status?.displayClock ?? status?.detail ?? (inplay ? "LIVE" : "")),
+    leagueSlug
   };
 }
 function withTeamPerspective(event, teamId) {
@@ -923,142 +820,175 @@ function withTeamPerspective(event, teamId) {
     opponent: isHome ? event.awayTeam : event.homeTeam
   };
 }
-function parseSofaEventId(fixtureId) {
-  if (!fixtureId) return null;
-  const match = /^(?:sofa-)?(\d+)$/i.exec(fixtureId.trim());
-  if (!match) return null;
-  const id = Number(match[1]);
-  return Number.isFinite(id) && id > 0 ? id : null;
+async function fetchEspnScoreboard(slug, dates) {
+  const q = dates ? `dates=${dates}` : "";
+  const data = await espnPath(`/apis/site/v2/sports/soccer/${slug}/scoreboard`, q);
+  return data?.events ?? [];
 }
-async function fetchSofaScoreEventById(eventId) {
-  const data = await sofaFetch(`/event/${eventId}`);
-  const raw = data?.event ?? data;
-  if (!raw || typeof raw !== "object") return null;
-  const parsed = parseEvent(raw);
-  if (!parsed?.id) return null;
+async function fetchEspnLiveAndRecentEvents() {
+  const now = /* @__PURE__ */ new Date();
+  const ymd = (d) => d.toISOString().slice(0, 10).replace(/-/g, "");
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1e3);
+  const dateKeys = [.../* @__PURE__ */ new Set([ymd(now), ymd(yesterday)])];
+  const pages = await Promise.all(
+    SCOREBOARD_LEAGUES.flatMap(
+      (league) => dateKeys.map(async (dates) => {
+        const events = await fetchEspnScoreboard(league.slug, dates).catch(() => []);
+        return events.map((ev) => ({
+          ...ev,
+          _culersLeague: league.slug,
+          _culersGroup: league.group,
+          _culersLabel: league.label
+        }));
+      })
+    )
+  );
+  const byId = /* @__PURE__ */ new Map();
+  for (const ev of pages.flat()) {
+    const id = Number(ev.id ?? 0);
+    if (id) byId.set(id, ev);
+  }
+  if (!byId.size) {
+    const all = await espnPath("/apis/site/v2/sports/soccer/all/scoreboard");
+    for (const ev of all?.events ?? []) {
+      const id = Number(ev.id ?? 0);
+      if (id) byId.set(id, ev);
+    }
+  }
+  return [...byId.values()];
+}
+function mapEspnRawToLiveShape(raw) {
+  const parsed = eventFromEspn(
+    raw,
+    String(raw._culersLabel ?? raw._culersLeague ?? ""),
+    String(raw._culersLeague ?? "")
+  );
+  const status = raw.competitions?.[0]?.status?.type;
+  const state = String(status?.state ?? "");
+  const completed = Boolean(status?.completed) || state === "post";
   return {
-    ...parsed,
-    isHome: true,
-    opponent: parsed.awayTeam
+    id: parsed?.id ?? Number(raw.id ?? 0),
+    homeTeam: { name: parsed?.homeTeam, national: false },
+    awayTeam: { name: parsed?.awayTeam, national: false },
+    homeScore: { current: parsed?.homeScore, display: parsed?.homeScore },
+    awayScore: { current: parsed?.awayScore, display: parsed?.awayScore },
+    tournament: {
+      name: parsed?.competition,
+      uniqueTournament: { name: parsed?.competition, id: 0 }
+    },
+    status: {
+      type: completed ? "finished" : state === "in" ? "inprogress" : "scheduled",
+      description: parsed?.clock ?? status?.detail
+    },
+    venue: { name: parsed?.venue },
+    startTimestamp: parsed?.startTimestamp ?? 0,
+    _culersGroup: raw._culersGroup,
+    _culersLeague: raw._culersLeague,
+    _competitionName: parsed?.competition
   };
 }
-async function resolveSofaEventForFixture(options) {
-  const id = parseSofaEventId(options.fixtureId);
-  if (id) return fetchSofaScoreEventById(id);
-  return findSofaScoreEvent({
+async function fetchEspnEventById(eventId) {
+  const data = await espnPath("/apis/site/v2/sports/soccer/all/summary", `event=${eventId}`);
+  if (!data) return null;
+  const header = data.header;
+  const comps = header?.competitions ?? [];
+  const c = comps[0];
+  if (!c) return null;
+  const competitors = c.competitors ?? [];
+  const home = competitors.find((x) => String(x.homeAway) === "home");
+  const away = competitors.find((x) => String(x.homeAway) === "away");
+  const dateIso = String(header?.competitions ? c.date ?? header?.date ?? "" : "");
+  const status = c.status?.type;
+  const completed = Boolean(status?.completed);
+  const league = header?.league;
+  return {
+    id: eventId,
+    date: dateIso.slice(0, 10),
+    time: dateIso.slice(11, 19),
+    startTimestamp: dateIso ? Math.floor(new Date(dateIso).getTime() / 1e3) : 0,
+    homeTeam: String(home?.team?.displayName ?? ""),
+    awayTeam: String(away?.team?.displayName ?? ""),
+    homeTeamId: Number(home?.team?.id ?? home?.id ?? 0),
+    awayTeamId: Number(away?.team?.id ?? away?.id ?? 0),
+    homeScore: num(home?.score),
+    awayScore: num(away?.score),
+    isHome: true,
+    opponent: String(away?.team?.displayName ?? ""),
+    statusType: completed ? "finished" : String(status?.state ?? "") === "in" ? "inprogress" : "scheduled",
+    competition: String(league?.name ?? ""),
+    clock: completed ? "FT" : String(status?.detail ?? ""),
+    leagueSlug: String(league?.slug ?? league?.midsizeName ?? "")
+  };
+}
+async function fetchEspnEventIncidents(eventId) {
+  const data = await espnPath("/apis/site/v2/sports/soccer/all/summary", `event=${eventId}`);
+  const keyEvents = data?.keyEvents ?? [];
+  const out = [];
+  for (const ev of keyEvents) {
+    const type = String(ev.type?.type ?? "");
+    if (!/goal|yellow|red|substitut|penalty|own/i.test(type)) continue;
+    const clock = ev.clock;
+    const participants = ev.participants ?? [];
+    const player = String(participants[0]?.athlete?.displayName ?? ev.shortText ?? "");
+    out.push({
+      minute: String(clock?.displayValue ?? ""),
+      type,
+      player,
+      team: String(ev.team?.displayName ?? ""),
+      detail: String(ev.text ?? ev.shortText ?? ""),
+      homeScore: null,
+      awayScore: null
+    });
+  }
+  return out;
+}
+async function fetchEspnTeamSchedule(teamId, leagueSlug = "esp.1") {
+  const data = await espnPath(`/apis/site/v2/sports/soccer/${leagueSlug}/teams/${teamId}/schedule`);
+  const events = (data?.events ?? []).map((ev) => eventFromEspn(ev, String(leagueSlug), leagueSlug)).filter(Boolean);
+  const extra = await espnPath(`/apis/site/v2/sports/soccer/uefa.champions/teams/${teamId}/schedule`);
+  for (const ev of extra?.events ?? []) {
+    const parsed = eventFromEspn(ev, "UEFA Champions League", "uefa.champions");
+    if (parsed && !events.some((e) => e.id === parsed.id)) events.push(parsed);
+  }
+  return events.sort((a, b) => b.startTimestamp - a.startTimestamp);
+}
+function resolveEspnTeamIdSync(teamName) {
+  const key = normalizeName(teamName);
+  if (ESPN_TEAM_IDS[key]) return ESPN_TEAM_IDS[key];
+  for (const [name, id] of Object.entries(ESPN_TEAM_IDS)) {
+    if (key.includes(name) || name.includes(key)) return id;
+  }
+  return null;
+}
+async function findEspnBarcaEvent(options) {
+  const events = (await fetchEspnTeamSchedule(ESPN_BARCA_TEAM_ID)).map((e) => withTeamPerspective(e, ESPN_BARCA_TEAM_ID));
+  const prefer = options.prefer ?? "any";
+  const filtered = events.filter((e) => {
+    if (prefer === "finished") return e.statusType === "finished";
+    if (prefer === "upcoming") return e.statusType !== "finished" && e.statusType !== "inprogress";
+    return true;
+  });
+  let best = null;
+  for (const event of filtered.length ? filtered : events) {
+    let score = 1;
+    if (options.opponent && opponentMatches(event.opponent, options.opponent)) score += 10;
+    if (options.date && datesClose(event.date, options.date)) score += 8;
+    if (event.statusType === "inprogress") score += 5;
+    if (!best || score > best.score) best = { event, score };
+  }
+  return best?.event ?? null;
+}
+async function resolveEventForFixture(options) {
+  const id = parseEspnEventId(options.fixtureId);
+  if (id) return fetchEspnEventById(id);
+  return findEspnBarcaEvent({
     opponent: options.opponent,
     date: options.date,
     prefer: options.prefer ?? "any"
   });
 }
-async function fetchSofaScoreLiveFootballEvents() {
-  const football = await sofaFetch("/sport/football/events/live");
-  const fromFootball = football?.events ?? [];
-  if (fromFootball.length) return fromFootball;
-  const numbered = await sofaFetch("/sport/1/events/live");
-  return numbered?.events ?? [];
-}
-async function fetchSofaScoreTeamEventsRaw(teamId, kind, page = 0) {
-  const data = await sofaFetch(`/team/${teamId}/events/${kind}/${page}`);
-  return data?.events ?? [];
-}
-async function fetchSofaScoreScheduledFootball(dateYmd) {
-  const football = await sofaFetch(`/sport/football/scheduled-events/${dateYmd}`);
-  const fromFootball = football?.events ?? [];
-  if (fromFootball.length) return fromFootball;
-  const midnight = Math.floor(Date.parse(`${dateYmd}T00:00:00Z`) / 1e3);
-  if (Number.isFinite(midnight) && midnight > 0) {
-    const byUnix = await sofaFetch(`/sport/football/scheduled-events/${midnight}`);
-    const fromUnix = byUnix?.events ?? [];
-    if (fromUnix.length) return fromUnix;
-  }
-  const numbered = await sofaFetch(`/sport/1/scheduled-events/${dateYmd}`);
-  return numbered?.events ?? [];
-}
-async function fetchSofaScoreEventIncidents(eventId) {
-  const data = await sofaFetch(`/event/${eventId}/incidents`);
-  const rows = data?.incidents ?? [];
-  const out = [];
-  for (const row of rows) {
-    const kind = String(row.incidentType ?? row.incidentClass ?? "").toLowerCase();
-    if (!kind || kind === "period" || kind === "injuryTime" || kind === "injurytime") continue;
-    const player = row.player ?? row.playerIn;
-    const assist = row.assist1;
-    const playerOut = row.playerOut;
-    let type = kind;
-    if (kind.includes("goal")) type = "goal";
-    else if (kind.includes("card")) {
-      const cls = String(row.incidentClass ?? "").toLowerCase();
-      type = cls.includes("red") || kind.includes("red") ? "red card" : "yellow";
-    } else if (kind.includes("sub")) type = "substitution";
-    const homeScore = row.homeScore != null ? Number(row.homeScore) : null;
-    const awayScore = row.awayScore != null ? Number(row.awayScore) : null;
-    out.push({
-      minute: String(row.time ?? row.injuryTime ?? ""),
-      type,
-      player: String(player?.name ?? playerOut?.name ?? ""),
-      team: row.isHome ? "home" : "away",
-      detail: assist?.name ? `Assist: ${String(assist.name)}` : playerOut?.name && kind.includes("sub") ? `On for ${String(playerOut.name)}` : String(row.incidentClass ?? ""),
-      homeScore: Number.isFinite(homeScore) ? homeScore : null,
-      awayScore: Number.isFinite(awayScore) ? awayScore : null
-    });
-  }
-  return out;
-}
-function resolveSofaScoreTeamId(teamName) {
-  const key = normalizeName(teamName);
-  const aliasKey = SOFA_SEARCH_ALIASES[key] ?? key;
-  if (SOFASCORE_TEAM_IDS[aliasKey]) return SOFASCORE_TEAM_IDS[aliasKey];
-  const token = aliasKey.split(" ").filter(Boolean).pop() ?? aliasKey;
-  for (const [k, id] of Object.entries(SOFASCORE_TEAM_IDS)) {
-    if (k === aliasKey || k === token) return id;
-  }
-  return null;
-}
-function scoreEvent(event, opponent, date) {
-  let score = 0;
-  if (opponent && opponentMatches(event.opponent, opponent)) score += 10;
-  if (date && datesClose(event.date, date)) score += 8;
-  return score;
-}
-async function listTeamEventsForTeam(teamId, kind, page = 0) {
-  const data = await sofaFetch(`/team/${teamId}/events/${kind}/${page}`);
-  const events = (data?.events ?? []).map(parseEvent).filter(Boolean);
-  if (kind === "last") {
-    return [...events].sort((a, b) => (b.startTimestamp || 0) - (a.startTimestamp || 0));
-  }
-  return events;
-}
-async function listTeamEvents(kind, page = 0) {
-  return listTeamEventsForTeam(SOFASCORE_BARCA_TEAM_ID, kind, page);
-}
-async function fetchTeamLastAndNext(teamId) {
-  const [nextRows, lastRows] = await Promise.all([
-    listTeamEventsForTeam(teamId, "next"),
-    listTeamEventsForTeam(teamId, "last")
-  ]);
-  return {
-    next: nextRows[0] ? withTeamPerspective(nextRows[0], teamId) : null,
-    last: lastRows[0] ? withTeamPerspective(lastRows[0], teamId) : null
-  };
-}
-async function findSofaScoreEvent(options) {
-  const [next, last] = await Promise.all([listTeamEvents("next"), listTeamEvents("last")]);
-  const pool = options.prefer === "upcoming" ? next : options.prefer === "finished" ? last : [...next, ...last];
-  let best = null;
-  for (const event of pool) {
-    const perspective = withTeamPerspective(event, SOFASCORE_BARCA_TEAM_ID);
-    const score = scoreEvent(perspective, options.opponent, options.date);
-    if (score <= 0) continue;
-    if (!best || score > best.score) best = { event, score };
-  }
-  if (best) return withTeamPerspective(best.event, SOFASCORE_BARCA_TEAM_ID);
-  if (options.prefer === "upcoming" && next[0]) return withTeamPerspective(next[0], SOFASCORE_BARCA_TEAM_ID);
-  if (options.prefer === "finished" && last[0]) return withTeamPerspective(last[0], SOFASCORE_BARCA_TEAM_ID);
-  return null;
-}
-function squadMatch(squad, sofaName) {
-  const target = normalizeName(sofaName);
+function squadMatch(squad, name) {
+  const target = normalizeName(name);
   let best = null;
   for (const player of squad) {
     const full = normalizeName(player.name);
@@ -1073,389 +1003,126 @@ function squadMatch(squad, sofaName) {
   }
   return best?.player ?? null;
 }
-async function fetchSofaScoreBarcaLineup(eventId, squad) {
-  const data = await sofaFetch(`/event/${eventId}/lineups`);
-  if (!data) return null;
-  const confirmed = Boolean(data.confirmed);
-  const home = data.home;
-  const away = data.away;
-  if (!home && !away) return null;
-  const barcaSide = (home?.players ?? []).some((p) => Number(p.teamId) === SOFASCORE_BARCA_TEAM_ID) ? home : away;
-  if (!barcaSide) return null;
-  const formation = String(barcaSide.formation ?? "4-3-3");
-  const rows = barcaSide.players ?? [];
-  const starters = [];
-  const bench = [];
-  for (const row of rows) {
-    const playerMeta = row.player;
-    if (!playerMeta) continue;
-    const sofaName = String(playerMeta.name ?? "");
-    const sofaId = Number(playerMeta.id ?? 0) || void 0;
-    const fromSquad = squadMatch(squad, sofaName);
-    const position = mapSofaPosition(String(row.position ?? playerMeta.position ?? ""));
-    const number = String(row.jerseyNumber ?? playerMeta.jerseyNumber ?? "");
-    const mapped = fromSquad ? {
-      ...fromSquad,
-      sofaId: sofaId ?? fromSquad.sofaId,
-      position: position || fromSquad.position,
-      number: number || fromSquad.number
-    } : {
-      id: sofaId ? `sofa-${sofaId}` : `sofa-${sofaName}`,
-      sofaId,
-      name: sofaName,
-      position,
-      number,
-      nationality: String(playerMeta.country?.name ?? ""),
-      photo: "",
-      birthDate: ""
-    };
-    if (row.substitute) bench.push(mapped);
-    else starters.push(mapped);
-  }
-  if (starters.length < 8) return null;
-  return {
-    confirmed,
-    formation,
-    starters: starters.slice(0, 11),
-    bench
-  };
-}
-async function findSofaScoreTeamLastFinishedEvent(teamId, options) {
-  const last = await listTeamEventsForTeam(teamId, "last");
-  const finished = last.filter((e) => e.statusType === "finished" || e.statusType === "closed");
-  let best = null;
-  for (const event of finished) {
-    const perspective = withTeamPerspective(event, teamId);
-    let score = 1;
-    if (options?.opponent && opponentMatches(perspective.opponent, options.opponent)) score += 10;
-    if (options?.date && datesClose(perspective.date, options.date)) score += 8;
-    if (!best || score > best.score) best = { event, score };
-  }
-  const pick = best?.event ?? finished[0] ?? null;
-  return pick ? withTeamPerspective(pick, teamId) : null;
-}
-function readSofaStat(stats, ...keys) {
-  if (!stats) return 0;
-  for (const key of keys) {
-    const n = Number(stats[key]);
-    if (Number.isFinite(n) && n > 0) return n;
+function rosterStat(row, ...names) {
+  const stats = row.stats ?? [];
+  for (const name of names) {
+    const hit = stats.find((s) => String(s.name) === name);
+    const n = Number(hit?.value ?? hit?.displayValue ?? NaN);
+    if (Number.isFinite(n)) return n;
   }
   return 0;
 }
-async function fetchSofaScorePlayersToWatch(teamId, lastN = 2, limit = 3) {
-  const last = await listTeamEventsForTeam(teamId, "last");
-  const finished = last.filter((e) => e.statusType === "finished" || e.statusType === "closed").slice(0, Math.max(1, lastN));
-  const byId = /* @__PURE__ */ new Map();
-  await Promise.all(
-    finished.map(async (event) => {
-      const lineupsRaw = await sofaFetch(`/event/${event.id}/lineups`);
-      if (!lineupsRaw) return;
-      const homeSide = lineupsRaw.home;
-      const awaySide = lineupsRaw.away;
-      const teamIsHome = event.homeTeamId === teamId;
-      const teamSide = teamIsHome ? homeSide : awaySide;
-      for (const row of teamSide?.players ?? []) {
-        const playerMeta = row.player;
-        if (!playerMeta) continue;
-        const stats = row.statistics;
-        const rating = Number(stats?.rating ?? 0);
-        if (!Number.isFinite(rating) || rating <= 0) continue;
-        const id = String(playerMeta.id ?? playerMeta.slug ?? playerMeta.name ?? "");
-        if (!id) continue;
-        const name = String(playerMeta.name ?? "Unknown");
-        const position = mapSofaPosition(String(row.position ?? playerMeta.position ?? ""));
-        const number = String(row.jerseyNumber ?? playerMeta.jerseyNumber ?? "");
-        const goals = readSofaStat(stats, "goals", "goal");
-        const assists = readSofaStat(stats, "goalAssist", "assists", "assist");
-        const cur = byId.get(id) ?? {
-          id,
-          name,
-          position,
-          number,
-          ratings: [],
-          goals: 0,
-          assists: 0
-        };
-        cur.ratings.push(rating);
-        cur.goals += goals;
-        cur.assists += assists;
-        if (!cur.position && position) cur.position = position;
-        if (!cur.number && number) cur.number = number;
-        byId.set(id, cur);
-      }
-    })
-  );
-  return [...byId.values()].map((p) => ({
-    id: p.id,
-    name: p.name,
-    position: p.position || "Player",
-    number: p.number,
-    avgRating: Math.round(p.ratings.reduce((a, b) => a + b, 0) / p.ratings.length * 10) / 10,
-    matches: p.ratings.length,
-    goals: p.goals,
-    assists: p.assists
-  })).sort((a, b) => b.avgRating - a.avgRating || b.goals - a.goals || b.assists - a.assists).slice(0, limit);
+function performanceRating(row, isKeeper) {
+  const goals = rosterStat(row, "totalGoals");
+  const assists = rosterStat(row, "goalAssists");
+  const sot = rosterStat(row, "shotsOnTarget");
+  const shots = rosterStat(row, "totalShots");
+  const saves = rosterStat(row, "saves");
+  const yellow = rosterStat(row, "yellowCards");
+  const red = rosterStat(row, "redCards");
+  const own = rosterStat(row, "ownGoals");
+  const conceded = rosterStat(row, "goalsConceded");
+  let rating = 6.4 + goals * 0.85 + assists * 0.5 + sot * 0.12 + shots * 0.04 + saves * 0.18;
+  rating -= yellow * 0.25 + red * 1.1 + own * 0.8;
+  if (isKeeper) rating -= conceded * 0.12;
+  return Math.round(Math.min(9.8, Math.max(4.2, rating)) * 10) / 10;
 }
-var SOFA_STAT_MAP = {
-  ballPossession: "possession_percentage",
-  totalShotsOnGoal: "total_scoring_att",
-  shotsOnGoal: "ontarget_scoring_att",
-  passes: "total_pass",
-  accuratePasses: "accurate_pass",
-  cornerKicks: "won_corners",
-  fouls: "fk_foul_lost",
-  yellowCards: "total_yel_card",
-  redCards: "total_red_card",
-  totalTackle: "total_tackle",
-  offsides: "total_offside"
-};
-function lineupFromSofaSide(side) {
+async function fetchEspnSummary(eventId) {
+  return espnPath("/apis/site/v2/sports/soccer/all/summary", `event=${eventId}`);
+}
+async function fetchEspnBarcaLineup(eventId, squad) {
+  const data = await fetchEspnSummary(eventId);
+  const rosters = data?.rosters ?? [];
+  const barca = rosters.find((r) => /barcel/i.test(String(r.team?.displayName ?? "")));
+  if (!barca) return null;
+  const formation = String(barca.formation ?? "4-3-3");
   const starters = [];
-  const subs = [];
-  for (const row of side?.players ?? []) {
-    const playerMeta = row.player;
-    if (!playerMeta) continue;
-    const mapped = {
-      id: String(playerMeta.id ?? playerMeta.slug ?? ""),
-      name: String(playerMeta.name ?? ""),
-      number: String(row.jerseyNumber ?? playerMeta.jerseyNumber ?? ""),
-      position: mapSofaPosition(String(row.position ?? playerMeta.position ?? ""))
+  const bench = [];
+  for (const row of barca.roster ?? []) {
+    const athlete = row.athlete;
+    const name = String(athlete?.displayName ?? athlete?.fullName ?? "");
+    const espnId = Number(athlete?.id ?? 0) || void 0;
+    const fromSquad = squadMatch(squad, name);
+    const position = mapEspnPosition(String(row.position?.abbreviation ?? row.position?.name ?? ""));
+    const number = String(row.jersey ?? athlete?.jersey ?? "");
+    const mapped = fromSquad ? {
+      ...fromSquad,
+      sofaId: espnId ?? fromSquad.sofaId,
+      position: position || fromSquad.position,
+      number: number || fromSquad.number
+    } : {
+      id: espnId ? `espn-${espnId}` : `espn-${name}`,
+      sofaId: espnId,
+      name,
+      position,
+      number,
+      nationality: "",
+      photo: "",
+      birthDate: ""
     };
-    if (row.substitute) subs.push(mapped);
-    else starters.push(mapped);
+    if (row.starter) starters.push(mapped);
+    else bench.push(mapped);
   }
-  return { starters: starters.slice(0, 11), subs };
+  if (starters.length < 8) return null;
+  return { confirmed: true, formation, starters: starters.slice(0, 11), bench };
 }
-async function fetchSofaScorePreviewMatch(teamId, options) {
-  const event = await findSofaScoreTeamLastFinishedEvent(teamId, options);
-  if (!event?.id) return null;
-  const [statsRaw, incidentsRaw, lineupsRaw] = await Promise.all([
-    sofaFetch(`/event/${event.id}/statistics`),
-    sofaFetch(`/event/${event.id}/incidents`),
-    sofaFetch(`/event/${event.id}/lineups`)
-  ]);
-  const stats = {};
-  const teamIsHome = event.homeTeamId === teamId;
-  for (const period of statsRaw?.statistics ?? []) {
-    if (String(period.period ?? "") !== "ALL") continue;
-    for (const group of period.groups ?? []) {
-      for (const item of group.statisticsItems ?? []) {
-        const optaKey = SOFA_STAT_MAP[String(item.key ?? "")];
-        if (!optaKey) continue;
-        const val = teamIsHome ? Number(item.homeValue ?? 0) : Number(item.awayValue ?? 0);
-        stats[optaKey] = val;
-      }
-    }
-  }
-  const events = [];
-  for (const raw of incidentsRaw?.incidents ?? []) {
-    const type = String(raw.incidentType ?? "");
-    if (!["goal", "card", "substitution"].includes(type)) continue;
-    const minute = String(raw.time ?? raw.addedTime ?? "?");
-    const playerMeta = raw.player;
-    const assistMeta = raw.assist1;
-    const player = String(playerMeta?.name ?? raw.playerName ?? "Unknown");
-    const isHome = Boolean(raw.isHome);
-    const side = isHome ? "home" : "away";
-    if (type === "goal") {
-      events.push({
-        minute: minute.endsWith("'") ? minute : `${minute}'`,
-        type: "goal",
-        player,
-        assist: assistMeta ? String(assistMeta.name ?? "") : void 0,
-        team: side
-      });
-    } else if (type === "card") {
-      const cls = String(raw.incidentClass ?? "yellow");
-      events.push({
-        minute: minute.endsWith("'") ? minute : `${minute}'`,
-        type: cls.includes("red") ? "red" : "yellow",
-        player,
-        team: side
-      });
-    } else if (type === "substitution") {
-      const subPlayer = raw.playerIn;
-      const subOut = raw.playerOut;
-      if (subOut?.name) {
-        events.push({ minute: minute.endsWith("'") ? minute : `${minute}'`, type: "sub", player: String(subOut.name), team: side, detail: "Off" });
-      }
-      if (subPlayer?.name) {
-        events.push({ minute: minute.endsWith("'") ? minute : `${minute}'`, type: "sub", player: String(subPlayer.name), team: side, detail: "On" });
-      }
-    }
-  }
-  const homeSide = lineupsRaw?.home;
-  const awaySide = lineupsRaw?.away;
-  const teamSide = teamIsHome ? homeSide : awaySide;
-  const lineups = lineupFromSofaSide(teamSide);
-  return {
-    eventId: event.id,
-    homeTeam: event.homeTeam,
-    awayTeam: event.awayTeam,
-    teamId,
-    isHome: teamIsHome,
-    opponent: teamIsHome ? event.awayTeam : event.homeTeam,
-    date: event.date,
-    time: event.time,
-    homeScore: event.homeScore,
-    awayScore: event.awayScore,
-    stats,
-    events,
-    lineups
-  };
-}
-async function isSofaScoreReady() {
-  return new Promise((resolve) => {
-    spawn(PYTHON, ["--version"]).on("error", () => resolve(false)).on("close", (code) => resolve(code === 0));
-  });
-}
-async function sofaFetchPlayerStatistics(sofaId) {
-  const [profile, statsPack] = await Promise.all([
-    sofaFetch(`/player/${sofaId}`),
-    sofaFetch(`/player/${sofaId}/statistics`)
-  ]);
-  if (!statsPack) return null;
-  const player = profile?.player ?? {};
-  const seasonsRaw = statsPack.seasons ?? [];
-  const seasons = seasonsRaw.map((s) => {
-    const tournament = s.uniqueTournament ?? {};
-    const statistics = s.statistics ?? {};
-    const nums = {};
-    for (const [key, value] of Object.entries(statistics)) {
-      if (typeof value === "number" && Number.isFinite(value)) nums[key] = value;
-    }
+function sideFromRoster(roster, teamName, teamId) {
+  const formation = String(roster?.formation ?? "4-3-3");
+  const mapRow = (row) => {
+    const athlete = row.athlete;
+    const sofaId = Number(athlete?.id ?? 0);
+    const pos = String(row.position?.abbreviation ?? "");
+    const isKeeper = pos === "G" || /goal/i.test(String(row.position?.name ?? ""));
     return {
-      year: String(s.year ?? ""),
-      competition: String(tournament.name ?? "Competition"),
-      statistics: nums
-    };
-  });
-  return {
-    name: String(player.name ?? ""),
-    position: String(player.position ?? ""),
-    number: player.jerseyNumber != null || player.shirtNumber != null ? String(player.jerseyNumber ?? player.shirtNumber) : "",
-    seasons
-  };
-}
-function formationSlots(formation) {
-  const parts = formation.split("-").map((n) => Number(n)).filter((n) => Number.isFinite(n) && n > 0);
-  const rows = parts.length ? parts : [4, 3, 3];
-  const slots = [{ x: 50, y: 94 }];
-  const depthStart = 78;
-  const depthEnd = 14;
-  const span = depthStart - depthEnd;
-  const step = rows.length > 1 ? span / (rows.length - 1) : 0;
-  rows.forEach((count, rowIdx) => {
-    const y = rows.length === 1 ? 46 : depthStart - rowIdx * step;
-    for (let i = 0; i < count; i++) {
-      const x = count === 1 ? 50 : 10 + i * 80 / (count - 1);
-      slots.push({ x, y });
-    }
-  });
-  while (slots.length < 11) slots.push({ x: 50, y: 20 });
-  return slots.slice(0, 11);
-}
-function positionRank(pos) {
-  const p = pos.toLowerCase();
-  if (p === "g" || p.includes("goal")) return 0;
-  if (p === "d" || p.includes("def")) return 1;
-  if (p === "m" || p.includes("mid")) return 2;
-  return 3;
-}
-function mapRatedPlayer(row, coords, motmId) {
-  const playerMeta = row.player;
-  if (!playerMeta) return null;
-  const sofaId = Number(playerMeta.id ?? 0);
-  if (!sofaId) return null;
-  const stats = row.statistics;
-  const ratingRaw = Number(stats?.rating ?? 0);
-  const rating = Number.isFinite(ratingRaw) && ratingRaw > 0 ? Math.round(ratingRaw * 10) / 10 : null;
-  const subOnRaw = Number(stats?.substitutionInTime ?? stats?.subInTime ?? NaN);
-  const subOffRaw = Number(stats?.substitutionOutTime ?? stats?.subOutTime ?? NaN);
-  return {
-    player: {
-      id: String(sofaId),
+      id: sofaId ? `espn-${sofaId}` : String(athlete?.displayName ?? ""),
       sofaId,
-      name: String(playerMeta.name ?? "Unknown"),
-      number: String(row.jerseyNumber ?? row.shirtNumber ?? playerMeta.jerseyNumber ?? ""),
-      position: mapSofaPosition(String(row.position ?? playerMeta.position ?? "")),
-      rating,
-      goals: readSofaStat(stats, "goals", "goal"),
-      assists: readSofaStat(stats, "goalAssist", "assists", "assist"),
-      yellow: readSofaStat(stats, "yellowCards", "yellowCard"),
-      red: readSofaStat(stats, "redCards", "redCard"),
-      minutes: readSofaStat(stats, "minutesPlayed", "minutes"),
-      subOn: Number.isFinite(subOnRaw) ? subOnRaw : null,
-      subOff: Number.isFinite(subOffRaw) ? subOffRaw : null,
-      isCaptain: Boolean(row.captain ?? playerMeta.captain),
-      isMotm: motmId != null && sofaId === motmId,
-      substitute: Boolean(row.substitute),
-      x: coords?.x ?? 50,
-      y: coords?.y ?? 50,
-      photo: String(playerMeta.photoUrl ?? "")
-    }
+      name: String(athlete?.displayName ?? ""),
+      number: String(row.jersey ?? ""),
+      position: mapEspnPosition(pos || String(row.position?.name ?? "")),
+      rating: performanceRating(row, isKeeper),
+      goals: rosterStat(row, "totalGoals"),
+      assists: rosterStat(row, "goalAssists"),
+      yellow: rosterStat(row, "yellowCards"),
+      red: rosterStat(row, "redCards"),
+      minutes: 0,
+      subOn: row.subbedIn ? 0 : null,
+      subOff: row.subbedOut ? 0 : null,
+      isCaptain: false,
+      isMotm: false
+    };
   };
-}
-function sideFromLineup(side, teamName, teamId, motmId) {
-  const formation = String(side?.formation ?? "4-3-3");
-  const rows = side?.players ?? [];
-  const startersRaw = [...rows.filter((r) => !r.substitute)].sort((a, b) => {
-    const pa = String(a.position ?? a.player?.position ?? "");
-    const pb = String(b.position ?? b.player?.position ?? "");
-    const ra = positionRank(pa);
-    const rb = positionRank(pb);
-    if (ra !== rb) return ra - rb;
-    return Number(a.jerseyNumber ?? 0) - Number(b.jerseyNumber ?? 0);
-  });
-  const benchRaw = rows.filter((r) => r.substitute);
-  const slots = formationSlots(formation);
-  const starters = startersRaw.map((row, i) => mapRatedPlayer(row, slots[i] ?? { x: 50, y: 40 }, motmId)?.player).filter(Boolean);
-  const bench = benchRaw.map((row) => mapRatedPlayer(row, null, motmId)?.player).filter(Boolean);
+  const rows = roster?.roster ?? [];
+  const starters = rows.filter((r) => r.starter).map(mapRow);
+  const bench = rows.filter((r) => !r.starter).map(mapRow);
   const rated = starters.filter((p) => p.rating != null);
-  const avgRating = rated.length > 0 ? Math.round(rated.reduce((a, p) => a + p.rating, 0) / rated.length * 10) / 10 : null;
+  const avgRating = rated.length > 0 ? Math.round(rated.reduce((a, p) => a + (p.rating ?? 0), 0) / rated.length * 10) / 10 : null;
   return {
     teamName,
     teamId,
-    isBarca: teamId === SOFASCORE_BARCA_TEAM_ID,
+    isBarca: /barcel/i.test(teamName) || teamId === ESPN_BARCA_TEAM_ID,
     formation,
     avgRating,
     starters,
     bench
   };
 }
-async function fetchSofaScoreMatchRatings(options) {
-  const event = await resolveSofaEventForFixture({
-    fixtureId: options.fixtureId,
-    opponent: options.opponent,
-    date: options.date,
-    prefer: options.prefer ?? "any"
-  });
+async function fetchEspnMatchRatings(options) {
+  const event = await resolveEventForFixture(options);
   if (!event) return null;
-  const [lineupsRaw, eventRaw] = await Promise.all([
-    sofaFetch(`/event/${event.id}/lineups`),
-    sofaFetch(`/event/${event.id}`)
-  ]);
-  if (!lineupsRaw) return null;
-  const homeSide = lineupsRaw.home;
-  const awaySide = lineupsRaw.away;
-  const bestPlayer = eventRaw?.bestPlayer ?? eventRaw?.event?.bestPlayer ?? null;
-  const bestNested = bestPlayer?.player;
-  const motmId = Number(bestPlayer?.id ?? bestNested?.id ?? 0) || null;
-  const homeMapped = sideFromLineup(homeSide, event.homeTeam, event.homeTeamId, motmId);
-  const awayMapped = sideFromLineup(awaySide, event.awayTeam, event.awayTeamId, motmId);
-  if (!motmId) {
-    const all = [...homeMapped.starters, ...awayMapped.starters].filter((p) => p.rating != null);
-    const top = all.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))[0];
-    if (top) {
-      for (const p of [...homeMapped.starters, ...awayMapped.starters, ...homeMapped.bench, ...awayMapped.bench]) {
-        p.isMotm = p.sofaId === top.sofaId;
-      }
+  const data = await fetchEspnSummary(event.id);
+  if (!data) return null;
+  const rosters = data.rosters ?? [];
+  const homeRoster = rosters.find((r) => String(r.homeAway) === "home");
+  const awayRoster = rosters.find((r) => String(r.homeAway) === "away");
+  const home = sideFromRoster(homeRoster, event.homeTeam, event.homeTeamId);
+  const away = sideFromRoster(awayRoster, event.awayTeam, event.awayTeamId);
+  const all = [...home.starters, ...away.starters];
+  const top = [...all].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))[0];
+  if (top) {
+    for (const p of [...home.starters, ...away.starters, ...home.bench, ...away.bench]) {
+      p.isMotm = p.sofaId === top.sofaId;
     }
   }
-  const eventNode = eventRaw?.event;
-  const statusNode = eventNode?.status;
-  const statusType = String(event.statusType ?? "");
-  const clock = String(statusNode?.description ?? "") || (statusType === "finished" || statusType === "closed" ? "FT" : void 0);
   return {
     fixtureId: options.fixtureId,
     sofaEventId: event.id,
@@ -1463,107 +1130,78 @@ async function fetchSofaScoreMatchRatings(options) {
     awayTeam: event.awayTeam,
     homeScore: event.homeScore,
     awayScore: event.awayScore,
-    clock,
-    status: statusType || "unknown",
-    home: homeMapped,
-    away: awayMapped,
-    source: "SofaScore match ratings"
+    clock: event.clock,
+    status: event.statusType || "unknown",
+    home,
+    away,
+    source: "ESPN / Google Sports box score \u2014 performance rating derived from match stats"
   };
 }
 var MATCH_STAT_LABELS = {
-  minutesPlayed: "Minutes played",
-  goals: "Goals",
-  goalAssist: "Assists",
-  expectedGoals: "Expected goals (xG)",
-  expectedGoalsOnTarget: "Expected goals on target (xGOT)",
-  expectedAssists: "Expected assists (xA)",
-  accuratePass: "Accurate passes",
-  totalPass: "Passes",
-  keyPass: "Chances created",
-  onTargetScoringAttempt: "Shots on target",
-  shotOffTarget: "Shots off target",
+  totalGoals: "Goals",
+  goalAssists: "Assists",
   totalShots: "Shots",
-  touches: "Touches",
-  totalTackle: "Tackles",
-  wonContest: "Dribbles won",
-  totalClearance: "Clearances",
+  shotsOnTarget: "Shots on target",
   saves: "Saves",
-  rating: "Rating",
-  duelWon: "Duels won",
-  aerialWon: "Aerials won",
-  interceptionWon: "Interceptions",
-  fouls: "Fouls",
-  wasFouled: "Fouled",
-  dispossessed: "Dispossessed",
-  possessionLostCtrl: "Possession lost"
+  foulsCommitted: "Fouls",
+  foulsSuffered: "Fouled",
+  yellowCards: "Yellow cards",
+  redCards: "Red cards",
+  offsides: "Offsides",
+  goalsConceded: "Goals conceded",
+  appearances: "Appeared"
 };
-function buildMatchStatRows(stats) {
-  if (!stats) return { stats: [], topStats: [], rating: void 0 };
-  const ratingRaw = Number(stats.rating ?? 0);
-  const rating = Number.isFinite(ratingRaw) && ratingRaw > 0 ? Math.round(ratingRaw * 10) / 10 : void 0;
-  const preferred = [
-    "minutesPlayed",
-    "goals",
-    "goalAssist",
-    "expectedGoals",
-    "expectedGoalsOnTarget",
-    "expectedAssists",
-    "accuratePass",
-    "totalPass",
-    "keyPass",
-    "onTargetScoringAttempt",
-    "shotOffTarget",
-    "totalShots",
-    "touches",
-    "totalTackle",
-    "wonContest",
-    "totalClearance",
-    "saves",
-    "duelWon",
-    "aerialWon",
-    "interceptionWon"
-  ];
-  const rows = [];
-  for (const key of preferred) {
-    if (stats[key] == null) continue;
-    const n = Number(stats[key]);
-    if (!Number.isFinite(n)) continue;
-    let value = n;
-    if (key === "accuratePass" && stats.totalPass != null) {
-      const total = Number(stats.totalPass);
-      const pct = total > 0 ? Math.round(n / total * 100) : 0;
-      value = `${n}/${total} (${pct}%)`;
-    } else if (key === "expectedGoals" || key === "expectedGoalsOnTarget" || key === "expectedAssists") {
-      value = Math.round(n * 100) / 100;
-    } else {
-      value = Math.round(n * 10) / 10 === Math.round(n) ? Math.round(n) : Math.round(n * 10) / 10;
-    }
-    rows.push({
-      key,
-      label: MATCH_STAT_LABELS[key] ?? key,
-      value,
-      available: true
-    });
-  }
-  if (rating != null) {
-    rows.unshift({ key: "rating", label: "Rating", value: rating, available: true });
-  }
-  const xg = Number(stats.expectedGoals ?? 0);
-  const xa = Number(stats.expectedAssists ?? 0);
-  if (Number.isFinite(xg) || Number.isFinite(xa)) {
-    const sum = (Number.isFinite(xg) ? xg : 0) + (Number.isFinite(xa) ? xa : 0);
-    rows.splice(
-      Math.min(6, rows.length),
-      0,
-      {
-        key: "xgxa",
-        label: "xG + xA",
-        value: Math.round(sum * 100) / 100,
-        available: sum > 0
+async function fetchEspnPlayerMatchStats(options) {
+  if (!options.sofaId && !options.playerName) return null;
+  const event = await resolveEventForFixture(options);
+  if (!event) return null;
+  const data = await fetchEspnSummary(event.id);
+  const rosters = data?.rosters ?? [];
+  let found = null;
+  let foundId = 0;
+  for (const side of rosters) {
+    for (const row of side.roster ?? []) {
+      const athlete2 = row.athlete;
+      const id = Number(athlete2?.id ?? 0);
+      if (options.sofaId && id === options.sofaId) {
+        found = row;
+        foundId = id;
+        break;
       }
-    );
+      if (options.playerName && nameMatchScore(String(athlete2?.displayName ?? ""), options.playerName) >= 60) {
+        if (!found || nameMatchScore(String(athlete2?.displayName ?? ""), options.playerName) > 60) {
+          found = row;
+          foundId = id;
+        }
+      }
+    }
+    if (found && options.sofaId) break;
   }
-  return { stats: rows, topStats: rows.filter((r) => r.key !== "rating"), rating };
+  if (!found) return null;
+  const athlete = found.athlete;
+  const isKeeper = String(found.position?.abbreviation ?? "") === "G";
+  const rating = performanceRating(found, isKeeper);
+  const stats = (found.stats ?? []).filter((s) => MATCH_STAT_LABELS[String(s.name)] || Number(s.value) > 0).map((s) => ({
+    key: String(s.name),
+    label: MATCH_STAT_LABELS[String(s.name)] ?? String(s.displayName ?? s.name),
+    value: Number(s.displayValue ?? s.value ?? 0),
+    available: true
+  }));
+  stats.unshift({ key: "rating", label: "Performance rating", value: rating, available: true });
+  return {
+    sofaId: foundId,
+    fixtureId: options.fixtureId,
+    name: String(athlete.displayName ?? options.playerName ?? ""),
+    position: mapEspnPosition(String(found.position?.abbreviation ?? "")),
+    number: String(found.jersey ?? ""),
+    opponent: event.opponent || (event.isHome ? event.awayTeam : event.homeTeam),
+    clock: event.statusType === "finished" ? "FT" : event.clock,
+    rating,
+    stats,
+    topStats: stats.filter((r) => r.key !== "rating"),
+    fetchedAt: (/* @__PURE__ */ new Date()).toISOString(),
+    source: "ESPN / Google Sports box score"
+  };
 }
 function nameMatchScore(candidate, target) {
   const full = normalizeName(candidate);
@@ -1577,69 +1215,209 @@ function nameMatchScore(candidate, target) {
   if (parts.some((p) => p.length > 3 && want.includes(p))) return 40;
   return 0;
 }
-function findLineupPlayerRow(lineupsRaw, options) {
-  const sides = [lineupsRaw.home, lineupsRaw.away];
-  let best = null;
-  for (const side of sides) {
-    for (const row of side?.players ?? []) {
-      const playerMeta = row.player;
-      const id = Number(playerMeta?.id ?? 0);
-      if (options.sofaId && id === options.sofaId) {
-        return { row, sofaId: id };
-      }
-      if (!options.playerName || !id) continue;
-      const score = nameMatchScore(String(playerMeta?.name ?? ""), options.playerName);
-      if (score > 0 && (!best || score > best.score)) best = { row, sofaId: id, score };
-    }
+async function fetchEspnTeamPlayers(teamId) {
+  const data = await espnPath(`/apis/site/v2/sports/soccer/esp.1/teams/${teamId}/roster`);
+  const athletes = data?.athletes ?? [];
+  const groups = athletes.length ? athletes : data?.team?.athletes ?? [];
+  const out = [];
+  const items = groups.flatMap((g) => {
+    if (Array.isArray(g.items)) return g.items;
+    if (g.displayName && g.id) return [g];
+    return g.athletes ?? [];
+  });
+  for (const p of items.length ? items : data?.athletes ?? []) {
+    const id = Number(p.id ?? p.athlete?.id ?? 0);
+    if (!id) continue;
+    out.push({
+      id,
+      name: String(p.displayName ?? p.fullName ?? p.athlete?.displayName ?? ""),
+      position: mapEspnPosition(String(p.position?.abbreviation ?? p.position?.displayName ?? "")),
+      number: String(p.jersey ?? ""),
+      nationality: String(p.citizenship?.displayName ?? ""),
+      birthDate: String(p.dateOfBirth ?? "")
+    });
   }
-  return best ? { row: best.row, sofaId: best.sofaId } : null;
+  return out;
 }
-async function fetchSofaScorePlayerMatchStats(options) {
-  if (!options.sofaId && !options.playerName) return null;
-  const event = await resolveSofaEventForFixture({
-    fixtureId: options.fixtureId,
-    opponent: options.opponent,
-    date: options.date,
-    prefer: "any"
-  });
-  if (!event) return null;
-  const lineupsRaw = await sofaFetch(`/event/${event.id}/lineups`);
-  if (!lineupsRaw) return null;
-  const found = findLineupPlayerRow(lineupsRaw, {
-    sofaId: options.sofaId,
-    playerName: options.playerName
-  });
-  if (!found) return null;
-  const playerMeta = found.row.player;
-  const stats = found.row.statistics;
-  const built = buildMatchStatRows(stats);
-  const sofaId = found.sofaId;
-  let heatmap;
-  try {
-    const heatRaw = await sofaFetch(`/event/${event.id}/player/${sofaId}/heatmap`);
-    const points = heatRaw?.heatmap ?? [];
-    if (points.length) {
-      heatmap = points.map((p) => ({
-        x: Number(p.x ?? 0),
-        y: Number(p.y ?? 0)
-      })).filter((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
+async function fetchEspnPlayersToWatch(teamId, lastN = 2, limit = 3) {
+  const events = (await fetchEspnTeamSchedule(teamId)).filter((e) => e.statusType === "finished").slice(0, lastN);
+  const byId = /* @__PURE__ */ new Map();
+  await Promise.all(
+    events.map(async (event) => {
+      const data = await fetchEspnSummary(event.id);
+      const roster = (data?.rosters ?? []).find((r) => Number(r.team?.id) === teamId);
+      for (const row of roster?.roster ?? []) {
+        if (!row.starter && !rosterStat(row, "totalGoals", "goalAssists")) continue;
+        const athlete = row.athlete;
+        const id = String(athlete?.id ?? "");
+        if (!id) continue;
+        const isKeeper = String(row.position?.abbreviation ?? "") === "G";
+        const rating = performanceRating(row, isKeeper);
+        const cur = byId.get(id) ?? {
+          id,
+          name: String(athlete?.displayName ?? ""),
+          position: mapEspnPosition(String(row.position?.abbreviation ?? "")),
+          number: String(row.jersey ?? ""),
+          avgRating: 0,
+          matches: 0,
+          goals: 0,
+          assists: 0,
+          ratings: []
+        };
+        cur.ratings.push(rating);
+        cur.goals += rosterStat(row, "totalGoals");
+        cur.assists += rosterStat(row, "goalAssists");
+        byId.set(id, cur);
+      }
+    })
+  );
+  return [...byId.values()].map((p) => ({
+    id: p.id,
+    name: p.name,
+    position: p.position,
+    number: p.number,
+    avgRating: Math.round(p.ratings.reduce((a, b) => a + b, 0) / p.ratings.length * 10) / 10,
+    matches: p.ratings.length,
+    goals: p.goals,
+    assists: p.assists
+  })).sort((a, b) => b.avgRating - a.avgRating || b.goals - a.goals).slice(0, limit);
+}
+var ESPN_STAT_MAP = {
+  possessionPct: "possession_percentage",
+  totalShots: "total_scoring_att",
+  shotsOnTarget: "ontarget_scoring_att",
+  wonCorners: "won_corners",
+  foulsCommitted: "fk_foul_lost",
+  yellowCards: "total_yel_card",
+  redCards: "total_red_card",
+  offsides: "total_offside",
+  saves: "saves"
+};
+async function fetchEspnPreviewMatch(teamId, options) {
+  const schedule = (await fetchEspnTeamSchedule(teamId)).map((e) => withTeamPerspective(e, teamId));
+  const finished = schedule.filter((e) => e.statusType === "finished");
+  let event = finished[0] ?? null;
+  if (options?.opponent || options?.date) {
+    let best = null;
+    for (const e of finished) {
+      let score = 1;
+      if (options.opponent && opponentMatches(e.opponent, options.opponent)) score += 10;
+      if (options.date && datesClose(e.date, options.date)) score += 8;
+      if (!best || score > best.score) best = { event: e, score };
     }
-  } catch {
+    event = best?.event ?? event;
+  }
+  if (!event) return null;
+  const data = await fetchEspnSummary(event.id);
+  if (!data) return null;
+  const stats = {};
+  const isHome = event.homeTeamId === teamId;
+  const teamBox = data.boxscore?.teams?.find(
+    (t) => Number(t.team?.id) === teamId
+  );
+  for (const row of teamBox?.statistics ?? []) {
+    const key = ESPN_STAT_MAP[String(row.name)] ?? String(row.name);
+    const n = Number(String(row.displayValue ?? "").replace("%", ""));
+    if (Number.isFinite(n)) stats[key] = n;
+  }
+  const incidents = await fetchEspnEventIncidents(event.id);
+  const mappedEvents = incidents.map((inc) => ({
+    minute: inc.minute,
+    type: /goal/i.test(inc.type) ? "goal" : /red/i.test(inc.type) ? "red" : /yellow/i.test(inc.type) ? "yellow" : "sub",
+    player: inc.player,
+    team: /barcel/i.test(inc.team) === isHome || normalizeName(inc.team) === normalizeName(event.homeTeam) ? "home" : "away",
+    detail: inc.detail
+  }));
+  const roster = (data.rosters ?? []).find((r) => Number(r.team?.id) === teamId);
+  const starters = [];
+  const subs = [];
+  for (const row of roster?.roster ?? []) {
+    const athlete = row.athlete;
+    const mapped = {
+      id: String(athlete?.id ?? ""),
+      name: String(athlete?.displayName ?? ""),
+      number: String(row.jersey ?? ""),
+      position: mapEspnPosition(String(row.position?.abbreviation ?? ""))
+    };
+    if (row.starter) starters.push(mapped);
+    else subs.push(mapped);
   }
   return {
-    sofaId,
-    fixtureId: options.fixtureId,
-    name: String(playerMeta.name ?? options.playerName ?? ""),
-    position: mapSofaPosition(String(found.row.position ?? playerMeta.position ?? "")),
-    number: String(found.row.jerseyNumber ?? playerMeta.jerseyNumber ?? ""),
-    opponent: event.opponent || (event.isHome ? event.awayTeam : event.homeTeam),
-    clock: event.statusType === "finished" || event.statusType === "closed" ? "FT" : void 0,
-    rating: built.rating,
-    stats: built.stats,
-    topStats: built.topStats,
-    heatmap,
-    fetchedAt: (/* @__PURE__ */ new Date()).toISOString(),
-    source: "SofaScore match ratings"
+    eventId: event.id,
+    homeTeam: event.homeTeam,
+    awayTeam: event.awayTeam,
+    teamId,
+    isHome: event.isHome,
+    opponent: event.opponent,
+    date: event.date,
+    time: event.time,
+    homeScore: event.homeScore,
+    awayScore: event.awayScore,
+    stats,
+    events: mappedEvents,
+    lineups: { starters: starters.slice(0, 11), subs }
+  };
+}
+async function fetchEspnAthleteStats(athleteId) {
+  const data = await espnPath(`/apis/common/v3/sports/soccer/athletes/${athleteId}`);
+  const athlete = data?.athlete;
+  if (!athlete) return null;
+  const statsData = await espnPath(`/apis/common/v3/sports/soccer/athletes/${athleteId}/stats`);
+  const categories = statsData?.categories ?? statsData?.splits ?? [];
+  const seasons = [];
+  for (const cat of categories.slice(0, 6)) {
+    const statistics = {};
+    for (const s of cat.statistics ?? cat.stats ?? []) {
+      const n = Number(s.value ?? s.displayValue);
+      if (Number.isFinite(n)) statistics[String(s.name ?? s.abbreviation ?? "")] = n;
+    }
+    if (Object.keys(statistics).length) {
+      seasons.push({
+        competition: String(cat.displayName ?? cat.name ?? "Season"),
+        year: String(cat.abbreviation ?? ""),
+        statistics
+      });
+    }
+  }
+  return {
+    name: String(athlete.displayName ?? athlete.fullName ?? ""),
+    position: String(athlete.position?.abbreviation ?? ""),
+    number: String(athlete.jersey ?? ""),
+    seasons
+  };
+}
+async function fetchSportsDbSoccerDay(ymd) {
+  const data = await fetchPublicJson([`https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=${ymd}&s=Soccer`]);
+  return data?.events ?? [];
+}
+async function fetchSportsDbLiveSoccer() {
+  const data = await fetchPublicJson(["https://www.thesportsdb.com/api/v1/json/3/livescore.php?s=Soccer"]);
+  const rows = data?.livescore;
+  return Array.isArray(rows) ? rows : [];
+}
+function mapSportsDbEventToLiveShape(raw) {
+  const home = String(raw.strHomeTeam ?? "");
+  const away = String(raw.strAwayTeam ?? "");
+  const ts = raw.strTimestamp ? Math.floor(new Date(String(raw.strTimestamp)).getTime() / 1e3) : 0;
+  const progress = String(raw.strProgress ?? raw.strStatus ?? "");
+  const finished = /ft|finished|aet|pen/i.test(progress) || String(raw.strStatus ?? "") === "Match Finished";
+  return {
+    id: Number(raw.idEvent ?? 0),
+    homeTeam: { name: home, national: false },
+    awayTeam: { name: away, national: false },
+    homeScore: { current: num(raw.intHomeScore), display: num(raw.intHomeScore) },
+    awayScore: { current: num(raw.intAwayScore), display: num(raw.intAwayScore) },
+    tournament: {
+      name: String(raw.strLeague ?? ""),
+      uniqueTournament: { name: String(raw.strLeague ?? ""), id: 0 }
+    },
+    status: {
+      type: finished ? "finished" : /live|\d/i.test(progress) ? "inprogress" : "scheduled",
+      description: finished ? "FT" : progress || "LIVE"
+    },
+    venue: { name: String(raw.strVenue ?? "") },
+    startTimestamp: ts,
+    _competitionName: String(raw.strLeague ?? "")
   };
 }
 
@@ -1650,9 +1428,9 @@ var BARCA_TEAM_ID = 49;
 var LA_LIGA_COMP_SEASON = 879;
 var UCL_COMP_SEASON = 883;
 var CURRENT_COMP_SEASONS = `${LA_LIGA_COMP_SEASON},${UCL_COMP_SEASON}`;
-async function fcbFetch(path7) {
+async function fcbFetch(path6) {
   try {
-    const res = await fetch(`${FCB_API2}${path7}`, {
+    const res = await fetch(`${FCB_API2}${path6}`, {
       headers: { Origin: FCB_ORIGIN2, "User-Agent": "Culers/1.0 (local Barcelona fan app)" }
     });
     if (!res.ok) return null;
@@ -2485,17 +2263,17 @@ function referenceLabel(match, live) {
   const score = match.homeScore != null && match.awayScore != null ? ` (${match.isHome ? match.homeScore : match.awayScore}\u2013${match.isHome ? match.awayScore : match.homeScore})` : "";
   return live ? `Live ${side} ${match.opponent}${score}` : `Last match ${side} ${match.opponent}${score}`;
 }
-function sofaPreviewToTeamRef(sofa) {
+function espnPreviewToTeamRef(preview) {
   return {
-    id: String(sofa.eventId),
-    homeTeam: sofa.homeTeam,
-    awayTeam: sofa.awayTeam,
-    isHome: sofa.isHome,
-    opponent: sofa.opponent,
-    date: sofa.date,
-    time: sofa.time,
-    homeScore: sofa.homeScore,
-    awayScore: sofa.awayScore
+    id: String(preview.eventId),
+    homeTeam: preview.homeTeam,
+    awayTeam: preview.awayTeam,
+    isHome: preview.isHome,
+    opponent: preview.opponent,
+    date: preview.date,
+    time: preview.time,
+    homeScore: preview.homeScore,
+    awayScore: preview.awayScore
   };
 }
 function statsHaveValues(stats) {
@@ -2543,7 +2321,7 @@ async function fetchFcbFixturePreview(targetFixtureId, allFixtures, liveBarcaFix
     }
   }
   const opponentName = isBarcaHome ? awayTeam : homeTeam;
-  const opponentSofaId = resolveSofaScoreTeamId(opponentName);
+  const opponentEspnId = resolveEspnTeamIdSync(opponentName);
   let barcaStats = {};
   let barcaExtras = null;
   let oppSeasonal = null;
@@ -2556,29 +2334,29 @@ async function fetchFcbFixturePreview(targetFixtureId, allFixtures, liveBarcaFix
   barcaStats = fcbBarcaStats;
   barcaExtras = fcbBarcaExtras;
   if (!barcaRef || !statsHaveValues(barcaStats)) {
-    const sofaBarca = await fetchSofaScorePreviewMatch(SOFASCORE_BARCA_TEAM_ID).catch(() => null);
-    if (sofaBarca) {
-      if (!barcaRef) barcaRef = sofaPreviewToTeamRef(sofaBarca);
-      if (!statsHaveValues(barcaStats) && sofaBarca.stats) barcaStats = sofaBarca.stats;
-      if (!barcaExtras && sofaBarca.events.length) {
+    const espnBarca = await fetchEspnPreviewMatch(ESPN_BARCA_TEAM_ID).catch(() => null);
+    if (espnBarca) {
+      if (!barcaRef) barcaRef = espnPreviewToTeamRef(espnBarca);
+      if (!statsHaveValues(barcaStats) && espnBarca.stats) barcaStats = espnBarca.stats;
+      if (!barcaExtras && espnBarca.events.length) {
         barcaExtras = {
-          homeTeam: sofaBarca.homeTeam,
-          awayTeam: sofaBarca.awayTeam,
-          homeTeamId: sofaBarca.isHome ? barcaTeamId : 0,
-          awayTeamId: sofaBarca.isHome ? 0 : barcaTeamId,
-          events: sofaBarca.events,
-          lineups: sofaBarca.isHome ? { home: sofaBarca.lineups, away: { starters: [], subs: [] } } : { home: { starters: [], subs: [] }, away: sofaBarca.lineups }
+          homeTeam: espnBarca.homeTeam,
+          awayTeam: espnBarca.awayTeam,
+          homeTeamId: espnBarca.isHome ? barcaTeamId : 0,
+          awayTeamId: espnBarca.isHome ? 0 : barcaTeamId,
+          events: espnBarca.events,
+          lineups: espnBarca.isHome ? { home: espnBarca.lineups, away: { starters: [], subs: [] } } : { home: { starters: [], subs: [] }, away: espnBarca.lineups }
         };
       }
     }
   }
-  const oppSofa = opponentSofaId ? await fetchSofaScorePreviewMatch(opponentSofaId).catch(() => null) : null;
+  const oppEspn = opponentEspnId ? await fetchEspnPreviewMatch(opponentEspnId).catch(() => null) : null;
   const oppFetched = oppSeasonal;
-  let oppRef = oppFetched?.ref ?? (oppSofa ? sofaPreviewToTeamRef(oppSofa) : null);
+  let oppRef = oppFetched?.ref ?? (oppEspn ? espnPreviewToTeamRef(oppEspn) : null);
   const oppStatsFromFcb = oppFetched?.stats ?? {};
-  const resolvedOppStats = oppSofa?.stats && statsHaveValues(oppSofa.stats) ? oppSofa.stats : statsHaveValues(oppStatsFromFcb) ? oppStatsFromFcb : {};
-  const oppHasXi = Boolean(oppSofa?.lineups.starters.length);
-  const oppHasEvents = Boolean(oppSofa?.events.length);
+  const resolvedOppStats = oppEspn?.stats && statsHaveValues(oppEspn.stats) ? oppEspn.stats : statsHaveValues(oppStatsFromFcb) ? oppStatsFromFcb : {};
+  const oppHasXi = Boolean(oppEspn?.lineups.starters.length);
+  const oppHasEvents = Boolean(oppEspn?.events.length);
   const previewBarcaOnly = !statsHaveValues(resolvedOppStats) && !oppHasXi && !oppHasEvents;
   const barcaSideTeamId = barcaTeamId;
   const oppSideTeamId = opponentTeamId;
@@ -2602,10 +2380,10 @@ async function fetchFcbFixturePreview(targetFixtureId, allFixtures, liveBarcaFix
       previewAwayMatchTeams = barcaMatchTeams;
     }
   }
-  if (!previewBarcaOnly && oppSofa) {
-    const oppLineup = oppSofa.lineups;
-    const oppEvents = oppSofa.events;
-    const oppMatchTeams = { home: oppSofa.homeTeam, away: oppSofa.awayTeam };
+  if (!previewBarcaOnly && oppEspn) {
+    const oppLineup = oppEspn.lineups;
+    const oppEvents = oppEspn.events;
+    const oppMatchTeams = { home: oppEspn.homeTeam, away: oppEspn.awayTeam };
     if (isBarcaHome) {
       awayPreviewLineup = oppLineup;
       previewAwayEvents = oppEvents;
@@ -2632,7 +2410,7 @@ async function fetchFcbFixturePreview(targetFixtureId, allFixtures, liveBarcaFix
     }
   }
   const barcaNote = barcaRef ? referenceLabel(barcaRef, barcaLive) : "";
-  const oppRefForLabel = previewBarcaOnly ? null : oppRef ?? (oppSofa ? sofaPreviewToTeamRef(oppSofa) : null);
+  const oppRefForLabel = previewBarcaOnly ? null : oppRef ?? (oppEspn ? espnPreviewToTeamRef(oppEspn) : null);
   const oppNote = oppRefForLabel ? referenceLabel(oppRefForLabel, false) : "";
   const previewHomeNote = isBarcaHome ? barcaNote : oppNote;
   const previewAwayNote = isBarcaHome ? oppNote : barcaNote;
@@ -2645,12 +2423,12 @@ async function fetchFcbFixturePreview(targetFixtureId, allFixtures, liveBarcaFix
     homeTeam,
     awayTeam
   });
-  const barcaWatch = await fetchSofaScorePlayersToWatch(SOFASCORE_BARCA_TEAM_ID, 2, 3).catch(() => []);
-  const oppWatch = previewBarcaOnly || !opponentSofaId ? [] : await fetchSofaScorePlayersToWatch(opponentSofaId, 2, 3).catch(() => []);
+  const barcaWatch = await fetchEspnPlayersToWatch(ESPN_BARCA_TEAM_ID, 2, 3).catch(() => []);
+  const oppWatch = previewBarcaOnly || !opponentEspnId ? [] : await fetchEspnPlayersToWatch(opponentEspnId, 2, 3).catch(() => []);
   const playersToWatch = {
     home: isBarcaHome ? barcaWatch : oppWatch,
     away: isBarcaHome ? oppWatch : barcaWatch,
-    source: previewBarcaOnly ? "Bar\xE7a last-match form only \u2014 opponent not on the official feed yet" : "SofaScore avg rating \xB7 last 2 matches"
+    source: previewBarcaOnly ? "Bar\xE7a last-match form only \u2014 opponent not on the official feed yet" : "ESPN / Google Sports performance \xB7 last 2 matches"
   };
   return {
     fixtureId: targetFixtureId,
@@ -2680,7 +2458,7 @@ async function fetchFcbFixturePreview(targetFixtureId, allFixtures, liveBarcaFix
     previewHomeMatchTeams,
     previewAwayMatchTeams,
     playersToWatch,
-    source: previewBarcaOnly ? `Preview \u2014 Bar\xE7a last match from FC Barcelona official (Opta). ${opponentName} form is not on that feed yet.` : "Preview \u2014 Opta stats from each team\u2019s latest match (Bar\xE7a uses live data when a match is in progress). Opponent stats via SofaScore when not on FCB feed."
+    source: previewBarcaOnly ? `Preview \u2014 Bar\xE7a last match from FC Barcelona official (Opta). ${opponentName} form is not on that feed yet.` : "Preview \u2014 Opta stats from each team\u2019s latest match (Bar\xE7a uses live data when a match is in progress). Opponent stats via ESPN / Google Sports when not on the FCB feed."
   };
 }
 
@@ -2750,14 +2528,14 @@ async function fetchEventLineup(eventId, squad) {
   });
   return { starters: starters.slice(0, 11), bench };
 }
-async function fetchSofaScoreLineup(squad, options) {
-  const event = await findSofaScoreEvent({
+async function fetchEspnLineup(squad, options) {
+  const event = await findEspnBarcaEvent({
     opponent: options.opponent,
     date: options.date,
     prefer: options.prefer
   });
   if (!event) return null;
-  const lineup = await fetchSofaScoreBarcaLineup(event.id, squad);
+  const lineup = await fetchEspnBarcaLineup(event.id, squad);
   if (!lineup) return null;
   return { event, lineup };
 }
@@ -2794,7 +2572,7 @@ function lastMatchResult(partial) {
 async function buildLineup(squadPlayers, options) {
   const fixtureId = options.fixtureId ?? options.eventId ?? null;
   const preferFinished = options.fixtureKind === "past";
-  const sofaPrefer = preferFinished ? "finished" : "upcoming";
+  const espnPrefer = preferFinished ? "finished" : "upcoming";
   if (options.fixtureKind === "live" && fixtureId) {
     const fcbLive = await fetchFcbBarcaLineup(fixtureId, squadPlayers);
     if (fcbLive && fcbLive.starters.length >= 8) {
@@ -2810,21 +2588,21 @@ async function buildLineup(squadPlayers, options) {
       });
     }
   }
-  const sofa = await fetchSofaScoreLineup(squadPlayers, {
+  const espn = await fetchEspnLineup(squadPlayers, {
     opponent: options.opponent,
     date: options.matchDate,
-    prefer: sofaPrefer
+    prefer: espnPrefer
   });
-  if (sofa && sofa.lineup.starters.length >= 8) {
+  if (espn && espn.lineup.starters.length >= 8) {
     return confirmedResult({
       matchDay: Boolean(options.matchDay),
       eventId: fixtureId,
-      opponent: options.opponent ?? sofa.event.opponent,
-      formation: sofa.lineup.formation || "4-3-3",
-      starters: sofa.lineup.starters,
-      bench: sofa.lineup.bench,
-      source: "SofaScore",
-      confirmed: sofa.lineup.confirmed
+      opponent: options.opponent ?? espn.event.opponent,
+      formation: espn.lineup.formation || "4-3-3",
+      starters: espn.lineup.starters,
+      bench: espn.lineup.bench,
+      source: "ESPN / Google Sports",
+      confirmed: espn.lineup.confirmed
     });
   }
   if (fixtureId) {
@@ -2843,17 +2621,17 @@ async function buildLineup(squadPlayers, options) {
     }
   }
   if (options.matchDay || options.fixtureKind === "upcoming") {
-    const lastSofa = await fetchSofaScoreLineup(squadPlayers, { prefer: "finished" });
-    if (lastSofa && lastSofa.lineup.starters.length >= 8) {
+    const lastEspn = await fetchEspnLineup(squadPlayers, { prefer: "finished" });
+    if (lastEspn && lastEspn.lineup.starters.length >= 8) {
       return lastMatchResult({
         matchDay: Boolean(options.matchDay),
         eventId: fixtureId,
         opponent: options.opponent ?? null,
-        formation: lastSofa.lineup.formation || "4-3-3",
-        starters: lastSofa.lineup.starters,
-        bench: lastSofa.lineup.bench,
-        source: "SofaScore (last match)",
-        note: `No lineup published yet for vs ${options.opponent ?? "next opponent"} \u2014 showing last match XI from SofaScore.`
+        formation: lastEspn.lineup.formation || "4-3-3",
+        starters: lastEspn.lineup.starters,
+        bench: lastEspn.lineup.bench,
+        source: "ESPN / Google Sports (last match)",
+        note: `No lineup published yet for vs ${options.opponent ?? "next opponent"} \u2014 showing last match XI from ESPN.`
       });
     }
     const fromSquad2 = lastMatchXiFromSquad(squadPlayers);
@@ -2986,8 +2764,8 @@ function nameTokens(name) {
   const parts = norm.split(" ").filter((p) => p.length > 2);
   return [.../* @__PURE__ */ new Set([norm.replace(/ /g, ""), ...parts])];
 }
-function photoPathMatchesPlayer(path7, name, number) {
-  const lower = path7.toLowerCase();
+function photoPathMatchesPlayer(path6, name, number) {
+  const lower = path6.toLowerCase();
   if (lower.includes("icon_cub") || lower.includes("fcb-share") || lower.includes("fcb-meta")) return false;
   if (lower.includes("hansi") || lower.includes("flick")) return false;
   const tokens = nameTokens(name);
@@ -3066,9 +2844,9 @@ async function enrichPlayerPhotos(players) {
 
 // culers-social.ts
 import { readFile } from "node:fs/promises";
-import { spawn as spawn2 } from "node:child_process";
-import path5 from "node:path";
-import { fileURLToPath as fileURLToPath2 } from "node:url";
+import { spawn } from "node:child_process";
+import path4 from "node:path";
+import { fileURLToPath } from "node:url";
 
 // culers-twitter.ts
 function decodeHtml(s) {
@@ -3217,10 +2995,10 @@ async function fetchFabrizioProfile() {
 }
 
 // culers-social.ts
-var ROOT2 = path5.dirname(fileURLToPath2(import.meta.url));
-var PYTHON2 = path5.join(ROOT2, ".venv-sofascore", "bin", "python");
-var INSTAGRAM_SCRIPT = path5.join(ROOT2, "scripts", "instagram-scrape.py");
-var CACHE_DIR = path5.join(ROOT2, ".cache", "instagram");
+var ROOT = path4.dirname(fileURLToPath(import.meta.url));
+var PYTHON = path4.join(ROOT, ".venv-instagram", "bin", "python");
+var INSTAGRAM_SCRIPT = path4.join(ROOT, "scripts", "instagram-scrape.py");
+var CACHE_DIR = path4.join(ROOT, ".cache", "instagram");
 var IS_SERVERLESS2 = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 var BARCA_X_HANDLE = "FCBarcelona";
 var BARCA_INSTAGRAM_USER = "fcbarcelona";
@@ -3234,12 +3012,12 @@ function proxyInstagramImage(id, user = BARCA_INSTAGRAM_USER) {
   return `/api/social/instagram/image?user=${encodeURIComponent(user)}&id=${encodeURIComponent(id)}`;
 }
 function instagramCacheFile(user, id) {
-  return path5.join(CACHE_DIR, user, `${id}.jpg`);
+  return path4.join(CACHE_DIR, user, `${id}.jpg`);
 }
 async function runInstagramScraper(username = BARCA_INSTAGRAM_USER) {
   if (IS_SERVERLESS2) return null;
   return new Promise((resolve) => {
-    const child = spawn2(PYTHON2, [INSTAGRAM_SCRIPT, username], { cwd: ROOT2 });
+    const child = spawn(PYTHON, [INSTAGRAM_SCRIPT, username], { cwd: ROOT });
     let stdout = "";
     const timer = setTimeout(() => {
       child.kill("SIGKILL");
@@ -3295,7 +3073,7 @@ async function fetchBarcaSocialHub() {
   return {
     platforms,
     fetchedAt: (/* @__PURE__ */ new Date()).toISOString(),
-    note: instagram ? void 0 : "Instagram stats loaded with fallback \u2014 run npm run setup:sofascore for live scrape."
+    note: instagram ? void 0 : "Instagram stats loaded with fallback \u2014 run npm run setup:instagram for live scrape."
   };
 }
 async function fetchInstagramFeedFor(rawUser) {
@@ -3308,7 +3086,7 @@ async function fetchInstagramFeedFor(rawUser) {
   } catch {
     if (username === BARCA_INSTAGRAM_USER) {
       try {
-        await readFile(path5.join(CACHE_DIR, "profile.jpg"));
+        await readFile(path4.join(CACHE_DIR, "profile.jpg"));
         profileImage = proxyInstagramImage("profile", username);
       } catch {
         profileImage = "";
@@ -3337,7 +3115,7 @@ async function streamInstagramImage(id, rawUser) {
   const username = sanitizeInstagramUser(rawUser);
   const paths = [instagramCacheFile(username, safeId)];
   if (username === BARCA_INSTAGRAM_USER) {
-    paths.push(path5.join(CACHE_DIR, `${safeId}.jpg`));
+    paths.push(path4.join(CACHE_DIR, `${safeId}.jpg`));
   }
   for (const filePath of paths) {
     try {
@@ -3385,7 +3163,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Goalkeeper",
     number: "1",
     nationality: "Spain",
-    photo: "https://img.sofascore.com/api/v1/player/1620575/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3396,7 +3174,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Defender",
     number: "5",
     nationality: "Spain",
-    photo: "https://img.sofascore.com/api/v1/player/2128115/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3407,7 +3185,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Midfielder",
     number: "6",
     nationality: "Spain",
-    photo: "https://img.sofascore.com/api/v1/player/1542727/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3418,7 +3196,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Forward",
     number: "6",
     nationality: "Spain",
-    photo: "https://img.sofascore.com/api/v1/player/1539491/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3429,7 +3207,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Forward",
     number: "7",
     nationality: "Spain",
-    photo: "https://img.sofascore.com/api/v1/player/1982217/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3440,7 +3218,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Defender",
     number: "12",
     nationality: "Spain",
-    photo: "https://img.sofascore.com/api/v1/player/2679424/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3451,7 +3229,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Defender",
     number: "14",
     nationality: "Uruguay",
-    photo: "https://img.sofascore.com/api/v1/player/1482410/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3462,7 +3240,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Defender",
     number: "15",
     nationality: "England",
-    photo: "https://img.sofascore.com/api/v1/player/1939135/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3473,7 +3251,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Midfielder",
     number: "18",
     nationality: "Croatia",
-    photo: "https://img.sofascore.com/api/v1/player/1801391/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3484,7 +3262,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Midfielder",
     number: "19",
     nationality: "Ghana",
-    photo: "https://img.sofascore.com/api/v1/player/1457200/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3495,7 +3273,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Midfielder",
     number: "20",
     nationality: "Spain",
-    photo: "https://img.sofascore.com/api/v1/player/2488625/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3506,7 +3284,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Forward",
     number: "20",
     nationality: "Spain",
-    photo: "https://img.sofascore.com/api/v1/player/2229087/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3517,7 +3295,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Forward",
     number: "22",
     nationality: "Spain",
-    photo: "https://img.sofascore.com/api/v1/player/1977602/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3528,7 +3306,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Forward",
     number: "23",
     nationality: "Spain",
-    photo: "https://img.sofascore.com/api/v1/player/2268815/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3539,7 +3317,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Defender",
     number: "23",
     nationality: "Spain",
-    photo: "https://img.sofascore.com/api/v1/player/1590760/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3550,7 +3328,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Forward",
     number: "24",
     nationality: "Netherlands",
-    photo: "https://img.sofascore.com/api/v1/player/1657202/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3561,7 +3339,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Defender",
     number: "26",
     nationality: "Spain",
-    photo: "https://img.sofascore.com/api/v1/player/1590920/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3572,7 +3350,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Defender",
     number: "26",
     nationality: "Ecuador",
-    photo: "https://img.sofascore.com/api/v1/player/2219071/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3583,7 +3361,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Midfielder",
     number: "28",
     nationality: "Spain",
-    photo: "https://img.sofascore.com/api/v1/player/2128084/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3594,7 +3372,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Forward",
     number: "28",
     nationality: "Mali",
-    photo: "https://img.sofascore.com/api/v1/player/1542744/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3605,7 +3383,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Goalkeeper",
     number: "31",
     nationality: "Spain",
-    photo: "https://img.sofascore.com/api/v1/player/1929977/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3616,7 +3394,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Defender",
     number: "33",
     nationality: "Spain",
-    photo: "https://img.sofascore.com/api/v1/player/2128094/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3627,7 +3405,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Defender",
     number: "34",
     nationality: "Ghana",
-    photo: "https://img.sofascore.com/api/v1/player/2076869/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3638,7 +3416,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Defender",
     number: "35",
     nationality: "Spain",
-    photo: "https://img.sofascore.com/api/v1/player/1926117/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3649,7 +3427,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Midfielder",
     number: "35",
     nationality: "Germany",
-    photo: "https://img.sofascore.com/api/v1/player/1937274/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3660,7 +3438,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Forward",
     number: "41",
     nationality: "Spain",
-    photo: "https://img.sofascore.com/api/v1/player/1493491/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3671,7 +3449,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Midfielder",
     number: "44",
     nationality: "Spain",
-    photo: "https://img.sofascore.com/api/v1/player/2076883/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3682,7 +3460,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Defender",
     number: "54",
     nationality: "Netherlands",
-    photo: "https://img.sofascore.com/api/v1/player/1798716/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3693,7 +3471,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Goalkeeper",
     number: "88",
     nationality: "Spain",
-    photo: "https://img.sofascore.com/api/v1/player/1926093/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3704,7 +3482,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Midfielder",
     number: "",
     nationality: "Spain",
-    photo: "https://img.sofascore.com/api/v1/player/2076887/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3715,7 +3493,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Forward",
     number: "",
     nationality: "Spain",
-    photo: "https://img.sofascore.com/api/v1/player/2580333/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   },
@@ -3726,7 +3504,7 @@ var culers_lamasia_atletic_fallback_default = [
     position: "Forward",
     number: "",
     nationality: "Spain",
-    photo: "https://img.sofascore.com/api/v1/player/2679425/image",
+    photo: "",
     birthDate: "",
     group: "atletic"
   }
@@ -3799,59 +3577,20 @@ function fromFallback() {
     position: p.position,
     number: p.number,
     nationality: p.nationality,
-    photo: p.photo,
+    photo: p.photo && !/sofascore\.com/i.test(p.photo) ? p.photo : "",
     birthDate: p.birthDate || "",
     group: "atletic",
-    statsAvailable: Boolean(p.sofaId)
+    statsAvailable: false
   }));
 }
-function mapSofaSquad(rows, group) {
-  return sortLaMasia(
-    rows.map((p) => ({
-      id: `${group}-${p.id}`,
-      sofaId: p.id,
-      name: p.name,
-      position: mapSofaPos(p.position),
-      number: p.number,
-      nationality: p.nationality,
-      photo: p.id ? `https://img.sofascore.com/api/v1/player/${p.id}/image` : "",
-      birthDate: p.birthDate,
-      group,
-      statsAvailable: Boolean(p.id)
-    }))
-  );
-}
 async function fetchAtleticLive() {
-  const rows = await sofaFetchTeamPlayers(SOFASCORE_ATLETIC_TEAM_ID);
-  if (!rows?.length) return null;
-  return mapSofaSquad(rows, "atletic");
+  return null;
 }
 async function fetchJuvenilLive() {
-  const rows = await sofaFetchTeamPlayers(SOFASCORE_JUVENIL_A_TEAM_ID);
-  if (!rows?.length) return null;
-  return mapSofaSquad(rows, "juvenil");
+  return null;
 }
-function eventToMatch(event) {
-  if (!event) return null;
-  return {
-    opponent: event.opponent,
-    isHome: event.isHome,
-    date: event.date,
-    time: event.time,
-    competition: event.competition || "",
-    homeScore: event.homeScore,
-    awayScore: event.awayScore,
-    status: event.statusType || ""
-  };
-}
-async function fetchWeekendTeam(teamId, id, label) {
-  const pack = await fetchTeamLastAndNext(teamId);
-  return {
-    id,
-    label,
-    last: eventToMatch(pack.last),
-    next: eventToMatch(pack.next)
-  };
+async function fetchWeekendTeam(_teamId, id, label) {
+  return { id, label, last: null, next: null };
 }
 function filterFirstTeamAcademy(squad) {
   return sortLaMasia(
@@ -3874,18 +3613,8 @@ async function fetchLaMasiaHub(firstTeamSquad) {
   const [live, juvenilLive, atleticWeekend, juvenilWeekend] = await Promise.all([
     fetchAtleticLive().catch(() => null),
     fetchJuvenilLive().catch(() => null),
-    fetchWeekendTeam(SOFASCORE_ATLETIC_TEAM_ID, "atletic", "Bar\xE7a Atl\xE8tic").catch(() => ({
-      id: "atletic",
-      label: "Bar\xE7a Atl\xE8tic",
-      last: null,
-      next: null
-    })),
-    fetchWeekendTeam(SOFASCORE_JUVENIL_A_TEAM_ID, "juvenil", "Juvenil A").catch(() => ({
-      id: "juvenil",
-      label: "Juvenil A",
-      last: null,
-      next: null
-    }))
+    fetchWeekendTeam(0, "atletic", "Bar\xE7a Atl\xE8tic"),
+    fetchWeekendTeam(0, "juvenil", "Juvenil A")
   ]);
   const atletic = live?.length ? live : fromFallback();
   const juvenil = juvenilLive?.length ? juvenilLive : [];
@@ -3940,7 +3669,7 @@ async function fetchLaMasiaHub(firstTeamSquad) {
     ],
     weekend: [atleticWeekend, juvenilWeekend],
     fetchedAt: (/* @__PURE__ */ new Date()).toISOString(),
-    source: live?.length ? "La Masia pathway \u2014 Juvenil A, Bar\xE7a Atl\xE8tic, and first-team academy (SofaScore)" : "La Masia pathway \u2014 first-team academy + Bar\xE7a Atl\xE8tic snapshot fallback",
+    source: "La Masia pathway \u2014 first-team academy (FCB) + Bar\xE7a Atl\xE8tic snapshot",
     note: notes.length ? notes.join(" ") : void 0
   };
 }
@@ -4002,9 +3731,9 @@ function rowsFromStats(stats) {
   });
 }
 async function fetchLaMasiaPlayerStats(sofaId) {
-  const pack = await sofaFetchPlayerStatistics(sofaId);
+  const pack = await fetchEspnAthleteStats(sofaId);
   if (!pack || !pack.seasons.length) {
-    throw new Error("No SofaScore stats found for this player");
+    throw new Error("No ESPN / Google Sports stats found for this player");
   }
   const seasonIdx = preferSeasonIndex(pack.seasons);
   const latest = pack.seasons[seasonIdx];
@@ -4035,40 +3764,11 @@ async function fetchLaMasiaPlayerStats(sofaId) {
     seasonLabel: `${latest.competition} \xB7 ${latest.year}`,
     season,
     career,
-    source: "SofaScore \u2014 Bar\xE7a Atl\xE8tic / youth competition stats (not FCB Opta)"
+    source: "ESPN / Google Sports \u2014 athlete stats (not FCB Opta)"
   };
 }
 
 // culers-live-board.ts
-var EUROPE_LEAGUE_IDS = /* @__PURE__ */ new Set([
-  8,
-  // LaLiga
-  17,
-  // Premier League
-  35,
-  // Bundesliga
-  23,
-  // Serie A
-  34,
-  // Ligue 1
-  37,
-  // Eredivisie
-  238,
-  // Liga Portugal
-  38,
-  // Belgian Pro League
-  52,
-  // Super Lig
-  36,
-  // Scottish Premiership
-  18,
-  // Championship
-  215
-  // Swiss Super League
-]);
-var UCL_IDS = /* @__PURE__ */ new Set([7, 465, 1331]);
-var UEL_IDS = /* @__PURE__ */ new Set([679, 17015, 17016]);
-var MLS_IDS = /* @__PURE__ */ new Set([242]);
 var GROUP_ORDER = ["ucl", "uel", "europe", "mls", "international"];
 var GROUP_LABEL = {
   ucl: "UEFA Champions League",
@@ -4077,26 +3777,17 @@ var GROUP_LABEL = {
   mls: "MLS",
   international: "International"
 };
-function uniqueId(raw) {
-  const tournament = raw.tournament;
-  const unique = tournament?.uniqueTournament ?? tournament;
-  return Number(unique?.id ?? 0);
-}
-function competitionName(raw) {
-  const tournament = raw.tournament;
-  const unique = tournament?.uniqueTournament;
-  return String(unique?.name ?? tournament?.name ?? "");
-}
 function classifyCompetition(comp, uniqueTournamentId = 0) {
+  void uniqueTournamentId;
   const name = comp.trim();
-  if (UCL_IDS.has(uniqueTournamentId) || /champions league/i.test(name) && !/youth|women|femenin|femenil/i.test(name)) {
-    return "ucl";
+  if (/champions league/i.test(name) && !/youth|women|femenin|femenil/i.test(name)) return "ucl";
+  if (/europa league|conference league/i.test(name) && !/youth|women/i.test(name)) return "uel";
+  if (/^mls\b|major league soccer/i.test(name)) return "mls";
+  if (/la\s*liga|premier league|bundesliga|serie a|ligue 1|eredivisie|liga portugal|pro league|super lig|scottish premiership|championship|swiss super/i.test(
+    name
+  )) {
+    return "europe";
   }
-  if (UEL_IDS.has(uniqueTournamentId) || /europa league|conference league/i.test(name) && !/youth|women/i.test(name)) {
-    return "uel";
-  }
-  if (MLS_IDS.has(uniqueTournamentId) || /^mls\b|major league soccer/i.test(name)) return "mls";
-  if (EUROPE_LEAGUE_IDS.has(uniqueTournamentId)) return "europe";
   if (/world\s*cup|euro\b|copa am[eé]rica|nations league|gold cup|afcon|africa cup|asian cup|olympics|qualif/i.test(
     name
   )) {
@@ -4105,8 +3796,12 @@ function classifyCompetition(comp, uniqueTournamentId = 0) {
   return null;
 }
 function classify(raw) {
-  const id = uniqueId(raw);
-  const byComp = classifyCompetition(competitionName(raw), id);
+  const tagged = raw._culersGroup;
+  if (tagged) return tagged;
+  const tournament = raw.tournament;
+  const unique = tournament?.uniqueTournament ?? tournament;
+  const name = String(raw._competitionName ?? unique?.name ?? tournament?.name ?? "");
+  const byComp = classifyCompetition(name, Number(unique?.id ?? 0));
   if (byComp) return byComp;
   const home = raw.homeTeam;
   const away = raw.awayTeam;
@@ -4139,7 +3834,9 @@ function mapLiveMatch(raw) {
     awayTeam: String(away.name ?? ""),
     homeScore: scoreOf(raw.homeScore),
     awayScore: scoreOf(raw.awayScore),
-    competition: competitionName(raw),
+    competition: String(
+      raw._competitionName ?? raw.tournament?.uniqueTournament?.name ?? raw.tournament?.name ?? ""
+    ),
     group,
     clock: finished ? "FT" : String(status?.description ?? status?.type ?? "LIVE"),
     status: statusType || (finished ? "finished" : "inprogress"),
@@ -4157,51 +3854,51 @@ function groupMatches(matches) {
 function utcYmd(d) {
   return d.toISOString().slice(0, 10);
 }
-async function fetchScheduledWindow() {
-  const now = /* @__PURE__ */ new Date();
-  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1e3);
-  const dates = [.../* @__PURE__ */ new Set([utcYmd(now), utcYmd(yesterday)])];
-  const [pages, barcaLast] = await Promise.all([
-    Promise.all(dates.map((ymd) => fetchSofaScoreScheduledFootball(ymd).catch(() => []))),
-    fetchSofaScoreTeamEventsRaw(SOFASCORE_BARCA_TEAM_ID, "last").catch(() => [])
-  ]);
-  const byId = /* @__PURE__ */ new Map();
-  for (const row of [...pages.flat(), ...barcaLast]) {
-    const id = Number(row.id ?? 0);
-    if (id) byId.set(id, row);
-  }
-  return [...byId.values()];
-}
 function isFinishedMatch(match) {
   return /finished|closed|ended/i.test(match.status);
 }
-async function fetchLiveBoard() {
-  resetSofaScoreReachable();
-  const [liveRaw, scheduledRaw] = await Promise.all([
-    fetchSofaScoreLiveFootballEvents().catch(() => []),
-    fetchScheduledWindow()
+async function espnShapes() {
+  const raw = await fetchEspnLiveAndRecentEvents().catch(() => []);
+  return raw.map(mapEspnRawToLiveShape);
+}
+async function sportsDbShapes() {
+  const now = /* @__PURE__ */ new Date();
+  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1e3);
+  const [live, today, yday] = await Promise.all([
+    fetchSportsDbLiveSoccer().catch(() => []),
+    fetchSportsDbSoccerDay(utcYmd(now)).catch(() => []),
+    fetchSportsDbSoccerDay(utcYmd(yesterday)).catch(() => [])
   ]);
-  const live = liveRaw.map(mapLiveMatch).filter(Boolean);
+  return [...live, ...today, ...yday].map(mapSportsDbEventToLiveShape);
+}
+async function fetchLiveBoard() {
+  resetStatsSourceReachable();
+  let shapes = await espnShapes();
+  let source = "ESPN / Google Sports scoreboards (live + last 24 hours)";
+  if (!shapes.length) {
+    shapes = await sportsDbShapes();
+    source = "TheSportsDB live + day results (ESPN scoreboard unavailable)";
+  }
+  const mapped = shapes.map(mapLiveMatch).filter(Boolean);
+  const live = mapped.filter((m) => !isFinishedMatch(m) && /inprogress|live/i.test(m.status));
   const liveIds = new Set(live.map((m) => m.id));
   const cutoff = Math.floor(Date.now() / 1e3) - 28 * 60 * 60;
-  const history = scheduledRaw.map(mapLiveMatch).filter(Boolean).filter((m) => isFinishedMatch(m) && !liveIds.has(m.id) && m.startTimestamp >= cutoff).sort((a, b) => b.startTimestamp - a.startTimestamp);
-  const groups = groupMatches(live);
-  const historyGroups = groupMatches(history);
+  const history = mapped.filter((m) => isFinishedMatch(m) && !liveIds.has(m.id) && m.startTimestamp >= cutoff).sort((a, b) => b.startTimestamp - a.startTimestamp);
   return {
-    groups,
-    history: historyGroups,
+    groups: groupMatches(live),
+    history: groupMatches(history),
     fetchedAt: (/* @__PURE__ */ new Date()).toISOString(),
-    source: "SofaScore live football + last 24 hours",
-    note: !live.length && !history.length ? sofaScoreReachable() ? "No live or last-24-hour matches in European leagues, MLS, UCL/UEL, or internationals." : "SofaScore blocked this host (common on Vercel without Chrome impersonation). Live matches should appear after the Python proxy is deployed." : void 0
+    source,
+    note: !live.length && !history.length ? statsSourceReachable() ? "No live or last-24-hour matches in European leagues, MLS, UCL/UEL, or internationals." : "Live score hosts were blocked or empty. Trying ESPN, then TheSportsDB \u2014 refresh after a minute." : void 0
   };
 }
 async function fetchLiveMatchDetail(eventId) {
-  const [rawList, event, incidents] = await Promise.all([
-    fetchSofaScoreLiveFootballEvents(),
-    fetchSofaScoreEventById(eventId),
-    fetchSofaScoreEventIncidents(eventId)
+  const [board, event, incidents] = await Promise.all([
+    fetchLiveBoard(),
+    fetchEspnEventById(eventId),
+    fetchEspnEventIncidents(eventId).catch(() => [])
   ]);
-  const fromLive = rawList.map(mapLiveMatch).find((m) => m?.id === eventId) ?? null;
+  const fromBoard = [...board.groups, ...board.history].flatMap((g) => g.matches).find((m) => m.id === eventId) ?? null;
   const fromEvent = event ? {
     id: event.id,
     homeTeam: event.homeTeam,
@@ -4210,12 +3907,12 @@ async function fetchLiveMatchDetail(eventId) {
     awayScore: event.awayScore,
     competition: event.competition || "Football",
     group: classifyCompetition(event.competition || "") ?? "europe",
-    clock: /finished|closed|ended/i.test(event.statusType ?? "") ? "FT" : event.statusType || "LIVE",
+    clock: /finished|closed|ended/i.test(event.statusType ?? "") ? "FT" : event.clock || event.statusType || "LIVE",
     status: event.statusType || "inprogress",
-    venue: "",
+    venue: event.venue || "",
     startTimestamp: event.startTimestamp
   } : null;
-  const match = fromLive ?? fromEvent;
+  const match = fromBoard ?? fromEvent;
   if (!match) return null;
   return {
     match,
@@ -4454,11 +4151,11 @@ function parseSeasonDeals(section, direction) {
       continue;
     }
     if (cells.length < 6) continue;
-    const [num, pos, player, club, type, fee, date] = cells;
+    const [num2, pos, player, club, type, fee, date] = cells;
     if (!player || /player|transfer from|transfer to/i.test(player)) continue;
     deals.push({
       player,
-      position: pos && !/^\d/.test(pos) ? pos : num && !/^\d|^—|^–/.test(num) ? num : pos,
+      position: pos && !/^\d/.test(pos) ? pos : num2 && !/^\d|^—|^–/.test(num2) ? num2 : pos,
       club: club ?? "",
       type: type ?? "",
       fee: fee ?? "",
@@ -4652,7 +4349,7 @@ async function fetchTransfersHub() {
     fetchTransferRoomWindowNote(),
     wikiWikitext(seasonPage),
     wikiWikitext(RECORDS_PAGE),
-    sofaFetchTeamPlayers(SOFASCORE_BARCA_TEAM_ID),
+    fetchEspnTeamPlayers(ESPN_BARCA_TEAM_ID).catch(() => []),
     fetchFabrizioRomanoNews().catch(() => ({ items: [] })),
     fetchReshadRahmanNews().catch(() => ({ items: [] }))
   ]);
@@ -4688,7 +4385,7 @@ ${seasonWiki}`, /\n==Transfers==/, /\n==[^=]/) : "";
     "TransferRoom Transfer Window Tracker",
     `Wikipedia \u2014 ${seasonPage}`,
     `Wikipedia \u2014 ${RECORDS_PAGE}`,
-    "SofaScore proposed market values",
+    "ESPN roster (market values are not published on that feed)",
     "Fabrizio Romano + Reshad Rahman (Bar\xE7a transfer talk)"
   ];
   return {
@@ -4707,7 +4404,7 @@ ${seasonWiki}`, /\n==Transfers==/, /\n==[^=]/) : "";
     links,
     sources,
     fetchedAt: (/* @__PURE__ */ new Date()).toISOString(),
-    note: `TransferRoom\u2019s club API / xTV board is login-only. Public TransferRoom intel is wired in full (search, blog, tracker, xTV). Completed deals come from the ${season} Wikipedia season page; current player values from SofaScore.`
+    note: `TransferRoom\u2019s club API / xTV board is login-only. Public TransferRoom intel is wired in full (search, blog, tracker, xTV). Completed deals come from the ${season} Wikipedia season page. Public ESPN / Google Sports feeds do not include transfer market values.`
   };
 }
 
@@ -4964,7 +4661,7 @@ async function fetchAll() {
     transfers,
     sources: [
       "FC Barcelona official \u2014 api-fcb.pulselive.com (La Liga & UCL fixtures, squad, player stats)",
-      "SofaScore \u2014 confirmed lineups (api.sofascore.com)",
+      "ESPN / Google Sports \u2014 live scores, lineups, match performance",
       "@ReshadRahman on X \u2014 api.fxtwitter.com",
       "@FabrizioRomano on X \u2014 api.fxtwitter.com",
       "TransferRoom \u2014 public intel, blog, window tracker",
@@ -4984,7 +4681,7 @@ function listHomeBackgrounds(projectRoot) {
     return syncHomeBackgroundManifest(projectRoot);
   } catch {
     try {
-      const manifestPath = path6.join(projectRoot, "public/backgrounds/home/manifest.json");
+      const manifestPath = path5.join(projectRoot, "public/backgrounds/home/manifest.json");
       const raw = JSON.parse(fs4.readFileSync(manifestPath, "utf8"));
       return Array.isArray(raw.images) ? raw.images : [];
     } catch {
@@ -5044,17 +4741,17 @@ async function dispatchCulersApi(url, options = {}) {
       if (!fixtureId || !fcbId && !sofaId && !playerName) {
         return jsonResult({ error: "fixtureId and fcbId, sofaId, or playerName required" }, 400);
       }
-      const sofaEventId = parseSofaEventId(fixtureId);
-      const fixture = sofaEventId ? null : (await fetchFcbFixtures()).find((f) => f.id === fixtureId) ?? await fetchFcbFixtureById(fixtureId);
+      const espnEventId = parseEspnEventId(fixtureId);
+      const fixture = espnEventId ? null : (await fetchFcbFixtures()).find((f) => f.id === fixtureId) ?? await fetchFcbFixtureById(fixtureId);
       if (sofaId || playerName) {
-        const sofaStats = await fetchSofaScorePlayerMatchStats({
+        const espnStats = await fetchEspnPlayerMatchStats({
           fixtureId,
           sofaId: sofaId || void 0,
           playerName: playerName || void 0,
           opponent: fixture?.opponent,
           date: fixture?.date
         });
-        if (sofaStats) return jsonResult({ ...sofaStats, fcbId: fcbId || void 0 });
+        if (espnStats) return jsonResult({ ...espnStats, fcbId: fcbId || void 0 });
       }
       if (fcbId) {
         return jsonResult(await fetchFcbPlayerMatchStats(fcbId, fixtureId));
@@ -5064,8 +4761,8 @@ async function dispatchCulersApi(url, options = {}) {
     if (url.pathname === "/api/match-ratings") {
       const fixtureId = url.searchParams.get("fixtureId");
       if (!fixtureId) return jsonResult({ error: "fixtureId required" }, 400);
-      if (parseSofaEventId(fixtureId)) {
-        const board2 = await fetchSofaScoreMatchRatings({ fixtureId, prefer: "any" });
+      if (parseEspnEventId(fixtureId)) {
+        const board2 = await fetchEspnMatchRatings({ fixtureId, prefer: "any" });
         if (!board2) return jsonResult({ error: "Ratings unavailable for this fixture" }, 404);
         return jsonResult(board2);
       }
@@ -5073,7 +4770,7 @@ async function dispatchCulersApi(url, options = {}) {
       const fixture = fixtures.find((f) => f.id === fixtureId) ?? await fetchFcbFixtureById(fixtureId);
       if (!fixture) return jsonResult({ error: "Fixture not found" }, 404);
       const prefer = fixture.kind === "live" ? "any" : fixture.kind === "past" ? "finished" : "upcoming";
-      const board = await fetchSofaScoreMatchRatings({
+      const board = await fetchEspnMatchRatings({
         fixtureId,
         opponent: fixture.opponent,
         date: fixture.date,

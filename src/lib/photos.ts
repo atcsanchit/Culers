@@ -80,7 +80,7 @@ function normalizePlayerKey(name: string) {
 export function findSquadPlayer(player: Player, squad: readonly Player[]): Player | undefined {
 	const key = normalizePlayerKey(player.name);
 	const last = key.split(' ').pop() ?? key;
-	const sofaId = player.sofaId ?? (Number(/^sofa-(\d+)$/i.exec(player.id)?.[1] || 0) || undefined);
+	const sofaId = player.sofaId ?? (Number(/^(?:sofa|espn)-(\d+)$/i.exec(player.id)?.[1] || 0) || undefined);
 	return (
 		squad.find((s) => player.fcbId && s.fcbId === player.fcbId) ??
 		squad.find((s) => sofaId && s.sofaId === sofaId) ??
@@ -93,7 +93,7 @@ export function findSquadPlayer(player: Player, squad: readonly Player[]): Playe
 	);
 }
 
-/** Copy photo plus official ids from Squad Hub onto a lineup / SofaScore player. */
+/** Copy photo plus official ids from Squad Hub onto a lineup / ratings player. */
 export function attachSquadIdentity(player: Player, squad: readonly Player[]): Player {
 	const hit = findSquadPlayer(player, squad);
 	if (!hit) return player;
@@ -111,7 +111,7 @@ export function attachSquadIdentity(player: Player, squad: readonly Player[]): P
 	};
 }
 
-/** Prefer a photo from Squad Hub when SofaScore / lineup photo is missing. */
+/** Prefer a photo from Squad Hub when the lineup photo is missing. */
 export function enrichPlayerPhoto(player: Player, squad: readonly Player[]): Player {
 	return attachSquadIdentity(player, squad);
 }

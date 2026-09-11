@@ -1,5 +1,5 @@
 import { fetchFabrizioRomanoNews, fetchReshadRahmanNews } from './culers-twitter.ts';
-import { sofaFetchTeamPlayers, SOFASCORE_BARCA_TEAM_ID } from './culers-sofascore.ts';
+import { ESPN_BARCA_TEAM_ID, fetchEspnTeamPlayers } from './culers-espn.ts';
 import {
 	fetchTransferRoomIntel,
 	fetchTransferRoomWindowNote,
@@ -435,7 +435,7 @@ export async function fetchTransfersHub(): Promise<TransfersHub> {
 		fetchTransferRoomWindowNote(),
 		wikiWikitext(seasonPage),
 		wikiWikitext(RECORDS_PAGE),
-		sofaFetchTeamPlayers(SOFASCORE_BARCA_TEAM_ID),
+		fetchEspnTeamPlayers(ESPN_BARCA_TEAM_ID).catch(() => []),
 		fetchFabrizioRomanoNews().catch(() => ({ items: [] as Array<{ title: string; link: string; text?: string; pubDate: string; source: string; media?: TransferRumor['media'] }> })),
 		fetchReshadRahmanNews().catch(() => ({ items: [] as Array<{ title: string; link: string; text?: string; pubDate: string; source: string; media?: TransferRumor['media'] }> })),
 	]);
@@ -482,7 +482,7 @@ export async function fetchTransfersHub(): Promise<TransfersHub> {
 		'TransferRoom Transfer Window Tracker',
 		`Wikipedia — ${seasonPage}`,
 		`Wikipedia — ${RECORDS_PAGE}`,
-		'SofaScore proposed market values',
+		'ESPN roster (market values are not published on that feed)',
 		'Fabrizio Romano + Reshad Rahman (Barça transfer talk)',
 	];
 
@@ -502,6 +502,6 @@ export async function fetchTransfersHub(): Promise<TransfersHub> {
 		links,
 		sources,
 		fetchedAt: new Date().toISOString(),
-		note: `TransferRoom’s club API / xTV board is login-only. Public TransferRoom intel is wired in full (search, blog, tracker, xTV). Completed deals come from the ${season} Wikipedia season page; current player values from SofaScore.`,
+		note: `TransferRoom’s club API / xTV board is login-only. Public TransferRoom intel is wired in full (search, blog, tracker, xTV). Completed deals come from the ${season} Wikipedia season page. Public ESPN / Google Sports feeds do not include transfer market values.`,
 	};
 }

@@ -188,7 +188,7 @@ export function TransfersPage() {
 			) ?? squadByName.get(row.name.toLowerCase());
 		openPlayerStats(
 			fromSquad ?? {
-				id: `sofa-${row.sofaId}`,
+				id: `espn-${row.sofaId}`,
 				name: row.name,
 				position: row.position,
 				number: row.number,
@@ -388,8 +388,8 @@ export function TransfersPage() {
 							<span className="panel-label">Squad value</span>
 							<h3>Current player values · {hub.squadValueTotalLabel}</h3>
 							<p className="muted">
-								TransferRoom Expected Transfer Value (xTV) sits behind club API login. These figures are
-								SofaScore proposed market values for the current first-team list.
+								TransferRoom Expected Transfer Value (xTV) sits behind club API login. Public ESPN / Google
+								Sports feeds do not publish first-team market values.
 							</p>
 							<div className="transfer-value-grid">
 								{hub.values.map((row) => {
@@ -406,7 +406,7 @@ export function TransfersPage() {
 											<PlayerAvatar
 												player={
 													squad ?? {
-														id: `sofa-${row.sofaId}`,
+														id: `espn-${row.sofaId}`,
 														name: row.name,
 														position: row.position,
 														number: row.number,
