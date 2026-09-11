@@ -1358,6 +1358,68 @@ async function fetchEspnPreviewMatch(teamId, options) {
     lineups: { starters: starters.slice(0, 11), subs }
   };
 }
+var SPORTSDB_ATLETIC_TEAM_ID = "134487";
+function sportsDbEventToStats(raw, teamId) {
+  const home = String(raw.strHomeTeam ?? "");
+  const away = String(raw.strAwayTeam ?? "");
+  if (!home || !away) return null;
+  const isHome = String(raw.idHomeTeam ?? "") === teamId || /barcelona atl/i.test(home);
+  const date = String(raw.dateEvent ?? "").slice(0, 10);
+  const timeRaw = String(raw.strTime ?? "");
+  const stamp = String(raw.strTimestamp ?? "");
+  const time = (timeRaw || stamp.slice(11, 19) || "12:00:00").slice(0, 8);
+  const ts = stamp ? Math.floor(new Date(stamp).getTime() / 1e3) : date ? Math.floor((/* @__PURE__ */ new Date(`${date}T${time}Z`)).getTime() / 1e3) : 0;
+  const statusRaw = String(raw.strStatus ?? raw.strProgress ?? "");
+  const finished = /ft|finished|aet|pen/i.test(statusRaw) || statusRaw === "Match Finished";
+  const inplay = /live|\d+'/i.test(statusRaw) || Boolean(raw.strProgress && !finished);
+  return {
+    id: Number(raw.idEvent ?? 0),
+    date,
+    time,
+    startTimestamp: ts,
+    homeTeam: home,
+    awayTeam: away,
+    homeTeamId: Number(raw.idHomeTeam ?? 0),
+    awayTeamId: Number(raw.idAwayTeam ?? 0),
+    homeScore: num(raw.intHomeScore),
+    awayScore: num(raw.intAwayScore),
+    isHome,
+    opponent: isHome ? away : home,
+    statusType: finished ? "finished" : inplay ? "inprogress" : "scheduled",
+    competition: String(raw.strLeague ?? ""),
+    clock: finished ? "FT" : statusRaw || void 0
+  };
+}
+async function fetchSportsDbTeamLastNext(teamId) {
+  const [lastRaw, nextRaw] = await Promise.all([
+    fetchPublicJson([`https://www.thesportsdb.com/api/v1/json/3/eventslast.php?id=${teamId}`]),
+    fetchPublicJson([`https://www.thesportsdb.com/api/v1/json/3/eventsnext.php?id=${teamId}`])
+  ]);
+  const lastRow = (lastRaw?.results ?? [])[0];
+  const nextRow = (nextRaw?.events ?? [])[0];
+  return {
+    last: lastRow ? sportsDbEventToStats(lastRow, teamId) : null,
+    next: nextRow ? sportsDbEventToStats(nextRow, teamId) : null
+  };
+}
+var ESPN_BARCA_B_TEAM_ID = 5462;
+var ESPN_BARCA_U19_TEAM_ID = 130878;
+async function fetchEspnAcademyTeamLastNext(teamId, leagueSlugs) {
+  const byId = /* @__PURE__ */ new Map();
+  await Promise.all(
+    leagueSlugs.map(async (slug) => {
+      const data = await espnPath(`/apis/site/v2/sports/soccer/${slug}/teams/${teamId}/schedule`);
+      for (const ev of data?.events ?? []) {
+        const parsed = eventFromEspn(ev, slug, slug);
+        if (parsed) byId.set(parsed.id, withTeamPerspective(parsed, teamId));
+      }
+    })
+  );
+  const events = [...byId.values()].sort((a, b) => b.startTimestamp - a.startTimestamp);
+  const last = events.find((e) => e.statusType === "finished") ?? null;
+  const next = [...events].sort((a, b) => a.startTimestamp - b.startTimestamp).find((e) => e.statusType !== "finished") ?? null;
+  return { last, next };
+}
 async function fetchEspnAthleteStats(athleteId) {
   const data = await espnPath(`/apis/common/v3/sports/soccer/athletes/${athleteId}`);
   const athlete = data?.athlete;
@@ -3015,7 +3077,7 @@ function instagramCacheFile(user, id) {
   return path4.join(CACHE_DIR, user, `${id}.jpg`);
 }
 async function runInstagramScraper(username = BARCA_INSTAGRAM_USER) {
-  if (IS_SERVERLESS2) return null;
+  if (IS_SERVERLESS2 || process.env.VERCEL_ENV) return null;
   return new Promise((resolve) => {
     const child = spawn(PYTHON, [INSTAGRAM_SCRIPT, username], { cwd: ROOT });
     let stdout = "";
@@ -3589,8 +3651,55 @@ async function fetchAtleticLive() {
 async function fetchJuvenilLive() {
   return null;
 }
-async function fetchWeekendTeam(_teamId, id, label) {
-  return { id, label, last: null, next: null };
+function eventToMatch(event) {
+  if (!event) return null;
+  return {
+    opponent: event.opponent,
+    isHome: event.isHome,
+    date: event.date,
+    time: event.time,
+    competition: event.competition || "",
+    homeScore: event.homeScore,
+    awayScore: event.awayScore,
+    status: event.statusType || ""
+  };
+}
+async function fetchAtleticWeekend() {
+  const fromTsdb = await fetchSportsDbTeamLastNext(SPORTSDB_ATLETIC_TEAM_ID).catch(() => ({
+    last: null,
+    next: null
+  }));
+  if (fromTsdb.last || fromTsdb.next) {
+    return {
+      id: "atletic",
+      label: "Bar\xE7a Atl\xE8tic",
+      last: eventToMatch(fromTsdb.last),
+      next: eventToMatch(fromTsdb.next)
+    };
+  }
+  const fromEspn = await fetchEspnAcademyTeamLastNext(ESPN_BARCA_B_TEAM_ID, [
+    "club.friendly",
+    "esp.2"
+  ]).catch(() => ({ last: null, next: null }));
+  return {
+    id: "atletic",
+    label: "Bar\xE7a Atl\xE8tic",
+    last: eventToMatch(fromEspn.last),
+    next: eventToMatch(fromEspn.next)
+  };
+}
+async function fetchJuvenilWeekend() {
+  const fromEspn = await fetchEspnAcademyTeamLastNext(ESPN_BARCA_U19_TEAM_ID, [
+    "global.u20.intercontinental_cup",
+    "uefa.youth_league",
+    "club.friendly"
+  ]).catch(() => ({ last: null, next: null }));
+  return {
+    id: "juvenil",
+    label: "Juvenil A",
+    last: eventToMatch(fromEspn.last),
+    next: eventToMatch(fromEspn.next)
+  };
 }
 function filterFirstTeamAcademy(squad) {
   return sortLaMasia(
@@ -3613,14 +3722,30 @@ async function fetchLaMasiaHub(firstTeamSquad) {
   const [live, juvenilLive, atleticWeekend, juvenilWeekend] = await Promise.all([
     fetchAtleticLive().catch(() => null),
     fetchJuvenilLive().catch(() => null),
-    fetchWeekendTeam(0, "atletic", "Bar\xE7a Atl\xE8tic"),
-    fetchWeekendTeam(0, "juvenil", "Juvenil A")
+    fetchAtleticWeekend().catch(() => ({
+      id: "atletic",
+      label: "Bar\xE7a Atl\xE8tic",
+      last: null,
+      next: null
+    })),
+    fetchJuvenilWeekend().catch(() => ({
+      id: "juvenil",
+      label: "Juvenil A",
+      last: null,
+      next: null
+    }))
   ]);
   const atletic = live?.length ? live : fromFallback();
   const juvenil = juvenilLive?.length ? juvenilLive : [];
   const notes = [];
-  if (!live?.length) notes.push("Live Atl\xE8tic feed unavailable \u2014 showing a cached Bar\xE7a Atl\xE8tic snapshot.");
-  if (!juvenil.length) notes.push("Juvenil A roster did not load this time.");
+  if (!live?.length) notes.push("Live Atl\xE8tic roster feed unavailable \u2014 showing a cached Bar\xE7a Atl\xE8tic snapshot.");
+  if (!juvenil.length) notes.push("Juvenil A roster is not on a public feed right now.");
+  if (!atleticWeekend.last && !atleticWeekend.next) {
+    notes.push("Atl\xE8tic weekend fixtures did not load \u2014 will retry on the next refresh.");
+  }
+  if (!juvenilWeekend.last && !juvenilWeekend.next) {
+    notes.push("Juvenil A weekend fixtures are sparse on public scoreboards outside Youth League windows.");
+  }
   return {
     firstTeam,
     atletic,
@@ -3669,7 +3794,7 @@ async function fetchLaMasiaHub(firstTeamSquad) {
     ],
     weekend: [atleticWeekend, juvenilWeekend],
     fetchedAt: (/* @__PURE__ */ new Date()).toISOString(),
-    source: "La Masia pathway \u2014 first-team academy (FCB) + Bar\xE7a Atl\xE8tic snapshot",
+    source: "La Masia pathway \u2014 first-team (FCB Opta) \xB7 Atl\xE8tic weekend (TheSportsDB / ESPN) \xB7 Juvenil when published",
     note: notes.length ? notes.join(" ") : void 0
   };
 }

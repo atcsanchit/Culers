@@ -1,4 +1,12 @@
-import { fetchEspnAthleteStats } from './culers-espn.ts';
+import {
+	ESPN_BARCA_B_TEAM_ID,
+	ESPN_BARCA_U19_TEAM_ID,
+	fetchEspnAcademyTeamLastNext,
+	fetchEspnAthleteStats,
+	fetchSportsDbTeamLastNext,
+	SPORTSDB_ATLETIC_TEAM_ID,
+	type StatsEvent,
+} from './culers-espn.ts';
 import atleticFallback from './culers-lamasia-atletic-fallback.json' with { type: 'json' };
 
 export type LaMasiaPlayer = {
@@ -159,12 +167,57 @@ async function fetchJuvenilLive(): Promise<LaMasiaPlayer[] | null> {
 	return null;
 }
 
-async function fetchWeekendTeam(
-	_teamId: number,
-	id: 'atletic' | 'juvenil',
-	label: string,
-): Promise<LaMasiaWeekendTeam> {
-	return { id, label, last: null, next: null };
+function eventToMatch(event: StatsEvent | null): LaMasiaMatch | null {
+	if (!event) return null;
+	return {
+		opponent: event.opponent,
+		isHome: event.isHome,
+		date: event.date,
+		time: event.time,
+		competition: event.competition || '',
+		homeScore: event.homeScore,
+		awayScore: event.awayScore,
+		status: event.statusType || '',
+	};
+}
+
+async function fetchAtleticWeekend(): Promise<LaMasiaWeekendTeam> {
+	const fromTsdb = await fetchSportsDbTeamLastNext(SPORTSDB_ATLETIC_TEAM_ID).catch(() => ({
+		last: null,
+		next: null,
+	}));
+	if (fromTsdb.last || fromTsdb.next) {
+		return {
+			id: 'atletic',
+			label: 'Barça Atlètic',
+			last: eventToMatch(fromTsdb.last),
+			next: eventToMatch(fromTsdb.next),
+		};
+	}
+	const fromEspn = await fetchEspnAcademyTeamLastNext(ESPN_BARCA_B_TEAM_ID, [
+		'club.friendly',
+		'esp.2',
+	]).catch(() => ({ last: null, next: null }));
+	return {
+		id: 'atletic',
+		label: 'Barça Atlètic',
+		last: eventToMatch(fromEspn.last),
+		next: eventToMatch(fromEspn.next),
+	};
+}
+
+async function fetchJuvenilWeekend(): Promise<LaMasiaWeekendTeam> {
+	const fromEspn = await fetchEspnAcademyTeamLastNext(ESPN_BARCA_U19_TEAM_ID, [
+		'global.u20.intercontinental_cup',
+		'uefa.youth_league',
+		'club.friendly',
+	]).catch(() => ({ last: null, next: null }));
+	return {
+		id: 'juvenil',
+		label: 'Juvenil A',
+		last: eventToMatch(fromEspn.last),
+		next: eventToMatch(fromEspn.next),
+	};
 }
 
 export function filterFirstTeamAcademy(squad: SquadPlayer[]): LaMasiaPlayer[] {
@@ -191,14 +244,30 @@ export async function fetchLaMasiaHub(firstTeamSquad: SquadPlayer[]): Promise<La
 	const [live, juvenilLive, atleticWeekend, juvenilWeekend] = await Promise.all([
 		fetchAtleticLive().catch(() => null),
 		fetchJuvenilLive().catch(() => null),
-		fetchWeekendTeam(0, 'atletic', 'Barça Atlètic'),
-		fetchWeekendTeam(0, 'juvenil', 'Juvenil A'),
+		fetchAtleticWeekend().catch(() => ({
+			id: 'atletic' as const,
+			label: 'Barça Atlètic',
+			last: null,
+			next: null,
+		})),
+		fetchJuvenilWeekend().catch(() => ({
+			id: 'juvenil' as const,
+			label: 'Juvenil A',
+			last: null,
+			next: null,
+		})),
 	]);
 	const atletic = live?.length ? live : fromFallback();
 	const juvenil = juvenilLive?.length ? juvenilLive : [];
 	const notes: string[] = [];
-	if (!live?.length) notes.push('Live Atlètic feed unavailable — showing a cached Barça Atlètic snapshot.');
-	if (!juvenil.length) notes.push('Juvenil A roster did not load this time.');
+	if (!live?.length) notes.push('Live Atlètic roster feed unavailable — showing a cached Barça Atlètic snapshot.');
+	if (!juvenil.length) notes.push('Juvenil A roster is not on a public feed right now.');
+	if (!atleticWeekend.last && !atleticWeekend.next) {
+		notes.push('Atlètic weekend fixtures did not load — will retry on the next refresh.');
+	}
+	if (!juvenilWeekend.last && !juvenilWeekend.next) {
+		notes.push('Juvenil A weekend fixtures are sparse on public scoreboards outside Youth League windows.');
+	}
 
 	return {
 		firstTeam,
@@ -248,7 +317,8 @@ export async function fetchLaMasiaHub(firstTeamSquad: SquadPlayer[]): Promise<La
 		],
 		weekend: [atleticWeekend, juvenilWeekend],
 		fetchedAt: new Date().toISOString(),
-		source: 'La Masia pathway — first-team academy (FCB) + Barça Atlètic snapshot',
+		source:
+			'La Masia pathway — first-team (FCB Opta) · Atlètic weekend (TheSportsDB / ESPN) · Juvenil when published',
 		note: notes.length ? notes.join(' ') : undefined,
 	};
 }

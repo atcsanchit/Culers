@@ -65,7 +65,7 @@ async function runInstagramScraper(username = BARCA_INSTAGRAM_USER): Promise<{
 	posts: Array<InstagramPost & { cached?: boolean }>;
 } | null> {
 	// Python + curl_cffi are local-only; on Vercel this would hang until function timeout.
-	if (IS_SERVERLESS) return null;
+	if (IS_SERVERLESS || process.env.VERCEL_ENV) return null;
 
 	return new Promise((resolve) => {
 		const child = spawn(PYTHON, [INSTAGRAM_SCRIPT, username], { cwd: ROOT });
