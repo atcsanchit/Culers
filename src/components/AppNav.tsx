@@ -1,5 +1,6 @@
 import type { Tab } from '../types';
 import { useBarca } from '../store/BarcaState';
+import { openMuseumWindow } from '../lib/openMuseumWindow';
 
 const MAIN_TABS: { id: Tab; label: string; icon: string }[] = [
 	{ id: 'home', label: 'Success', icon: '◆' },
@@ -38,6 +39,10 @@ export function AppNav() {
 			>
 				<span className="nav-icon">◉</span>
 				<span>Live</span>
+			</button>
+			<button type="button" className="nav-item nav-item-museum" onClick={() => openMuseumWindow()}>
+				<span className="nav-icon">▣</span>
+				<span>Museum</span>
 			</button>
 			<button
 				type="button"
