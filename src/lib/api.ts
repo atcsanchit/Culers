@@ -97,9 +97,15 @@ export async function fetchLineup(fixtureId?: string): Promise<LineupData> {
 }
 
 export async function fetchLaMasia(): Promise<LaMasiaHub> {
-	const res = await fetch('/api/la-masia', { cache: 'no-store' });
-	if (!res.ok) throw new Error('Failed to fetch La Masia squad');
-	return res.json();
+	const controller = new AbortController();
+	const timeout = window.setTimeout(() => controller.abort(), 25_000);
+	try {
+		const res = await fetch('/api/la-masia', { cache: 'no-store', signal: controller.signal });
+		if (!res.ok) throw new Error('Failed to fetch La Masia squad');
+		return res.json();
+	} finally {
+		window.clearTimeout(timeout);
+	}
 }
 
 export async function fetchTransfers(): Promise<TransfersHub> {
@@ -122,9 +128,18 @@ export async function fetchSocialHub(): Promise<SocialHubData> {
 
 export async function fetchInstagramFeed(user?: string): Promise<InstagramFeed> {
 	const qs = user ? `?user=${encodeURIComponent(user)}` : '';
-	const res = await fetch(`/api/social/instagram${qs}`, { cache: 'no-store' });
-	if (!res.ok) throw new Error('Failed to fetch Instagram feed');
-	return res.json();
+	const controller = new AbortController();
+	const timeout = window.setTimeout(() => controller.abort(), 12_000);
+	try {
+		const res = await fetch(`/api/social/instagram${qs}`, {
+			cache: 'no-store',
+			signal: controller.signal,
+		});
+		if (!res.ok) throw new Error('Failed to fetch Instagram feed');
+		return res.json();
+	} finally {
+		window.clearTimeout(timeout);
+	}
 }
 
 export async function fetchXFeed(): Promise<XFeed> {

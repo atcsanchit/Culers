@@ -976,6 +976,88 @@ export async function fetchTeamLastAndNext(teamId: number): Promise<{ last: Stat
 	return { last, next };
 }
 
+/** TheSportsDB team ids used for academy weekend cards. */
+export const SPORTSDB_ATLETIC_TEAM_ID = '134487';
+
+function sportsDbEventToStats(raw: Json, teamId: string): StatsEvent | null {
+	const home = String(raw.strHomeTeam ?? '');
+	const away = String(raw.strAwayTeam ?? '');
+	if (!home || !away) return null;
+	const isHome = String(raw.idHomeTeam ?? '') === teamId || /barcelona atl/i.test(home);
+	const date = String(raw.dateEvent ?? '').slice(0, 10);
+	const timeRaw = String(raw.strTime ?? '');
+	const stamp = String(raw.strTimestamp ?? '');
+	const time = (timeRaw || stamp.slice(11, 19) || '12:00:00').slice(0, 8);
+	const ts = stamp
+		? Math.floor(new Date(stamp).getTime() / 1000)
+		: date
+			? Math.floor(new Date(`${date}T${time}Z`).getTime() / 1000)
+			: 0;
+	const statusRaw = String(raw.strStatus ?? raw.strProgress ?? '');
+	const finished = /ft|finished|aet|pen/i.test(statusRaw) || statusRaw === 'Match Finished';
+	const inplay = /live|\d+'/i.test(statusRaw) || Boolean(raw.strProgress && !finished);
+	return {
+		id: Number(raw.idEvent ?? 0),
+		date,
+		time,
+		startTimestamp: ts,
+		homeTeam: home,
+		awayTeam: away,
+		homeTeamId: Number(raw.idHomeTeam ?? 0),
+		awayTeamId: Number(raw.idAwayTeam ?? 0),
+		homeScore: num(raw.intHomeScore),
+		awayScore: num(raw.intAwayScore),
+		isHome,
+		opponent: isHome ? away : home,
+		statusType: finished ? 'finished' : inplay ? 'inprogress' : 'scheduled',
+		competition: String(raw.strLeague ?? ''),
+		clock: finished ? 'FT' : statusRaw || undefined,
+	};
+}
+
+/** Last finished + next upcoming from TheSportsDB (works for Barça Atlètic on Vercel). */
+export async function fetchSportsDbTeamLastNext(teamId: string): Promise<{
+	last: StatsEvent | null;
+	next: StatsEvent | null;
+}> {
+	const [lastRaw, nextRaw] = await Promise.all([
+		fetchPublicJson([`https://www.thesportsdb.com/api/v1/json/3/eventslast.php?id=${teamId}`]),
+		fetchPublicJson([`https://www.thesportsdb.com/api/v1/json/3/eventsnext.php?id=${teamId}`]),
+	]);
+	const lastRow = ((lastRaw?.results as Json[]) ?? [])[0];
+	const nextRow = ((nextRaw?.events as Json[]) ?? [])[0];
+	return {
+		last: lastRow ? sportsDbEventToStats(lastRow, teamId) : null,
+		next: nextRow ? sportsDbEventToStats(nextRow, teamId) : null,
+	};
+}
+
+/** ESPN Barcelona B (Atlètic) — secondary weekend source when TSDB is empty. */
+export const ESPN_BARCA_B_TEAM_ID = 5462;
+export const ESPN_BARCA_U19_TEAM_ID = 130878;
+
+export async function fetchEspnAcademyTeamLastNext(
+	teamId: number,
+	leagueSlugs: string[],
+): Promise<{ last: StatsEvent | null; next: StatsEvent | null }> {
+	const byId = new Map<number, StatsEvent>();
+	await Promise.all(
+		leagueSlugs.map(async (slug) => {
+			const data = await espnPath(`/apis/site/v2/sports/soccer/${slug}/teams/${teamId}/schedule`);
+			for (const ev of (data?.events as Json[]) ?? []) {
+				const parsed = eventFromEspn(ev, slug, slug);
+				if (parsed) byId.set(parsed.id, withTeamPerspective(parsed, teamId));
+			}
+		}),
+	);
+	const events = [...byId.values()].sort((a, b) => b.startTimestamp - a.startTimestamp);
+	const last = events.find((e) => e.statusType === 'finished') ?? null;
+	const next =
+		[...events].sort((a, b) => a.startTimestamp - b.startTimestamp).find((e) => e.statusType !== 'finished') ??
+		null;
+	return { last, next };
+}
+
 export async function fetchEspnAthleteStats(athleteId: number): Promise<{
 	name: string;
 	position: string;

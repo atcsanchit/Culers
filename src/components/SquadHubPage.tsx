@@ -88,13 +88,23 @@ export function SquadHubPage() {
 	}, [tab, data]);
 
 	useEffect(() => {
-		if (tab !== 'la-masia' || igFeed || igLoading) return;
+		if (tab !== 'la-masia') return;
+		let cancelled = false;
 		setIgLoading(true);
 		void fetchInstagramFeed('fcbmasia')
-			.then(setIgFeed)
-			.catch(() => setIgFeed(null))
-			.finally(() => setIgLoading(false));
-	}, [tab, igFeed, igLoading]);
+			.then((feed) => {
+				if (!cancelled) setIgFeed(feed);
+			})
+			.catch(() => {
+				if (!cancelled) setIgFeed(null);
+			})
+			.finally(() => {
+				if (!cancelled) setIgLoading(false);
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, [tab]);
 
 	if (!data) {
 		return (
@@ -236,7 +246,8 @@ export function SquadHubPage() {
 									</a>
 								</div>
 								<p className="muted la-masia-pathway-lead">
-									Official academy feed — scores graphics, kick-offs, and the kids.
+									Official academy feed — scores graphics, kick-offs, and the kids. Weekend cards above
+									refresh from TheSportsDB / ESPN.
 								</p>
 								{igLoading && !igFeed && <p className="muted loading-msg">Loading @fcbmasia…</p>}
 								{igFeed?.posts.length ? (
@@ -265,7 +276,11 @@ export function SquadHubPage() {
 											<InstagramIcon />
 											<div>
 												<strong>@fcbmasia</strong>
-												<em>Public previews didn’t load here — open the official academy Instagram.</em>
+												<em>
+													{igFeed
+														? 'Live scrape unavailable on this host — open the official academy Instagram.'
+														: 'Public previews didn’t load here — open the official academy Instagram.'}
+												</em>
 											</div>
 										</a>
 									)
