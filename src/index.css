@@ -10513,6 +10513,50 @@ body.museum-body {
 	align-items: center;
 }
 
+.museum-gallery-links {
+	display: flex;
+	gap: 0.65rem;
+	margin-top: 0.85rem;
+	padding-top: 0.75rem;
+	border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.museum-gallery-links a {
+	font-size: 0.78rem;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	color: var(--gold);
+	text-decoration: none;
+}
+
+.museum-gallery-links a:hover {
+	text-decoration: underline;
+}
+
+.museum-photo-badge {
+	position: absolute;
+	top: 0.4rem;
+	left: 0.4rem;
+	font-size: 0.65rem;
+	font-family: var(--display);
+	letter-spacing: 0.08em;
+	padding: 0.15rem 0.4rem;
+	border-radius: 4px;
+	background: rgba(4, 8, 16, 0.72);
+	color: #fff;
+	pointer-events: none;
+}
+
+.museum-photo-grid figcaption a {
+	color: inherit;
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+
+.museum-gallery-status {
+	margin-top: 0.75rem;
+}
+
 .museum-root {
 	position: relative;
 	min-height: 100vh;
@@ -10841,6 +10885,7 @@ body.museum-body {
 }
 
 .museum-photo-hit {
+	position: relative;
 	display: block;
 	width: 100%;
 	padding: 0;
