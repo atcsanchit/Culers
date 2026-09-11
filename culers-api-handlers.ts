@@ -4,7 +4,7 @@ import { syncHomeBackgroundManifest } from './culers-home-backgrounds.ts';
 import { buildLineup, computeStats } from './culers-lineup.ts';
 import { fetchFcbFixtures, fetchFcbLiveSnapshot, fetchFcbMatchSummary, fetchFcbFixturePreview, fetchFcbPlayerMatchStats, fetchFcbPlayerStats, fetchFcbSquad, fetchRecentBarcaFixture, fetchFcbFixtureById } from './culers-fcb.ts';
 import { enrichPlayerPhotos } from './culers-photos.ts';
-import { fetchInstagramFeedFor, fetchBarcaSocialHub, fetchBarcaXFeed, streamInstagramImage, sanitizeInstagramUser } from './culers-social.ts';
+import { fetchInstagramFeedFor, fetchBarcaSocialHub, fetchBarcaXFeed, streamInstagramImage, streamInstagramRemote, sanitizeInstagramUser } from './culers-social.ts';
 import { fetchFabrizioProfile, fetchFabrizioRomanoNews, fetchReshadProfile, fetchReshadRahmanNews } from './culers-twitter.ts';
 import { fetchLaMasiaHub, fetchLaMasiaPlayerStats } from './culers-lamasia.ts';
 import { fetchEspnMatchRatings, fetchEspnPlayerMatchStats, parseEspnEventId } from './culers-espn.ts';
@@ -506,6 +506,18 @@ export async function dispatchCulersApi(
 			const id = url.searchParams.get('id');
 			if (!id) return jsonResult({ error: 'id required' }, 400);
 			const image = await streamInstagramImage(id, url.searchParams.get('user'));
+			if (!image) return jsonResult({ error: 'Image not found' }, 404);
+			return {
+				status: 200,
+				headers: {
+					'Content-Type': image.contentType,
+					'Cache-Control': 'public, max-age=3600',
+				},
+				body: image.body,
+			};
+		}
+		if (url.pathname === '/api/social/instagram/remote') {
+			const image = await streamInstagramRemote(url.searchParams.get('url'));
 			if (!image) return jsonResult({ error: 'Image not found' }, 404);
 			return {
 				status: 200,

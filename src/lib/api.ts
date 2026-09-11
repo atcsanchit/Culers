@@ -143,9 +143,18 @@ export async function fetchInstagramFeed(user?: string): Promise<InstagramFeed> 
 }
 
 export async function fetchXFeed(): Promise<XFeed> {
-	const res = await fetch('/api/social/x');
-	if (!res.ok) throw new Error('Failed to fetch X feed');
-	return res.json();
+	const controller = new AbortController();
+	const timeout = window.setTimeout(() => controller.abort(), 12_000);
+	try {
+		const res = await fetch('/api/social/x', {
+			cache: 'no-store',
+			signal: controller.signal,
+		});
+		if (!res.ok) throw new Error('Failed to fetch X feed');
+		return res.json();
+	} finally {
+		window.clearTimeout(timeout);
+	}
 }
 
 export async function fetchClubGround(team: string): Promise<{

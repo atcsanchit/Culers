@@ -154,24 +154,126 @@ export async function fetchInstagramFeedFor(rawUser: string) {
 	}
 
 	const fallbackFollowers = username === MASIA_INSTAGRAM_USER ? '6M+' : '148M';
+	const cachedPosts = (data?.posts ?? [])
+		.filter((post) => post.cached !== false)
+		.map((post) => ({
+			id: post.id,
+			url: post.url,
+			caption: post.caption,
+			image: proxyInstagramImage(post.id, username),
+		}));
+
+	let posts = cachedPosts;
+	let source = `Instagram — @${username} (public previews)`;
+	let followersLabel = data?.followersLabel ?? (data ? undefined : fallbackFollowers);
+	let postsLabel = data?.postsLabel;
+
+	if (posts.length === 0) {
+		const lite = await fetchInstagramLite(username);
+		if (lite.posts.length > 0) {
+			posts = lite.posts.map((post) => ({
+				id: post.id,
+				url: post.url,
+				caption: post.caption,
+				image: proxyInstagramRemote(post.image),
+			}));
+			source = `Instagram — @${username} (live public previews)`;
+			followersLabel = lite.followersLabel || followersLabel;
+			postsLabel = lite.postsLabel || postsLabel;
+			if (!profileImage && lite.profileImage) {
+				profileImage = proxyInstagramRemote(lite.profileImage);
+			}
+		}
+	}
 
 	return {
 		username,
 		profileUrl: `https://www.instagram.com/${username}/`,
 		profileImage,
-		followersLabel: data?.followersLabel ?? (data ? undefined : fallbackFollowers),
-		postsLabel: data?.postsLabel,
-		posts: (data?.posts ?? [])
-			.filter((post) => post.cached !== false)
-			.map((post) => ({
-				id: post.id,
-				url: post.url,
-				caption: post.caption,
-				image: proxyInstagramImage(post.id, username),
-			})),
+		followersLabel,
+		postsLabel,
+		posts,
 		fetchedAt: new Date().toISOString(),
-		source: `Instagram — @${username} (public previews)`,
+		source,
 	};
+}
+
+const IG_CDN_HOST_RE = /(^|\.)(cdninstagram\.com|fbcdn\.net|instagram\.com)$/i;
+
+function isAllowedInstagramCdn(urlStr: string) {
+	try {
+		const u = new URL(urlStr);
+		return u.protocol === 'https:' && IG_CDN_HOST_RE.test(u.hostname);
+	} catch {
+		return false;
+	}
+}
+
+function proxyInstagramRemote(imageUrl: string) {
+	return `/api/social/instagram/remote?url=${encodeURIComponent(imageUrl)}`;
+}
+
+async function fetchTextWithTimeout(url: string, timeoutMs = 8_000): Promise<string | null> {
+	const controller = new AbortController();
+	const timer = setTimeout(() => controller.abort(), timeoutMs);
+	try {
+		const res = await fetch(url, {
+			signal: controller.signal,
+			headers: {
+				'User-Agent':
+					'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+				Accept: 'text/html,application/xhtml+xml',
+				'Accept-Language': 'en-US,en;q=0.9',
+			},
+		});
+		if (!res.ok) return null;
+		return await res.text();
+	} catch {
+		return null;
+	} finally {
+		clearTimeout(timer);
+	}
+}
+
+/** Serverless-friendly Instagram previews via public OG tags (no Python). */
+async function fetchInstagramLite(username: string): Promise<{
+	followersLabel: string;
+	postsLabel: string;
+	profileImage: string;
+	posts: Array<{ id: string; url: string; caption: string; image: string }>;
+}> {
+	const empty = { followersLabel: '', postsLabel: '', profileImage: '', posts: [] as Array<{ id: string; url: string; caption: string; image: string }> };
+	const profileHtml = await fetchTextWithTimeout(`https://www.instagram.com/${username}/`);
+	if (!profileHtml) return empty;
+
+	const ogDesc = profileHtml.match(/property="og:description" content="([^"]+)"/i)?.[1] ?? '';
+	const desc = ogDesc.replace(/&#064;/g, '@');
+	const followersLabel = desc.match(/([\d,.]+[KMB]?)\s+Followers/i)?.[1] ?? '';
+	const postsLabel = desc.match(/([\d,.]+[KMB]?)\s+Posts/i)?.[1] ?? '';
+	const profileImage = profileHtml.match(/property="og:image" content="([^"]+)"/i)?.[1]?.replace(/&amp;/g, '&') ?? '';
+
+	const codes = [...new Set([...profileHtml.matchAll(/\/p\/([A-Za-z0-9_-]{11})/g)].map((m) => m[1]!))].slice(0, 9);
+	const posts: Array<{ id: string; url: string; caption: string; image: string }> = [];
+
+	for (const code of codes) {
+		const html = await fetchTextWithTimeout(`https://www.instagram.com/p/${code}/`, 6_000);
+		if (!html) continue;
+		const image = html.match(/property="og:image" content="([^"]+)"/i)?.[1]?.replace(/&amp;/g, '&');
+		if (!image || !isAllowedInstagramCdn(image)) continue;
+		let caption = html.match(/property="og:description" content="([^"]+)"/i)?.[1] ?? '';
+		caption = caption
+			.replace(/&#064;/g, '@')
+			.replace(/^[\d,.]+[KMB]?\s+likes,\s+[\d,.]+[KMB]?\s+comments\s+-\s+[^:]+:\s*/i, '')
+			.trim();
+		posts.push({
+			id: code,
+			url: `https://www.instagram.com/p/${code}/`,
+			caption: caption.slice(0, 160),
+			image,
+		});
+	}
+
+	return { followersLabel, postsLabel, profileImage, posts };
 }
 
 export async function streamInstagramImage(
@@ -193,6 +295,35 @@ export async function streamInstagramImage(
 		}
 	}
 	return null;
+}
+
+export async function streamInstagramRemote(
+	rawUrl: string | null,
+): Promise<{ body: Buffer; contentType: string } | null> {
+	if (!rawUrl || !isAllowedInstagramCdn(rawUrl)) return null;
+	const controller = new AbortController();
+	const timer = setTimeout(() => controller.abort(), 10_000);
+	try {
+		const res = await fetch(rawUrl, {
+			signal: controller.signal,
+			headers: {
+				'User-Agent':
+					'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+				Referer: 'https://www.instagram.com/',
+				Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+			},
+		});
+		if (!res.ok) return null;
+		const contentType = res.headers.get('content-type') || 'image/jpeg';
+		if (!contentType.startsWith('image/')) return null;
+		const body = Buffer.from(await res.arrayBuffer());
+		if (body.length < 512) return null;
+		return { body, contentType };
+	} catch {
+		return null;
+	} finally {
+		clearTimeout(timer);
+	}
 }
 
 export async function fetchBarcaXFeed() {

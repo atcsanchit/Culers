@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+	GALLERY_LOADING_EXHIBIT,
 	MUSEUM_EXHIBITS,
 	MUSEUM_META,
 	MUSEUM_WINGS,
+	buildSocialGalleryExhibits,
 	exhibitsForWing,
 	type MuseumExhibit,
+	type MuseumPhoto,
 	type MuseumWingId,
 } from '../data/museum';
+import { fetchInstagramFeed, fetchXFeed } from '../lib/api';
 
 function preferFullscreen(el: HTMLElement) {
 	const req =
@@ -18,13 +22,78 @@ function preferFullscreen(el: HTMLElement) {
 	});
 }
 
+function truncateCaption(text: string, max = 110) {
+	const clean = text.replace(/\s+/g, ' ').trim();
+	if (clean.length <= max) return clean;
+	return `${clean.slice(0, max - 1)}…`;
+}
+
 export function MuseumExperience() {
 	const [wing, setWing] = useState<MuseumWingId>('origins');
-	const rooms = useMemo(() => exhibitsForWing(wing), [wing]);
-	const [exhibitId, setExhibitId] = useState(rooms[0]?.id ?? MUSEUM_EXHIBITS[0]!.id);
+	const [galleryRooms, setGalleryRooms] = useState<MuseumExhibit[] | null>(null);
+	const [galleryLoading, setGalleryLoading] = useState(false);
+	const [shuffleKey, setShuffleKey] = useState(() => Date.now());
+	const [exhibitId, setExhibitId] = useState(MUSEUM_EXHIBITS[0]!.id);
 	const [backdropOverride, setBackdropOverride] = useState<string | null>(null);
 	const [bgReady, setBgReady] = useState(false);
 	const [isFullscreen, setIsFullscreen] = useState(false);
+
+	const rooms = useMemo(() => {
+		if (wing === 'gallery') {
+			return galleryRooms ?? [GALLERY_LOADING_EXHIBIT, ...exhibitsForWing('gallery').filter((r) => r.id === 'gallery-atmosphere')];
+		}
+		return exhibitsForWing(wing);
+	}, [wing, galleryRooms]);
+
+	useEffect(() => {
+		if (wing !== 'gallery') return;
+		let cancelled = false;
+		setGalleryLoading(true);
+
+		void Promise.allSettled([fetchInstagramFeed('fcbarcelona'), fetchXFeed()]).then((results) => {
+			if (cancelled) return;
+			const ig = results[0].status === 'fulfilled' ? results[0].value : null;
+			const x = results[1].status === 'fulfilled' ? results[1].value : null;
+
+			const instagram: MuseumPhoto[] = (ig?.posts ?? [])
+				.filter((p) => Boolean(p.image))
+				.map((p) => ({
+					src: p.image,
+					caption: truncateCaption(p.caption || 'Instagram · @fcbarcelona'),
+					href: p.url,
+					platform: 'instagram' as const,
+				}));
+
+			const xPhotos: MuseumPhoto[] = [];
+			for (const item of x?.items ?? []) {
+				for (const media of item.media ?? []) {
+					const src = media.type === 'photo' ? media.url || media.previewUrl : media.previewUrl;
+					if (!src) continue;
+					xPhotos.push({
+						src,
+						caption: truncateCaption(item.text || item.title || 'X · @FCBarcelona'),
+						href: item.link,
+						platform: 'x',
+					});
+				}
+			}
+
+			const notes = [ig?.source, x?.source, x?.note].filter(Boolean).join(' · ');
+			setGalleryRooms(
+				buildSocialGalleryExhibits({
+					instagram,
+					x: xPhotos,
+					shuffleKey,
+					note: notes || undefined,
+				}),
+			);
+			setGalleryLoading(false);
+		});
+
+		return () => {
+			cancelled = true;
+		};
+	}, [wing, shuffleKey]);
 
 	useEffect(() => {
 		if (!rooms.some((r) => r.id === exhibitId)) {
@@ -51,13 +120,12 @@ export function MuseumExperience() {
 				void document.exitFullscreen?.();
 			}
 			if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-				const list = exhibitsForWing(wing);
-				const idx = list.findIndex((r) => r.id === exhibit.id);
+				const idx = rooms.findIndex((r) => r.id === exhibit.id);
 				if (idx < 0) return;
 				const next =
 					e.key === 'ArrowRight'
-						? list[(idx + 1) % list.length]
-						: list[(idx - 1 + list.length) % list.length];
+						? rooms[(idx + 1) % rooms.length]
+						: rooms[(idx - 1 + rooms.length) % rooms.length];
 				if (next) setExhibitId(next.id);
 			}
 		};
@@ -66,7 +134,7 @@ export function MuseumExperience() {
 			window.removeEventListener('keydown', onKey);
 			document.removeEventListener('fullscreenchange', syncFs);
 		};
-	}, [wing, exhibit.id]);
+	}, [rooms, exhibit.id]);
 
 	useEffect(() => {
 		setBgReady(false);
@@ -106,6 +174,16 @@ export function MuseumExperience() {
 					</div>
 				</div>
 				<div className="museum-top-actions">
+					{wing === 'gallery' && (
+						<button
+							type="button"
+							className="btn-ghost museum-shuffle-btn"
+							disabled={galleryLoading}
+							onClick={() => setShuffleKey(Date.now())}
+						>
+							{galleryLoading ? 'Shuffling…' : 'Shuffle walls'}
+						</button>
+					)}
 					<button
 						type="button"
 						className="btn-ghost museum-fs-btn"
@@ -152,6 +230,16 @@ export function MuseumExperience() {
 							</li>
 						))}
 					</ul>
+					{wing === 'gallery' && (
+						<div className="museum-gallery-links">
+							<a href="https://www.instagram.com/fcbarcelona/" target="_blank" rel="noreferrer">
+								Instagram
+							</a>
+							<a href="https://x.com/FCBarcelona" target="_blank" rel="noreferrer">
+								X
+							</a>
+						</div>
+					)}
 				</aside>
 
 				<article className="museum-room" key={exhibit.id}>
@@ -187,7 +275,7 @@ export function MuseumExperience() {
 							<span className="panel-label">On the wall · tap to change backdrop</span>
 							<div className="museum-photo-grid">
 								{exhibit.photos.map((photo) => (
-									<figure key={photo.src + photo.caption}>
+									<figure key={`${photo.platform ?? 'p'}-${photo.src}-${photo.caption.slice(0, 24)}`}>
 										<button
 											type="button"
 											className={`museum-photo-hit${backdrop === photo.src ? ' is-active' : ''}`}
@@ -195,12 +283,27 @@ export function MuseumExperience() {
 											aria-label={`Use as backdrop: ${photo.caption}`}
 										>
 											<img src={photo.src} alt="" loading="lazy" />
+											{photo.platform && photo.platform !== 'local' && (
+												<span className="museum-photo-badge">{photo.platform === 'x' ? 'X' : 'IG'}</span>
+											)}
 										</button>
-										<figcaption>{photo.caption}</figcaption>
+										<figcaption>
+											{photo.href ? (
+												<a href={photo.href} target="_blank" rel="noreferrer">
+													{photo.caption}
+												</a>
+											) : (
+												photo.caption
+											)}
+										</figcaption>
 									</figure>
 								))}
 							</div>
 						</section>
+					)}
+
+					{galleryLoading && wing === 'gallery' && exhibit.photos.length === 0 && (
+						<p className="muted museum-gallery-status">Fetching Instagram and X photos…</p>
 					)}
 
 					{exhibit.sourceNote && <p className="museum-source muted">{exhibit.sourceNote}</p>}

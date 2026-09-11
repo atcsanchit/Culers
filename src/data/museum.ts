@@ -15,6 +15,9 @@ export type MuseumWingId = 'origins' | 'camp-nou' | 'europe' | 'rivalries' | 'ma
 export type MuseumPhoto = {
 	src: string;
 	caption: string;
+	/** Optional deep link to Instagram post or X status */
+	href?: string;
+	platform?: 'instagram' | 'x' | 'local';
 };
 
 export type MuseumExhibit = {
@@ -44,7 +47,7 @@ export const MUSEUM_WINGS: MuseumWing[] = [
 	{ id: 'europe', label: 'Europe', tagline: 'Cups, comebacks, and continental destiny' },
 	{ id: 'rivalries', label: 'Rivalries', tagline: 'Clásico, derbi, and the fixtures that burn' },
 	{ id: 'masia', label: 'La Masia', tagline: 'The farmhouse that taught a language' },
-	{ id: 'gallery', label: 'Gallery', tagline: 'Every photo we keep on the walls' },
+	{ id: 'gallery', label: 'Gallery', tagline: 'Live walls from Instagram & X' },
 ];
 
 const CAMP_NOU = '/backgrounds/stadium/camp-nou.jpg';
@@ -272,44 +275,159 @@ function exhibitsFromMasia(): MuseumExhibit[] {
 	];
 }
 
-function galleryExhibits(): MuseumExhibit[] {
+function galleryAtmosphereExhibits(): MuseumExhibit[] {
 	const homeShots = (homeManifest.images as string[]).map((src, i) => ({
 		src,
 		caption: `Home atmosphere ${i + 1} — bundled Culé wallpaper.`,
+		platform: 'local' as const,
 	}));
 	const venueShots = Object.values(stadiumManifest.venues as Record<string, { name: string; path: string }>).map(
 		(v) => ({
 			src: v.path,
 			caption: v.name,
+			platform: 'local' as const,
 		}),
 	);
 	const stadiumRoots: MuseumPhoto[] = [
-		{ src: CAMP_NOU, caption: 'Camp Nou' },
-		{ src: '/backgrounds/stadium/san-mames.jpg', caption: 'San Mamés' },
-		{ src: '/backgrounds/stadium/metropolitano.jpg', caption: 'Metropolitano' },
-		{ src: '/backgrounds/stadium/martinez-valero.jpg', caption: 'Martínez Valero' },
-		{ src: CAMP_NOU_GRASS, caption: 'Camp Nou grass' },
+		{ src: CAMP_NOU, caption: 'Camp Nou', platform: 'local' },
+		{ src: '/backgrounds/stadium/san-mames.jpg', caption: 'San Mamés', platform: 'local' },
+		{ src: '/backgrounds/stadium/metropolitano.jpg', caption: 'Metropolitano', platform: 'local' },
+		{ src: '/backgrounds/stadium/martinez-valero.jpg', caption: 'Martínez Valero', platform: 'local' },
+		{ src: CAMP_NOU_GRASS, caption: 'Camp Nou grass', platform: 'local' },
 	];
 
 	const all = [...homeShots, ...venueShots, ...stadiumRoots];
-	const chunkSize = 8;
-	const rooms: MuseumExhibit[] = [];
-	for (let i = 0; i < all.length; i += chunkSize) {
-		const slice = all.slice(i, i + chunkSize);
-		const n = rooms.length + 1;
-		rooms.push({
-			id: `gallery-${n}`,
+	const slice = all.slice(0, 8);
+	return [
+		{
+			id: 'gallery-atmosphere',
 			wing: 'gallery',
-			era: `Wall ${n}`,
-			title: n === 1 ? 'Atmosphere walls' : n === 2 ? 'Away grounds' : `Photo wall ${n}`,
-			subtitle: 'Bundled photos from Culers — stadiums, home scenes, and pitch light.',
-			body: 'This gallery is the museum’s photo vault: every local background we already ship with the app, hung as rooms so the backdrop can change as you walk.',
+			era: 'Archive',
+			title: 'Atmosphere archive',
+			subtitle: 'Bundled stadium and home scenes kept on Culers when the live feeds are quiet.',
+			body: 'Local photo vault — Camp Nou nights, away grounds, and Culé wallpaper. The main Gallery walls above pull random posts from the official Instagram and X accounts.',
 			photos: slice,
 			background: slice[0]?.src ?? CAMP_NOU,
 			sourceNote: 'Local assets under /public/backgrounds (home + stadium manifests).',
+		},
+	];
+}
+
+function mulberry32(seed: number) {
+	return () => {
+		let t = (seed += 0x6d2b79f5);
+		t = Math.imul(t ^ (t >>> 15), t | 1);
+		t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+	};
+}
+
+export function shuffleMuseumPhotos<T>(items: T[], seed: number): T[] {
+	const out = [...items];
+	const rand = mulberry32(seed || 1);
+	for (let i = out.length - 1; i > 0; i--) {
+		const j = Math.floor(rand() * (i + 1));
+		const tmp = out[i]!;
+		out[i] = out[j]!;
+		out[j] = tmp;
+	}
+	return out;
+}
+
+export const GALLERY_LOADING_EXHIBIT: MuseumExhibit = {
+	id: 'gallery-loading',
+	wing: 'gallery',
+	era: 'Live',
+	title: 'Loading official walls…',
+	subtitle: 'Pulling random photos from @fcbarcelona and @FCBarcelona.',
+	body: 'Hang on — the gallery is fetching the latest public previews from Instagram and X.',
+	photos: [],
+	background: CAMP_NOU,
+	sourceNote: 'instagram.com/fcbarcelona · x.com/FCBarcelona',
+};
+
+export function buildSocialGalleryExhibits(input: {
+	instagram: MuseumPhoto[];
+	x: MuseumPhoto[];
+	shuffleKey: number;
+	note?: string;
+}): MuseumExhibit[] {
+	const ig = input.instagram;
+	const x = input.x;
+	const mixed = shuffleMuseumPhotos([...ig, ...x], input.shuffleKey + 17);
+	const rooms: MuseumExhibit[] = [];
+
+	if (mixed.length > 0) {
+		const wall = mixed.slice(0, 12);
+		rooms.push({
+			id: 'gallery-random',
+			wing: 'gallery',
+			era: 'Live · shuffled',
+			title: 'Random walls',
+			subtitle: 'A fresh mix from official Instagram and X — shuffle for a new hang.',
+			body: 'These frames are pulled live from @fcbarcelona on Instagram and @FCBarcelona on X. Tap any photo to put it on the museum backdrop. Use Shuffle walls for another random set.',
+			photos: wall,
+			background: wall[0]!.src,
+			sourceNote:
+				input.note ??
+				'Live feeds — https://www.instagram.com/fcbarcelona/ · https://x.com/FCBarcelona',
 		});
 	}
+
+	if (ig.length > 0) {
+		const wall = shuffleMuseumPhotos(ig, input.shuffleKey + 41).slice(0, 12);
+		rooms.push({
+			id: 'gallery-instagram',
+			wing: 'gallery',
+			era: '@fcbarcelona',
+			title: 'Instagram wall',
+			subtitle: 'Public previews from the club’s official Instagram.',
+			body: 'Official Instagram moments — matchday, squad, Camp Nou atmosphere — as the club posts them.',
+			photos: wall,
+			background: wall[0]!.src,
+			sourceNote: 'https://www.instagram.com/fcbarcelona/',
+		});
+	}
+
+	if (x.length > 0) {
+		const wall = shuffleMuseumPhotos(x, input.shuffleKey + 73).slice(0, 12);
+		rooms.push({
+			id: 'gallery-x',
+			wing: 'gallery',
+			era: '@FCBarcelona',
+			title: 'X wall',
+			subtitle: 'Photo posts from the club on X.',
+			body: 'Images attached to recent @FCBarcelona posts — lineups, goals, and club announcements that carry a picture.',
+			photos: wall,
+			background: wall[0]!.src,
+			sourceNote: 'https://x.com/FCBarcelona',
+		});
+	}
+
+	rooms.push(...galleryAtmosphereExhibits());
+
+	if (rooms.length === 1 && rooms[0]?.id === 'gallery-atmosphere') {
+		rooms.unshift({
+			id: 'gallery-social-empty',
+			wing: 'gallery',
+			era: 'Live',
+			title: 'Official feeds quiet',
+			subtitle: 'Could not load Instagram / X previews right now.',
+			body: 'Open the club’s Instagram or X directly, then try Shuffle walls again. The atmosphere archive below still hangs local Camp Nou and stadium photos.',
+			photos: [],
+			background: CAMP_NOU,
+			sourceNote:
+				input.note ??
+				'https://www.instagram.com/fcbarcelona/ · https://x.com/FCBarcelona',
+		});
+	}
+
 	return rooms;
+}
+
+/** Static fallback until the Gallery wing loads live social rooms. */
+function galleryExhibits(): MuseumExhibit[] {
+	return [GALLERY_LOADING_EXHIBIT, ...galleryAtmosphereExhibits()];
 }
 
 function dedupeById(exhibits: MuseumExhibit[]) {
@@ -347,5 +465,5 @@ export const MUSEUM_META = {
 	title: 'Culers Museum',
 	tagline: 'Més que un club — history in rooms, photos on the walls.',
 	intro:
-		'Walk the wings: founding myths, Camp Nou nights, European miracles, rivalries, La Masia, and a gallery. Backdrop and wall photos change with each room’s era.',
+		'Walk the wings: founding myths, Camp Nou nights, European miracles, rivalries, La Masia, and a live Gallery of random photos from Instagram and X.',
 };

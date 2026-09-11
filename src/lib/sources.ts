@@ -33,7 +33,7 @@ export const DATA_SOURCES = {
 		{ id: 'fcb-live-match-stats', label: 'FC Barcelona live match player stats', endpoint: '/api/player-match-stats' },
 	],
 	museum: [
-		{ id: 'culers-museum', label: 'Culers Museum — On This Day, rivalries, La Masia, bundled stadium/home photos', url: '/museum.html' },
+		{ id: 'culers-museum', label: 'Culers Museum — history rooms + live Gallery from @fcbarcelona / @FCBarcelona', url: '/museum.html' },
 		{ id: 'wikimedia-archive', label: 'Wikimedia Commons — historic match photos linked from On This Day', url: 'https://commons.wikimedia.org/' },
 	],
 } as const;
