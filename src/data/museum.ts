@@ -49,7 +49,6 @@ export const MUSEUM_WINGS: MuseumWing[] = [
 
 const CAMP_NOU = '/backgrounds/stadium/camp-nou.jpg';
 const CAMP_NOU_GRASS = '/backgrounds/player/camp-nou-grass.jpg';
-const HOME_FALLBACK = (homeManifest.images as string[])[0] ?? CAMP_NOU;
 
 /**
  * Historic photos: prefer files in public/backgrounds/museum/, else Commons URLs
