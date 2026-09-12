@@ -31,7 +31,7 @@ export type LaMasiaSpotlight = {
 	barcaRecord?: BarcaClubRecord;
 };
 
-/** Rotating La Masia graduates — current stars + eternal alumni. */
+/** Rotating La Masia graduates — academy products only (no external signings). */
 export const LA_MASIA_SPOTLIGHTS: LaMasiaSpotlight[] = [
 	{
 		id: 'yamal',
@@ -94,23 +94,23 @@ export const LA_MASIA_SPOTLIGHTS: LaMasiaSpotlight[] = [
 		},
 	},
 	{
-		id: 'pedri',
-		name: 'Pedri',
-		matchNames: ['pedri', 'pedro gonzalez', 'pedro gonzález'],
-		position: 'Attacking midfielder',
-		generation: 'La Masia-adjacent · Orchestra',
-		bio: 'The metronome. Finds the free man before opponents notice the space exists.',
-		debutNote: 'Looked born for the Blaugrana midfield from day one.',
+		id: 'casado',
+		name: 'Marc Casadó',
+		matchNames: ['marc casado', 'marc casadó', 'casado', 'casadó'],
+		position: 'Defensive midfielder',
+		generation: 'La Masia · Pivot',
+		bio: 'Sant Pere de Vilamajor kid who climbed every rung. Screens, circulates, and presses — Busquets-school patience without the nostalgia act.',
+		debutNote: 'First-team trust earned the hard way: Atlètic minutes, then the midfield engine room.',
 		status: 'current',
 		barcaRecord: {
-			years: '2020–present',
+			years: '2024–present',
 			stats: [
-				{ label: 'Apps', value: '200+' },
-				{ label: 'Goals', value: '25+' },
-				{ label: 'Assists', value: '30+' },
-				{ label: 'Titles', value: '3+' },
+				{ label: 'Apps', value: '40+' },
+				{ label: 'Starts', value: '25+' },
+				{ label: 'Assists', value: '5+' },
+				{ label: 'Titles', value: '1+' },
 			],
-			legacy: 'Orchestra conductor in midfield — Barça career already into triple-digit appearances.',
+			legacy: 'Homegrown pivot trusted when the shirt needs calm — minutes still rising every season.',
 		},
 	},
 	{
