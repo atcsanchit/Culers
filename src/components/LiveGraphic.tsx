@@ -11,28 +11,34 @@ type Props = {
 	awayLabel?: string;
 };
 
-const EVENT_ICONS: Record<string, string> = {
-	goal: '⚽',
-	card: '🟨',
-	yellow: '🟨',
-	'red card': '🟥',
-	red: '🟥',
-	substitution: '🔄',
-	sub: '🔄',
-};
+const EVENT_ICONS: Array<[string, string]> = [
+	['red card', '🟥'],
+	['redcard', '🟥'],
+	['yellow card', '🟨'],
+	['yellowcard', '🟨'],
+	['yellow', '🟨'],
+	['red', '🟥'],
+	['goal', '⚽'],
+	['substitut', '🔄'],
+	['sub', '🔄'],
+];
 
-function iconFor(type: string) {
-	const t = type.toLowerCase();
-	for (const [key, icon] of Object.entries(EVENT_ICONS)) {
+function iconFor(type: string, detail = '') {
+	const t = `${type} ${detail}`.toLowerCase();
+	// Prefer red over generic "card" — ESPN labels like "Red Card" / "redcard" also contain "card".
+	if (/redcard|\bred\b/.test(t)) return '🟥';
+	if (/yellowcard|\byellow\b|\bcard\b/.test(t)) return '🟨';
+	for (const [key, icon] of EVENT_ICONS) {
 		if (t.includes(key)) return icon;
 	}
 	return '•';
 }
 
-function eventKind(type: string): 'goal' | 'card' | 'sub' | 'other' {
-	const t = type.toLowerCase();
+function eventKind(type: string, detail = ''): 'goal' | 'yellow' | 'red' | 'sub' | 'other' {
+	const t = `${type} ${detail}`.toLowerCase();
 	if (t.includes('goal')) return 'goal';
-	if (t.includes('red') || t.includes('yellow') || t.includes('card')) return 'card';
+	if (/redcard|\bred\b/.test(t)) return 'red';
+	if (/yellowcard|\byellow\b|\bcard\b/.test(t)) return 'yellow';
 	if (t.includes('sub')) return 'sub';
 	return 'other';
 }
@@ -48,9 +54,10 @@ export function LiveGraphic({
 	awayLabel = 'Opponent',
 }: Props) {
 	const recent = useMemo(() => [...events].reverse().slice(0, 12), [events]);
-	const goals = recent.filter((e) => eventKind(e.type) === 'goal');
-	const cards = recent.filter((e) => eventKind(e.type) === 'card');
-	const subs = recent.filter((e) => eventKind(e.type) === 'sub');
+	const goals = recent.filter((e) => eventKind(e.type, e.detail) === 'goal');
+	const yellows = recent.filter((e) => eventKind(e.type, e.detail) === 'yellow');
+	const reds = recent.filter((e) => eventKind(e.type, e.detail) === 'red');
+	const subs = recent.filter((e) => eventKind(e.type, e.detail) === 'sub');
 
 	const [tick, setTick] = useState(false);
 	const prevScore = useRef(`${homeScore}-${awayScore}`);
@@ -95,28 +102,32 @@ export function LiveGraphic({
 					</p>
 				) : (
 					<>
-						{(goals.length > 0 || cards.length > 0 || subs.length > 0) && (
+						{(goals.length > 0 || yellows.length > 0 || reds.length > 0 || subs.length > 0) && (
 							<div className="live-event-chips">
 								{goals.length > 0 && <span className="live-chip goal">⚽ {goals.length}</span>}
-								{cards.length > 0 && <span className="live-chip card">🟨 {cards.length}</span>}
+								{yellows.length > 0 && <span className="live-chip card">🟨 {yellows.length}</span>}
+								{reds.length > 0 && <span className="live-chip card-red">🟥 {reds.length}</span>}
 								{subs.length > 0 && <span className="live-chip sub">🔄 {subs.length}</span>}
 							</div>
 						)}
 						<ul className="timeline-list">
-							{recent.map((ev, i) => (
-								<li
-									key={`${ev.minute}-${ev.player}-${ev.type}-${i}`}
-									className={`timeline-item kind-${eventKind(ev.type)}`}
-								>
-									<span className="min">{ev.minute}&apos;</span>
-									<span className="evt-icon">{iconFor(ev.type)}</span>
-									<div>
-										<strong>{ev.player || ev.type}</strong>
-										<span className="muted">{ev.detail || ev.type}</span>
-										{ev.team && <span className="team-tag">{ev.team}</span>}
-									</div>
-								</li>
-							))}
+							{recent.map((ev, i) => {
+								const kind = eventKind(ev.type, ev.detail);
+								return (
+									<li
+										key={`${ev.minute}-${ev.player}-${ev.type}-${i}`}
+										className={`timeline-item kind-${kind}`}
+									>
+										<span className="min">{ev.minute}&apos;</span>
+										<span className="evt-icon">{iconFor(ev.type, ev.detail)}</span>
+										<div>
+											<strong>{ev.player || ev.type}</strong>
+											<span className="muted">{ev.detail || ev.type}</span>
+											{ev.team && <span className="team-tag">{ev.team}</span>}
+										</div>
+									</li>
+								);
+							})}
 						</ul>
 					</>
 				)}
