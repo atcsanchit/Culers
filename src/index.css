@@ -2057,12 +2057,25 @@ a:hover {
 .live-chip.card {
 	border-color: rgba(241, 196, 15, 0.35);
 }
+.live-chip.card-red {
+	border-color: rgba(231, 76, 60, 0.45);
+}
 .live-chip.sub {
 	border-color: rgba(52, 152, 219, 0.35);
 }
 
 .timeline-item.kind-goal {
 	border-left: 2px solid rgba(46, 204, 113, 0.55);
+	padding-left: 0.45rem;
+}
+
+.timeline-item.kind-yellow {
+	border-left: 2px solid rgba(241, 196, 15, 0.65);
+	padding-left: 0.45rem;
+}
+
+.timeline-item.kind-red {
+	border-left: 2px solid rgba(231, 76, 60, 0.75);
 	padding-left: 0.45rem;
 }
 
