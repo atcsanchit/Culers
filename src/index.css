@@ -1,21 +1,37 @@
 :root {
+	/* Official Blaugrana — blue + garnet first */
 	--grana: #a50044;
-	--grana-deep: #7a0033;
+	--grana-mid: #c2185b;
+	--grana-deep: #6e002e;
 	--blau: #004d98;
-	--blau-deep: #002f5c;
-	--gold: #edbb00;
-	--gold-soft: #f5d76e;
-	--bg: #070d18;
-	--bg-2: rgba(12, 21, 40, 0.72);
-	--bg-3: rgba(17, 31, 56, 0.82);
-	--ink: #f4f7fb;
-	--muted: #a8bdd6;
-	--line: rgba(255, 255, 255, 0.1);
-	--glass: rgba(8, 16, 32, 0.62);
-	--glass-strong: rgba(6, 12, 24, 0.82);
+	--blau-mid: #1a6bb8;
+	--blau-deep: #003366;
+	--blau-mist: #8eb4d9;
+	--grana-rgb: 165, 0, 68;
+	--blau-rgb: 0, 77, 152;
+
+	/* Senyera gold — trophies / rare highlights only */
+	--gold: #e8b923;
+	--gold-soft: #f0d56a;
+
+	/* Surfaces: deep Camp Nou navy with blue DNA */
+	--bg: #050a14;
+	--bg-2: rgba(0, 40, 82, 0.55);
+	--bg-3: rgba(8, 28, 58, 0.78);
+	--ink: #f3f7fc;
+	--muted: #9db6d1;
+	--line: rgba(142, 180, 217, 0.18);
+	--glass: rgba(4, 14, 32, 0.68);
+	--glass-strong: rgba(3, 10, 24, 0.88);
+
+	/* Chrome accents (prefer blaugrana over gold) */
+	--accent: var(--blau-mid);
+	--accent-hot: var(--grana);
+	--label: var(--blau-mist);
+
 	--win: #2ecc71;
 	--loss: #e74c3c;
-	--draw: #f39c12;
+	--draw: #f0c14a;
 	--display: 'Bebas Neue', Impact, sans-serif;
 	--sans: 'Outfit', system-ui, sans-serif;
 	color-scheme: dark;
@@ -34,7 +50,12 @@ body,
 
 body {
 	font-family: var(--sans);
-	background-color: #04080f;
+	background-color: var(--bg);
+	background-image:
+		radial-gradient(ellipse 90% 55% at 8% -8%, rgba(var(--grana-rgb), 0.34), transparent 58%),
+		radial-gradient(ellipse 80% 50% at 96% 0%, rgba(var(--blau-rgb), 0.38), transparent 52%),
+		radial-gradient(ellipse 70% 45% at 50% 110%, rgba(var(--grana-rgb), 0.16), transparent 55%);
+	background-attachment: fixed;
 	color: var(--ink);
 	position: relative;
 	min-height: 100%;
@@ -58,7 +79,7 @@ body {
 	opacity: 0;
 	transform: scale(1.06);
 	transition: opacity 1.6s ease, transform 8s ease;
-	filter: saturate(1.15) brightness(0.82);
+	filter: saturate(1.2) brightness(0.78) contrast(1.05);
 }
 
 .stadium-slide.is-active {
@@ -70,8 +91,13 @@ body {
 	position: absolute;
 	inset: 0;
 	background:
-		linear-gradient(180deg, rgba(4, 8, 15, 0.12) 0%, rgba(4, 8, 15, 0.38) 55%, rgba(4, 8, 15, 0.62) 100%),
-		linear-gradient(135deg, rgba(165, 0, 68, 0.1) 0%, transparent 42%, rgba(0, 77, 152, 0.12) 100%);
+		linear-gradient(180deg, rgba(5, 10, 20, 0.18) 0%, rgba(5, 10, 20, 0.42) 48%, rgba(5, 10, 20, 0.72) 100%),
+		linear-gradient(120deg, rgba(var(--grana-rgb), 0.28) 0%, transparent 38%, rgba(var(--blau-rgb), 0.32) 100%),
+		repeating-linear-gradient(
+			90deg,
+			rgba(var(--grana-rgb), 0.07) 0 10px,
+			rgba(var(--blau-rgb), 0.07) 10px 20px
+		);
 }
 
 .app-shell {
@@ -91,45 +117,51 @@ select {
 }
 
 a {
+	color: var(--blau-mist);
+}
+
+a:hover {
 	color: var(--gold-soft);
 }
 
 .glass-panel {
-	background: var(--glass);
+	background:
+		linear-gradient(160deg, rgba(var(--blau-rgb), 0.14), rgba(var(--grana-rgb), 0.1)),
+		var(--glass);
 	border: 1px solid var(--line);
 	border-radius: 18px;
-	backdrop-filter: blur(16px) saturate(1.2);
-	-webkit-backdrop-filter: blur(16px) saturate(1.2);
+	backdrop-filter: blur(16px) saturate(1.25);
+	-webkit-backdrop-filter: blur(16px) saturate(1.25);
 	box-shadow:
-		0 12px 40px rgba(0, 0, 0, 0.35),
-		inset 0 1px 0 rgba(255, 255, 255, 0.06);
+		0 12px 40px rgba(0, 0, 0, 0.38),
+		inset 0 1px 0 rgba(142, 180, 217, 0.1);
 }
 
 /* Floating glass card — same lift as the Live score ticker over the stadium photo. */
 .pop-card {
 	position: relative;
 	background:
-		linear-gradient(145deg, rgba(165, 0, 68, 0.16), rgba(0, 77, 152, 0.16)),
-		rgba(6, 12, 24, 0.52);
-	border: 1px solid rgba(255, 138, 128, 0.42);
+		linear-gradient(145deg, rgba(var(--grana-rgb), 0.22), rgba(var(--blau-rgb), 0.2)),
+		rgba(4, 12, 28, 0.58);
+	border: 1px solid rgba(var(--grana-rgb), 0.45);
 	border-radius: 16px;
-	backdrop-filter: blur(18px) saturate(1.4);
-	-webkit-backdrop-filter: blur(18px) saturate(1.4);
+	backdrop-filter: blur(18px) saturate(1.45);
+	-webkit-backdrop-filter: blur(18px) saturate(1.45);
 	box-shadow:
 		0 22px 50px rgba(0, 0, 0, 0.5),
-		0 0 0 1px rgba(255, 255, 255, 0.08) inset,
-		0 12px 36px rgba(165, 0, 68, 0.2);
+		0 0 0 1px rgba(142, 180, 217, 0.12) inset,
+		0 12px 36px rgba(var(--grana-rgb), 0.22);
 }
 
 .pop-card.is-quiet {
-	border-color: rgba(255, 255, 255, 0.16);
+	border-color: rgba(var(--blau-rgb), 0.4);
 	background:
-		linear-gradient(145deg, rgba(0, 77, 152, 0.14), rgba(8, 16, 32, 0.5)),
-		rgba(6, 12, 24, 0.5);
+		linear-gradient(145deg, rgba(var(--blau-rgb), 0.2), rgba(8, 16, 32, 0.52)),
+		rgba(4, 12, 28, 0.55);
 	box-shadow:
 		0 18px 42px rgba(0, 0, 0, 0.42),
-		0 0 0 1px rgba(255, 255, 255, 0.07) inset,
-		0 10px 28px rgba(0, 77, 152, 0.16);
+		0 0 0 1px rgba(142, 180, 217, 0.1) inset,
+		0 10px 28px rgba(var(--blau-rgb), 0.2);
 }
 
 .panel-label {
@@ -138,7 +170,7 @@ a {
 	font-weight: 700;
 	letter-spacing: 0.14em;
 	text-transform: uppercase;
-	color: var(--gold);
+	color: var(--label);
 	margin-bottom: 0.15rem;
 }
 
@@ -163,7 +195,7 @@ a {
 	font-size: 2.4rem;
 	letter-spacing: 0.06em;
 	margin: 0;
-	background: linear-gradient(135deg, var(--grana), var(--blau));
+	background: linear-gradient(115deg, var(--grana) 0%, var(--grana-mid) 38%, var(--blau-mid) 72%, var(--blau) 100%);
 	-webkit-background-clip: text;
 	background-clip: text;
 	color: transparent;
@@ -199,9 +231,9 @@ a {
 	font-size: 0.95rem;
 	letter-spacing: 0.08em;
 	text-transform: uppercase;
-	border: 1px solid rgba(255, 255, 255, 0.2);
-	background: rgba(0, 0, 0, 0.35);
-	color: var(--gold-soft);
+	border: 1px solid rgba(var(--grana-rgb), 0.45);
+	background: linear-gradient(135deg, rgba(var(--grana-rgb), 0.35), rgba(var(--blau-rgb), 0.35));
+	color: var(--ink);
 	white-space: nowrap;
 }
 
@@ -209,12 +241,15 @@ a {
 	width: 56px;
 	height: 56px;
 	border-radius: 50%;
-	background: rgba(255, 255, 255, 0.92);
+	background: rgba(255, 255, 255, 0.95);
 	display: grid;
 	place-items: center;
-	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+	box-shadow:
+		0 4px 16px rgba(0, 0, 0, 0.28),
+		0 0 0 2px rgba(var(--blau-rgb), 0.55),
+		0 0 0 4px rgba(var(--grana-rgb), 0.45);
 	overflow: hidden;
-	border: 2px solid rgba(237, 187, 0, 0.5);
+	border: none;
 	flex-shrink: 0;
 }
 
@@ -314,9 +349,10 @@ a {
 }
 
 .nav-item.active {
-	background: linear-gradient(135deg, var(--grana), var(--blau));
+	background: linear-gradient(135deg, var(--grana) 0%, var(--grana-mid) 45%, var(--blau) 100%);
 	color: #fff;
 	font-weight: 600;
+	box-shadow: 0 6px 18px rgba(var(--grana-rgb), 0.35);
 }
 
 .nav-item-right {
@@ -324,7 +360,7 @@ a {
 }
 
 .nav-item-live {
-	color: #ff8a80;
+	color: #ff9aa8;
 }
 
 .live-board-shell {
@@ -406,7 +442,7 @@ a {
 	font-size: 0.78rem;
 	letter-spacing: 0.1em;
 	text-transform: uppercase;
-	color: var(--gold);
+	color: var(--label);
 }
 
 .live-board-list ul {
@@ -578,15 +614,15 @@ a {
 
 .btn-primary {
 	padding: 0.6rem 1.2rem;
-	background: linear-gradient(135deg, var(--grana), var(--blau));
+	background: linear-gradient(135deg, var(--grana) 0%, var(--grana-mid) 42%, var(--blau) 100%);
 	color: #fff;
-	box-shadow: 0 8px 24px rgba(165, 0, 68, 0.25);
+	box-shadow: 0 8px 24px rgba(var(--grana-rgb), 0.32);
 	transition: transform 0.15s, box-shadow 0.15s;
 }
 
 .btn-primary:hover {
 	transform: translateY(-1px);
-	box-shadow: 0 10px 28px rgba(0, 77, 152, 0.35);
+	box-shadow: 0 10px 28px rgba(var(--blau-rgb), 0.42);
 }
 
 .btn-live {
@@ -608,8 +644,12 @@ a {
 
 .link-btn {
 	background: none;
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 	padding: 0;
+}
+
+.link-btn:hover {
+	color: var(--gold-soft);
 }
 
 .pulse {
@@ -763,7 +803,7 @@ a {
 	font-size: 0.65rem;
 	letter-spacing: 0.1em;
 	text-transform: uppercase;
-	color: var(--gold);
+	color: var(--label);
 }
 
 .hero-spot-teams {
@@ -809,7 +849,7 @@ a {
 .hero-spot-vs {
 	font-family: var(--display);
 	font-size: 0.85rem;
-	color: var(--gold);
+	color: var(--label);
 }
 
 .hero-spot-title {
@@ -839,7 +879,7 @@ a {
 .hero-spot-cta {
 	margin-top: auto;
 	font-size: 0.75rem;
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 }
 
 .hero-spot-countdown {
@@ -864,7 +904,7 @@ a {
 .hero-spot-countdown strong {
 	font-family: var(--display);
 	font-size: 0.95rem;
-	color: var(--gold);
+	color: var(--label);
 	line-height: 1;
 }
 
@@ -898,8 +938,9 @@ a {
 }
 
 .hero-spotlight-dot.active {
-	background: var(--gold);
+	background: linear-gradient(135deg, var(--grana), var(--blau));
 	transform: scale(1.15);
+	box-shadow: 0 0 10px rgba(var(--grana-rgb), 0.45);
 }
 
 .home-hero.is-fetch-active .hero-text {
@@ -912,7 +953,7 @@ a {
 }
 
 .hero .eyebrow {
-	color: var(--gold);
+	color: var(--label);
 	text-transform: uppercase;
 	letter-spacing: 0.15em;
 	font-size: 0.75rem;
@@ -971,7 +1012,7 @@ a {
 .glass-stat strong {
 	font-family: var(--display);
 	font-size: 2.2rem;
-	color: var(--gold);
+	color: var(--label);
 	line-height: 1;
 }
 
@@ -1009,15 +1050,16 @@ a {
 	font-size: 0.68rem;
 	letter-spacing: 0.08em;
 	text-transform: uppercase;
-	color: var(--gold);
-	border: 1px solid rgba(212, 175, 55, 0.35);
-	background: rgba(212, 175, 55, 0.08);
+	color: var(--blau-mist);
+	border: 1px solid rgba(var(--blau-rgb), 0.45);
+	background: linear-gradient(135deg, rgba(var(--grana-rgb), 0.18), rgba(var(--blau-rgb), 0.22));
 }
 
 .culture-tag.is-exact {
-	color: #f5d76e;
-	border-color: rgba(245, 215, 110, 0.55);
-	box-shadow: 0 0 16px rgba(212, 175, 55, 0.12);
+	color: var(--ink);
+	border-color: rgba(var(--grana-rgb), 0.55);
+	box-shadow: 0 0 16px rgba(var(--grana-rgb), 0.18);
+	background: linear-gradient(135deg, rgba(var(--grana-rgb), 0.35), rgba(var(--blau-rgb), 0.3));
 }
 
 .culture-when {
@@ -1162,7 +1204,7 @@ a {
 .la-masia-record-grid strong {
 	font-family: var(--display);
 	font-size: 1.15rem;
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 	line-height: 1;
 }
 
@@ -1250,7 +1292,7 @@ a {
 	margin-top: 0.25rem;
 	font-size: 0.78rem;
 	letter-spacing: 0.04em;
-	color: var(--gold);
+	color: var(--label);
 }
 
 .on-this-day-card {
@@ -1286,7 +1328,7 @@ a {
 	font-size: 0.68rem;
 	letter-spacing: 0.12em;
 	text-transform: uppercase;
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 }
 
 .on-this-day-detail-block p {
@@ -1442,7 +1484,7 @@ a {
 .fixture-score {
 	font-family: var(--display);
 	font-size: 2rem;
-	color: var(--gold);
+	color: var(--label);
 	line-height: 1;
 }
 
@@ -1509,8 +1551,9 @@ a {
 }
 
 .carousel-dot.active {
-	background: var(--gold);
+	background: linear-gradient(135deg, var(--grana), var(--blau));
 	transform: scale(1.25);
+	box-shadow: 0 0 12px rgba(var(--grana-rgb), 0.4);
 }
 
 .form-slide {
@@ -1664,7 +1707,7 @@ a {
 }
 
 .tweet-hl-hashtag {
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 	font-weight: 700;
 	text-shadow: 0 0 12px rgba(237, 187, 0, 0.35);
 }
@@ -1794,7 +1837,7 @@ a {
 	margin-top: auto;
 	font-size: 0.78rem;
 	font-weight: 600;
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 }
 
 .news-mini {
@@ -1820,7 +1863,7 @@ a {
 }
 
 .news-mini-link:hover .news-mini-text {
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 }
 
 .news-mini-thumb {
@@ -1889,7 +1932,7 @@ a {
 }
 
 .team-side.barca .team-name {
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 	font-weight: 700;
 }
 
@@ -1921,7 +1964,7 @@ a {
 	}
 	35% {
 		transform: scale(1.12);
-		color: var(--gold);
+		color: var(--label);
 	}
 	100% {
 		transform: scale(1);
@@ -2221,7 +2264,7 @@ a {
 
 .timeline-item .min {
 	font-weight: 700;
-	color: var(--gold);
+	color: var(--label);
 }
 
 .timeline-item strong {
@@ -2257,8 +2300,8 @@ a {
 }
 
 .filter-pills button.active {
-	background: var(--blau);
-	border-color: var(--blau);
+	background: linear-gradient(135deg, var(--grana), var(--blau));
+	border-color: transparent;
 	color: #fff;
 }
 
@@ -2310,7 +2353,7 @@ a {
 	font-size: 1.35rem;
 	min-width: 3rem;
 	text-align: center;
-	color: var(--gold);
+	color: var(--label);
 }
 
 .fixture-meta {
@@ -2492,7 +2535,7 @@ a {
 }
 
 .news-card h3 a:hover {
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 }
 
 .news-card time {
@@ -2540,7 +2583,7 @@ a {
 
 .squad-panel h4 {
 	font-family: var(--display);
-	color: var(--gold);
+	color: var(--label);
 	margin: 1rem 0 0.5rem;
 	letter-spacing: 0.06em;
 }
@@ -2575,7 +2618,7 @@ a {
 	display: grid;
 	place-items: center;
 	font-weight: 700;
-	color: var(--gold);
+	color: var(--label);
 }
 
 .player-fallback {
@@ -2603,7 +2646,7 @@ a {
 	z-index: 1;
 	font-family: var(--display);
 	font-weight: 800;
-	color: var(--gold);
+	color: var(--label);
 	letter-spacing: 0.04em;
 	text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
 }
@@ -2692,7 +2735,7 @@ a {
 }
 
 .player-card .num {
-	color: var(--gold);
+	color: var(--label);
 	font-weight: 700;
 	font-size: 0.78rem;
 	margin-right: 0.25rem;
@@ -2876,7 +2919,7 @@ a {
 	font-weight: 700;
 	font-family: var(--display);
 	font-size: 1.2rem;
-	color: var(--gold);
+	color: var(--label);
 }
 
 .note-input,
@@ -2919,7 +2962,7 @@ a {
 
 .sources-detail summary {
 	cursor: pointer;
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 	margin-bottom: 0.5rem;
 }
 
@@ -3014,7 +3057,7 @@ a {
 }
 
 .conf-badge.medium {
-	color: var(--gold);
+	color: var(--label);
 	border-color: rgba(237, 187, 0, 0.4);
 }
 
@@ -3258,13 +3301,13 @@ a {
 	margin-top: 0.2rem;
 	font-size: 0.68rem;
 	font-weight: 700;
-	color: var(--gold);
+	color: var(--label);
 	text-transform: uppercase;
 }
 
 .lineup-sidebar h4 {
 	font-family: var(--display);
-	color: var(--gold);
+	color: var(--label);
 	margin: 0.75rem 0 0.4rem;
 	letter-spacing: 0.05em;
 	font-size: 1rem;
@@ -3352,7 +3395,7 @@ a {
 }
 
 .bench-chip .num {
-	color: var(--gold);
+	color: var(--label);
 	font-weight: 700;
 	font-size: 0.72rem;
 }
@@ -3443,7 +3486,7 @@ a {
 .stats-page .stat-card h3 {
 	font-family: var(--display);
 	margin: 0 0 0.65rem;
-	color: var(--gold);
+	color: var(--label);
 	letter-spacing: 0.04em;
 }
 
@@ -3597,12 +3640,12 @@ a {
 }
 
 .cal-cell.selected {
-	border-color: var(--gold);
+	border-color: var(--label);
 	box-shadow: inset 0 0 0 1px var(--gold);
 }
 
 .cal-cell.today .cal-day {
-	color: var(--gold);
+	color: var(--label);
 	font-weight: 800;
 }
 
@@ -3679,7 +3722,7 @@ a {
 
 .comp-badge.ucl {
 	background: rgba(237, 187, 0, 0.2);
-	color: var(--gold);
+	color: var(--label);
 }
 
 /* Squad Hub */
@@ -3730,7 +3773,7 @@ a {
 }
 
 .la-masia-badge.first-team {
-	color: var(--gold);
+	color: var(--label);
 	border-color: rgba(212, 175, 55, 0.4);
 	background: rgba(212, 175, 55, 0.08);
 }
@@ -3764,7 +3807,7 @@ a {
 
 .la-masia-pathway-arrow {
 	align-self: center;
-	color: var(--gold);
+	color: var(--label);
 	opacity: 0.7;
 	font-size: 0.85rem;
 }
@@ -3881,7 +3924,7 @@ a {
 	font-size: 0.65rem;
 	letter-spacing: 0.08em;
 	text-transform: uppercase;
-	color: var(--gold);
+	color: var(--label);
 }
 
 .la-masia-weekend-line.is-live span {
@@ -3936,7 +3979,7 @@ a {
 
 .la-masia-heart strong {
 	width: 1.35rem;
-	color: var(--gold);
+	color: var(--label);
 	font-family: var(--display);
 	font-size: 1.1rem;
 }
@@ -3994,7 +4037,7 @@ a {
 .click-hint {
 	display: block;
 	font-size: 0.72rem;
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 	margin-top: 0.2rem;
 }
 
@@ -4032,7 +4075,7 @@ a {
 .transfer-hero-stats strong {
 	display: block;
 	font-size: 1.25rem;
-	color: var(--gold);
+	color: var(--label);
 }
 
 .transfer-hero-stats span {
@@ -4049,7 +4092,7 @@ a {
 }
 
 .transfer-hero-links a {
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 	font-size: 0.82rem;
 }
 
@@ -4122,7 +4165,7 @@ a {
 	display: block;
 	margin-top: 0.35rem;
 	font-size: 0.72rem;
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 }
 
 .transfer-rumor-text {
@@ -4230,7 +4273,7 @@ a {
 .transfer-value-chip {
 	display: inline-block;
 	margin-top: 0.25rem;
-	color: var(--gold);
+	color: var(--label);
 	font-weight: 700;
 }
 
@@ -4406,7 +4449,7 @@ a {
 .hero-num {
 	font-family: var(--display);
 	font-size: clamp(1.5rem, 2.5vw, 2.2rem);
-	color: var(--gold);
+	color: var(--label);
 }
 
 .player-club-name {
@@ -4463,7 +4506,7 @@ a {
 
 .stats-hero-cell.available .stat-value,
 .stats-hero-cell.available strong {
-	color: var(--gold);
+	color: var(--label);
 }
 
 .stats-hero-cell.missing .stat-value,
@@ -4858,7 +4901,7 @@ a {
 	place-items: center;
 	font-family: var(--display);
 	font-size: clamp(1.8rem, 4vw, 2.6rem);
-	color: var(--gold);
+	color: var(--label);
 	background: rgba(0, 20, 40, 0.55);
 	border: 2px solid rgba(237, 187, 0, 0.35);
 }
@@ -4882,7 +4925,7 @@ a {
 .match-scoreline {
 	font-family: var(--display);
 	font-size: clamp(2.8rem, 7vw, 4.5rem);
-	color: var(--gold);
+	color: var(--label);
 	letter-spacing: 0.04em;
 	line-height: 1;
 }
@@ -4931,7 +4974,7 @@ a {
 .match-opta-badge .opta-label {
 	font-size: 0.72rem;
 	font-weight: 600;
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
 }
@@ -4953,7 +4996,7 @@ a {
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
 	font-size: 0.95rem;
-	color: var(--gold);
+	color: var(--label);
 }
 
 .match-event-list {
@@ -4979,7 +5022,7 @@ a {
 
 .ev-min {
 	font-variant-numeric: tabular-nums;
-	color: var(--gold);
+	color: var(--label);
 	min-width: 2.5rem;
 	font-size: 0.88rem;
 }
@@ -5032,7 +5075,7 @@ a {
 }
 
 .shirt-num {
-	color: var(--gold);
+	color: var(--label);
 	font-weight: 700;
 	font-variant-numeric: tabular-nums;
 }
@@ -5090,7 +5133,7 @@ a {
 }
 
 .match-preview-note strong {
-	color: var(--gold);
+	color: var(--label);
 	font-weight: 700;
 }
 
@@ -5126,7 +5169,7 @@ a {
 }
 
 .match-barca-only-stats strong {
-	color: var(--gold);
+	color: var(--label);
 	font-variant-numeric: tabular-nums;
 }
 
@@ -5174,7 +5217,7 @@ a {
 
 .team-pill.home {
 	border-color: rgba(237, 187, 0, 0.35);
-	color: var(--gold);
+	color: var(--label);
 }
 
 .team-pill.away {
@@ -5228,7 +5271,7 @@ a {
 }
 
 .match-stat-num.leading {
-	color: var(--gold);
+	color: var(--label);
 	font-size: 1.55rem;
 }
 
@@ -5298,7 +5341,7 @@ a {
 
 .timeline-minute {
 	font-family: var(--display);
-	color: var(--gold);
+	color: var(--label);
 	font-size: 0.95rem;
 }
 
@@ -5334,7 +5377,7 @@ a {
 	margin: 0 0 0.65rem;
 	font-family: var(--display);
 	font-size: 0.9rem;
-	color: var(--gold);
+	color: var(--label);
 	text-transform: uppercase;
 	letter-spacing: 0.06em;
 }
@@ -5355,7 +5398,7 @@ a {
 	margin: 0 0 0.65rem;
 	font-family: var(--display);
 	font-size: 0.95rem;
-	color: var(--gold);
+	color: var(--label);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 }
@@ -5394,7 +5437,7 @@ a {
 
 .chip-num {
 	font-family: var(--display);
-	color: var(--gold);
+	color: var(--label);
 	font-size: 0.95rem;
 	min-width: 1.5rem;
 }
@@ -5451,7 +5494,7 @@ a {
 	font-size: 0.88rem;
 	letter-spacing: 0.08em;
 	text-transform: uppercase;
-	color: var(--gold);
+	color: var(--label);
 }
 
 .match-goals-section {
@@ -5499,7 +5542,7 @@ a {
 	border-radius: 8px;
 	background: rgba(237, 187, 0, 0.14);
 	border: 1px solid rgba(237, 187, 0, 0.35);
-	color: var(--gold);
+	color: var(--label);
 	font-family: var(--display);
 	font-size: 0.82rem;
 	font-variant-numeric: tabular-nums;
@@ -5614,7 +5657,7 @@ a {
 	margin: 0 0 0.55rem;
 	font-family: var(--display);
 	font-size: 0.88rem;
-	color: var(--gold);
+	color: var(--label);
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
 }
@@ -5688,7 +5731,7 @@ a {
 }
 
 .bench-chip strong {
-	color: var(--gold);
+	color: var(--label);
 	font-size: 0.72rem;
 }
 
@@ -5826,7 +5869,7 @@ a {
 
 .stats-table-row strong {
 	font-family: var(--display);
-	color: var(--gold);
+	color: var(--label);
 	font-size: 1.1rem;
 }
 
@@ -5869,7 +5912,7 @@ a {
 
 .tweet-link {
 	font-size: 0.82rem;
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 }
 
 .tweet-media {
@@ -6018,7 +6061,7 @@ a {
 .fetch-hero-caption .fetch-overlay-title {
 	font-size: 0.72rem;
 	margin: 0;
-	color: var(--gold);
+	color: var(--label);
 }
 
 .fetch-hero-caption .fetch-overlay-line {
@@ -6369,7 +6412,7 @@ a {
 }
 
 .campnou-pitch .fetch-sprite-barca .fetch-sprite-torso span {
-	color: var(--gold);
+	color: var(--label);
 	text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
 }
 
@@ -6580,7 +6623,7 @@ a {
 	font-family: var(--display);
 	font-size: clamp(0.62rem, 1.8vw, 0.88rem);
 	letter-spacing: 0.08em;
-	color: var(--gold);
+	color: var(--label);
 	text-shadow: 0 2px 10px rgba(0, 0, 0, 0.65);
 	white-space: nowrap;
 }
@@ -6593,7 +6636,7 @@ a {
 	font-weight: 700;
 	letter-spacing: 0.14em;
 	text-transform: uppercase;
-	color: var(--gold);
+	color: var(--label);
 	text-shadow:
 		0 0 12px rgba(237, 187, 0, 0.35),
 		0 2px 12px rgba(0, 0, 0, 0.7);
@@ -6699,7 +6742,7 @@ a {
 @keyframes campnou-chant-shimmer {
 	0%,
 	100% {
-		color: var(--gold);
+		color: var(--label);
 		text-shadow:
 			0 0 12px rgba(237, 187, 0, 0.35),
 			0 2px 12px rgba(0, 0, 0, 0.7);
@@ -7048,7 +7091,7 @@ a {
 	font-family: var(--display);
 	font-size: 0.62rem;
 	letter-spacing: 0.22em;
-	color: var(--gold);
+	color: var(--label);
 	text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
 	white-space: nowrap;
 }
@@ -7170,7 +7213,7 @@ a {
 	font-size: 0.68rem;
 	font-weight: 600;
 	letter-spacing: 0.04em;
-	color: var(--gold);
+	color: var(--label);
 	border: 1px solid rgba(237, 187, 0, 0.35);
 	background: rgba(6, 12, 24, 0.88);
 	white-space: nowrap;
@@ -7776,7 +7819,7 @@ a {
 .messi-player-torso span {
 	font-family: var(--display);
 	font-size: 0.55rem;
-	color: var(--gold);
+	color: var(--label);
 	line-height: 1;
 	margin-top: 1px;
 }
@@ -8139,7 +8182,7 @@ a {
 	top: 4px;
 	font-family: var(--display);
 	font-size: 0.82rem;
-	color: var(--gold);
+	color: var(--label);
 	letter-spacing: 0.06em;
 	animation:
 		messi-goal-pop 0.7s cubic-bezier(0.22, 1, 0.36, 1),
@@ -8277,7 +8320,7 @@ a {
 .live-match-clock {
 	font-family: var(--display);
 	font-size: 0.95rem;
-	color: var(--gold);
+	color: var(--label);
 	letter-spacing: 0.04em;
 }
 
@@ -8303,7 +8346,7 @@ a {
 	border: 1px solid rgba(237, 187, 0, 0.28);
 	border-radius: 50%;
 	background: rgba(0, 0, 0, 0.35);
-	color: var(--gold);
+	color: var(--label);
 	font-size: 0.72rem;
 	line-height: 1;
 	cursor: pointer;
@@ -8396,7 +8439,7 @@ a {
 	transform: translate(-50%, -50%);
 	font-family: var(--display);
 	font-size: 1rem;
-	color: var(--gold);
+	color: var(--label);
 }
 
 .fetch-ball-trail {
@@ -8489,7 +8532,7 @@ a {
 	font-family: var(--display);
 	font-size: 1.35rem;
 	letter-spacing: 0.04em;
-	color: var(--gold);
+	color: var(--label);
 }
 
 .fetch-overlay-line {
@@ -8516,7 +8559,7 @@ a {
 }
 
 .btn-fetch.is-fetching {
-	border-color: var(--gold-soft);
+	border-color: var(--blau-mist);
 	box-shadow: 0 0 0 2px rgba(237, 187, 0, 0.15);
 }
 
@@ -8539,12 +8582,14 @@ a {
 	gap: 0.55rem;
 	padding: 0.55rem 0.9rem;
 	border-radius: 999px;
-	border: 1px solid rgba(237, 187, 0, 0.45);
-	background: linear-gradient(135deg, rgba(165, 0, 68, 0.88), rgba(0, 77, 152, 0.88));
+	border: 1px solid rgba(var(--blau-rgb), 0.5);
+	background: linear-gradient(135deg, rgba(var(--grana-rgb), 0.92), rgba(var(--blau-rgb), 0.92));
 	color: var(--ink);
 	font-weight: 700;
 	cursor: pointer;
-	box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+	box-shadow:
+		0 12px 32px rgba(0, 0, 0, 0.35),
+		0 0 0 1px rgba(var(--grana-rgb), 0.25);
 }
 
 .social-dock-stripe {
@@ -8552,10 +8597,9 @@ a {
 	height: 18px;
 	border-radius: 4px;
 	background: repeating-linear-gradient(
-		-45deg,
-		var(--grana) 0 4px,
-		var(--gold) 4px 8px,
-		var(--grana) 8px 12px
+		90deg,
+		var(--blau) 0 5px,
+		var(--grana) 5px 10px
 	);
 }
 
@@ -8622,7 +8666,7 @@ a {
 	font-size: 0.72rem;
 	font-weight: 800;
 	letter-spacing: 0.06em;
-	color: var(--gold);
+	color: var(--label);
 }
 
 .social-platform-name {
@@ -8840,7 +8884,7 @@ a {
 
 .social-ig-tile-overlay span {
 	font-size: 0.62rem;
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 }
 
 .social-feed-head h2 {
@@ -8909,7 +8953,7 @@ a {
 	text-transform: uppercase;
 	border: 1px solid rgba(255, 255, 255, 0.2);
 	background: rgba(0, 0, 0, 0.35);
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 	white-space: nowrap;
 }
 
@@ -9055,7 +9099,7 @@ a {
 	padding: 0.3rem 0.75rem;
 	border-radius: 8px;
 	border: 1px solid rgba(255, 255, 255, 0.2);
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 }
 
 .rivalry-badge-max {
@@ -9148,7 +9192,7 @@ a {
 	font-family: var(--display);
 	font-size: clamp(1.8rem, 4vw, 2.6rem);
 	letter-spacing: 0.04em;
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 }
 
 .rivalry-kick {
@@ -9192,7 +9236,7 @@ a {
 .rivalry-cd-cell strong {
 	font-family: var(--display);
 	font-size: clamp(1.5rem, 3.5vw, 2.1rem);
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 	line-height: 1;
 }
 
@@ -9248,7 +9292,7 @@ a {
 .rivalry-h2h-grid strong {
 	font-family: var(--display);
 	font-size: 1.35rem;
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 }
 
 .rivalry-h2h-grid span,
@@ -9289,7 +9333,7 @@ a {
 .rivalry-lore li strong {
 	font-family: var(--display);
 	letter-spacing: 0.04em;
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 }
 
 .rivalry-lore li span {
@@ -9328,7 +9372,7 @@ a {
 	letter-spacing: 0.08em;
 	text-transform: uppercase;
 	border: 1px solid rgba(237, 187, 0, 0.45);
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 	background: rgba(237, 187, 0, 0.1);
 }
 
@@ -9386,13 +9430,13 @@ a {
 }
 
 .on-this-day-card-open:hover .on-this-day-open-cta {
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 }
 
 .on-this-day-open-cta {
 	font-size: 0.78rem;
 	letter-spacing: 0.04em;
-	color: var(--gold);
+	color: var(--label);
 }
 
 .on-this-day-hero-photo {
@@ -9432,7 +9476,7 @@ a {
 }
 
 .on-this-day-thumb.active {
-	border-color: var(--gold);
+	border-color: var(--label);
 	box-shadow: 0 0 0 1px rgba(237, 187, 0, 0.45);
 }
 
@@ -9496,7 +9540,7 @@ a {
 	font-family: var(--display);
 	font-size: clamp(1.2rem, 2.5vw, 1.7rem);
 	letter-spacing: 0.04em;
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 }
 
 .on-this-day-meta-strip {
@@ -9540,7 +9584,7 @@ a {
 	font-family: var(--display);
 	font-size: 0.95rem;
 	letter-spacing: 0.04em;
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 }
 
 .on-this-day-beat-text {
@@ -9705,7 +9749,7 @@ a {
 	font-family: var(--display);
 	font-size: 1.1rem;
 	letter-spacing: 0.06em;
-	color: var(--gold);
+	color: var(--label);
 }
 
 .next-briefing-when {
@@ -9759,7 +9803,7 @@ a {
 	font-family: var(--display);
 	font-size: clamp(1.15rem, 3.5vw, 1.55rem);
 	letter-spacing: 0.04em;
-	color: var(--gold);
+	color: var(--label);
 	line-height: 1;
 }
 
@@ -9821,7 +9865,7 @@ a {
 }
 
 .next-briefing-form-last:hover {
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 }
 
 .next-briefing-form-pill.form-w {
@@ -9862,7 +9906,7 @@ a {
 .next-briefing-h2h-grid strong {
 	font-family: var(--display);
 	font-size: 0.95rem;
-	color: var(--gold);
+	color: var(--label);
 }
 
 .next-briefing-h2h-grid span {
@@ -9944,7 +9988,7 @@ a {
 
 .next-briefing-watch-cta {
 	font-size: 0.75rem;
-	color: var(--gold);
+	color: var(--label);
 	white-space: nowrap;
 }
 
@@ -9997,7 +10041,7 @@ a {
 	font-size: 0.68rem;
 	letter-spacing: 0.06em;
 	text-transform: uppercase;
-	color: var(--gold-soft);
+	color: var(--blau-mist);
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -10055,7 +10099,7 @@ a {
 .next-briefing-watch-metrics strong {
 	font-family: var(--display);
 	font-size: 0.92rem;
-	color: var(--gold);
+	color: var(--label);
 	line-height: 1;
 }
 
@@ -10113,7 +10157,7 @@ a {
 .next-briefing-prediction-sep {
 	font-family: var(--display);
 	font-size: 1.2rem;
-	color: var(--gold);
+	color: var(--label);
 	padding-bottom: 0.35rem;
 }
 
@@ -10495,8 +10539,8 @@ body.museum-body {
 
 .museum-fs-banner {
 	align-self: stretch;
-	border: 1px solid rgba(212, 175, 55, 0.45);
-	background: linear-gradient(90deg, rgba(165, 0, 68, 0.55), rgba(0, 77, 152, 0.5));
+	border: 1px solid rgba(var(--blau-rgb), 0.45);
+	background: linear-gradient(90deg, rgba(var(--grana-rgb), 0.72), rgba(var(--blau-rgb), 0.68));
 	color: #fff;
 	font-family: var(--display);
 	letter-spacing: 0.06em;
@@ -10505,6 +10549,7 @@ body.museum-body {
 	padding: 0.65rem 1rem;
 	border-radius: 999px;
 	cursor: pointer;
+	box-shadow: 0 8px 24px rgba(var(--grana-rgb), 0.28);
 }
 
 .museum-back {
@@ -10525,7 +10570,7 @@ body.museum-body {
 	font-size: 0.78rem;
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
-	color: var(--gold);
+	color: var(--label);
 	text-decoration: none;
 }
 
@@ -10624,7 +10669,7 @@ body.museum-body {
 	font-family: var(--display);
 	letter-spacing: 0.18em;
 	font-size: 0.78rem;
-	color: var(--gold);
+	color: var(--label);
 	text-transform: uppercase;
 }
 
@@ -10788,7 +10833,7 @@ body.museum-body {
 	font-size: 0.75rem;
 	letter-spacing: 0.12em;
 	text-transform: uppercase;
-	color: var(--gold);
+	color: var(--label);
 	margin-bottom: 0.35rem;
 }
 
@@ -10817,7 +10862,7 @@ body.museum-body {
 	font-family: var(--display);
 	font-size: 2rem;
 	letter-spacing: 0.04em;
-	color: rgba(237, 187, 0, 0.55);
+	color: rgba(var(--blau-rgb), 0.45);
 }
 
 .museum-room-body {
@@ -10858,7 +10903,7 @@ body.museum-body {
 .museum-timeline li span {
 	font-family: var(--display);
 	letter-spacing: 0.06em;
-	color: var(--gold);
+	color: var(--label);
 	font-size: 0.95rem;
 }
 
@@ -10910,7 +10955,7 @@ body.museum-body {
 }
 
 .museum-photo-hit.is-active {
-	border-color: var(--gold);
+	border-color: var(--label);
 }
 
 .museum-photo-grid figcaption {
