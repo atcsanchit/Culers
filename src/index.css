@@ -4664,6 +4664,34 @@ a:hover {
 	border-radius: 4px;
 }
 
+/* Studio thumbs (white bg) — circular headshot plate over the ground photo */
+.modal-photo-panel.is-headshot-photo::before {
+	background:
+		radial-gradient(circle at 50% 38%, rgba(0, 0, 0, 0.15), rgba(0, 10, 28, 0.62) 58%),
+		rgba(0, 10, 28, 0.45);
+}
+
+.modal-hero-photo.is-headshot {
+	inset: auto;
+	top: 10%;
+	left: 0;
+	right: 0;
+	margin-inline: auto;
+	width: min(52%, 280px);
+	height: min(52%, 280px);
+	max-height: none;
+	aspect-ratio: 1;
+	object-fit: cover;
+	object-position: center 18%;
+	border-radius: 50%;
+	border: 3px solid rgba(232, 185, 35, 0.55);
+	background: rgba(8, 14, 28, 0.85);
+	box-shadow:
+		0 0 0 1px rgba(255, 255, 255, 0.12),
+		0 22px 48px rgba(0, 0, 0, 0.55);
+	filter: none;
+}
+
 .modal-photo-fallback {
 	position: absolute;
 	inset: 0;
@@ -10430,21 +10458,25 @@ a:hover {
 
 .match-ratings-details {
 	margin: 1rem 0 1.5rem;
-	border-radius: 14px;
-	border: 1px solid rgba(255, 255, 255, 0.1);
-	background: rgba(0, 0, 0, 0.28);
-	padding: 0.35rem 0.75rem 0.75rem;
+	border-radius: 16px;
+	border: 1px solid rgba(232, 185, 35, 0.28);
+	background:
+		linear-gradient(160deg, rgba(232, 185, 35, 0.06), transparent 40%),
+		rgba(4, 10, 22, 0.45);
+	padding: 0.35rem 0.85rem 0.85rem;
 	position: relative;
+	box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
 }
 
 .match-ratings-details > summary {
 	cursor: pointer;
 	list-style: none;
-	padding: 0.65rem 0.25rem;
-	font-size: 0.82rem;
-	letter-spacing: 0.06em;
+	padding: 0.7rem 0.25rem;
+	font-size: 0.78rem;
+	letter-spacing: 0.1em;
 	text-transform: uppercase;
 	color: var(--gold-soft, #e8c56a);
+	font-weight: 700;
 }
 
 .match-ratings-details > summary::-webkit-details-marker {
@@ -10452,15 +10484,24 @@ a:hover {
 }
 
 .match-ratings-details[open] > summary {
-	margin-bottom: 0.35rem;
-	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+	margin-bottom: 0.45rem;
+	border-bottom: 1px solid rgba(232, 185, 35, 0.2);
 }
 
 /* ── Match ratings pitch (FotMob-style) ─────────────────────────────────── */
 
 .match-ratings-pitch {
-	margin: 1rem 0 1.25rem;
-	padding: 0.85rem;
+	margin: 0.35rem 0 0.5rem;
+	padding: 1rem 1.05rem 0.85rem;
+	border-radius: 16px;
+	border: 1px solid rgba(232, 185, 35, 0.32);
+	background:
+		linear-gradient(155deg, rgba(232, 185, 35, 0.08), transparent 36%),
+		linear-gradient(145deg, rgba(var(--grana-rgb, 165, 0, 68), 0.16), rgba(var(--blau-rgb, 0, 77, 152), 0.2)),
+		rgba(4, 12, 28, 0.72);
+	box-shadow:
+		0 0 0 1px rgba(232, 185, 35, 0.12),
+		0 18px 42px rgba(0, 0, 0, 0.35);
 }
 
 .mrp-status {
@@ -10470,15 +10511,17 @@ a:hover {
 .mrp-header {
 	display: grid;
 	grid-template-columns: 1fr auto 1fr;
-	gap: 0.75rem;
+	gap: 0.85rem;
 	align-items: center;
-	margin-bottom: 0.75rem;
+	margin-bottom: 0.95rem;
+	padding-bottom: 0.85rem;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .mrp-team {
 	display: flex;
 	align-items: center;
-	gap: 0.5rem;
+	gap: 0.55rem;
 	min-width: 0;
 }
 
@@ -10487,53 +10530,74 @@ a:hover {
 	text-align: right;
 }
 
+.mrp-team-meta {
+	min-width: 0;
+}
+
 .mrp-team strong {
 	display: block;
-	font-size: 0.88rem;
+	font-size: 0.92rem;
 	line-height: 1.2;
+	letter-spacing: 0.01em;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	max-width: 11rem;
 }
 
 .mrp-team .muted {
-	font-size: 0.72rem;
+	font-size: 0.7rem;
+	letter-spacing: 0.04em;
 }
 
 .mrp-crest-wrap {
 	position: relative;
-	width: 36px;
-	height: 36px;
+	width: 44px;
+	height: 44px;
 	flex-shrink: 0;
+	border-radius: 50%;
+	box-shadow:
+		0 0 0 1px rgba(232, 185, 35, 0.35),
+		0 6px 16px rgba(0, 0, 0, 0.35);
 }
 
 .mrp-crest,
 .mrp-crest-fallback {
-	width: 36px;
-	height: 36px;
+	width: 44px;
+	height: 44px;
 	border-radius: 50%;
 	object-fit: contain;
-	background: rgba(255, 255, 255, 0.92);
-	padding: 3px;
+	background: rgba(255, 255, 255, 0.96);
+	padding: 5px;
 }
 
 .mrp-crest.is-loading {
 	opacity: 0;
 	position: absolute;
+	inset: 0;
 }
 
 .mrp-crest-fallback {
 	display: grid;
 	place-items: center;
-	font-size: 0.75rem;
+	font-size: 0.78rem;
 	font-weight: 700;
 	color: #111;
+	letter-spacing: 0.04em;
 }
 
 .mrp-team-rating {
 	font-family: var(--display);
-	font-size: 0.95rem;
+	font-size: 0.92rem;
 	font-weight: 700;
-	padding: 0.2rem 0.55rem;
-	border-radius: 999px;
+	width: 2.35rem;
+	height: 2.35rem;
+	padding: 0;
+	border-radius: 50%;
 	flex-shrink: 0;
+	display: grid;
+	place-items: center;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
 }
 
 .mrp-rating.elite,
@@ -10562,46 +10626,62 @@ a:hover {
 
 .mrp-score {
 	text-align: center;
+	padding: 0.2rem 0.65rem;
+	border-radius: 12px;
+	background: rgba(0, 0, 0, 0.28);
+	border: 1px solid rgba(255, 255, 255, 0.08);
+	min-width: 5.5rem;
 }
 
 .mrp-clock {
 	display: block;
-	font-size: 0.68rem;
-	letter-spacing: 0.06em;
+	font-size: 0.66rem;
+	letter-spacing: 0.1em;
 	text-transform: uppercase;
-	color: var(--muted);
+	color: var(--gold-soft, #e8c56a);
+	font-weight: 700;
+	margin-bottom: 0.15rem;
 }
 
 .mrp-score strong {
 	font-family: var(--display);
-	font-size: 1.35rem;
+	font-size: 1.45rem;
+	font-variant-numeric: tabular-nums;
+	letter-spacing: 0.02em;
+}
+
+.mrp-score-sep {
+	margin: 0 0.2rem;
+	opacity: 0.7;
 }
 
 .mrp-field {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
-	min-height: 420px;
-	border-radius: 12px;
+	min-height: 440px;
+	border-radius: 14px;
 	overflow: hidden;
-	border: 1px solid rgba(255, 255, 255, 0.08);
+	border: 1px solid rgba(255, 255, 255, 0.1);
 	background:
-		linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0 50%, transparent 50%),
+		radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.07) 0 8%, transparent 9%),
+		linear-gradient(90deg, transparent calc(50% - 0.5px), rgba(255, 255, 255, 0.28) calc(50% - 0.5px) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
 		repeating-linear-gradient(
 			0deg,
-			rgba(40, 120, 60, 0.55) 0 24px,
-			rgba(34, 100, 52, 0.55) 24px 48px
+			rgba(36, 118, 62, 0.72) 0 28px,
+			rgba(28, 96, 50, 0.72) 28px 56px
 		);
 	position: relative;
+	box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 .mrp-half {
 	position: relative;
-	min-height: 420px;
-	padding: 0.35rem;
+	min-height: 440px;
+	padding: 0.4rem;
 }
 
 .mrp-half.home {
-	border-right: 1px solid rgba(255, 255, 255, 0.18);
+	border-right: 0;
 }
 
 .mrp-player {
@@ -10610,45 +10690,63 @@ a:hover {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: 0.12rem;
-	width: 72px;
+	gap: 0.14rem;
+	width: 76px;
 	padding: 0;
 	border: 0;
 	background: transparent;
 	color: #fff;
 	cursor: pointer;
 	z-index: 1;
+	transition: transform 0.16s ease;
+}
+
+.mrp-player:hover {
+	transform: translate(-50%, -50%) scale(1.08);
+	z-index: 2;
 }
 
 .mrp-rating {
 	font-size: 0.68rem;
 	font-weight: 700;
-	padding: 0.1rem 0.35rem;
+	padding: 0.12rem 0.38rem;
 	border-radius: 999px;
 	line-height: 1.2;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
 .mrp-avatar {
-	width: 28px;
-	height: 28px;
+	width: 30px;
+	height: 30px;
 	border-radius: 50%;
 	display: grid;
 	place-items: center;
-	font-size: 0.68rem;
+	font-size: 0.7rem;
 	font-weight: 700;
-	background: rgba(10, 20, 40, 0.85);
-	border: 1px solid rgba(255, 255, 255, 0.35);
+	background: rgba(8, 16, 32, 0.9);
+	border: 1.5px solid rgba(255, 255, 255, 0.45);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+	overflow: hidden;
+}
+
+.mrp-avatar-img {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: center top;
+	display: block;
 }
 
 .mrp-name {
-	font-size: 0.62rem;
+	font-size: 0.64rem;
 	line-height: 1.15;
 	text-align: center;
-	text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
-	max-width: 70px;
+	text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+	max-width: 72px;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+	font-weight: 600;
 }
 
 .mrp-icons {

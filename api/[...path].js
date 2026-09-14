@@ -73,23 +73,143 @@ var TEAM_IDS = {
   racing: "133726",
   "deportivo de la coru\xF1a": "133720",
   "deportivo la coruna": "133720",
-  // UEFA Champions League
-  feyenoord: "133758",
-  "manchester city": "133613",
-  "man city": "133613",
+  deportivo: "133720",
+  // Ligue 1
   "paris saint-germain": "133714",
   "paris saint germain": "133714",
+  "paris sg": "133714",
   psg: "133714",
+  brest: "133704",
+  "stade brestois": "133704",
+  "stade brestois 29": "133704",
+  marseille: "133710",
+  "olympique marseille": "133710",
+  om: "133710",
+  lyon: "133709",
+  "olympique lyonnais": "133709",
+  ol: "133709",
+  monaco: "133712",
+  "as monaco": "133712",
+  lille: "133708",
+  "losc lille": "133708",
+  nice: "133713",
+  "ogc nice": "133713",
+  rennes: "133716",
+  "stade rennais": "133716",
+  lens: "133707",
+  "rc lens": "133707",
+  nantes: "133715",
+  "toulouse": "134321",
+  strasbourg: "133718",
+  "reims": "133717",
+  "montpellier": "133711",
+  "le havre": "134322",
+  auxerre: "133701",
+  angers: "133700",
+  // Bundesliga
+  "bayern munich": "133664",
+  "bayern munchen": "133664",
+  "fc bayern": "133664",
+  bayern: "133664",
+  dortmund: "133650",
+  "borussia dortmund": "133650",
+  bvb: "133650",
+  "rb leipzig": "134695",
+  leipzig: "134695",
+  "bayer leverkusen": "133666",
+  leverkusen: "133666",
+  "eintracht frankfurt": "133653",
+  frankfurt: "133653",
+  "borussia monchengladbach": "133662",
+  gladbach: "133662",
+  "union berlin": "134690",
+  "mainz": "133658",
+  "mainz 05": "133658",
+  hoffenheim: "133656",
+  augsburg: "133663",
+  "werder bremen": "133659",
+  bremen: "133659",
+  stuttgart: "133661",
+  "vfb stuttgart": "133661",
+  "fc koln": "133654",
+  koln: "133654",
+  cologne: "133654",
+  "k\xF6ln": "133654",
+  "heidenheim": "134696",
+  "st pauli": "133813",
+  // Premier League
+  "manchester city": "133613",
+  "man city": "133613",
+  "manchester united": "133612",
+  "man united": "133612",
+  "man utd": "133612",
+  liverpool: "133602",
+  arsenal: "133604",
+  chelsea: "133610",
+  tottenham: "133616",
+  spurs: "133616",
+  newcastle: "133615",
+  "newcastle united": "133615",
   "aston villa": "133601",
+  "west ham": "133619",
+  "west ham united": "133619",
+  brighton: "133628",
+  "brighton and hove albion": "133628",
+  "crystal palace": "133632",
+  fulham: "133600",
+  brentford: "134777",
+  wolves: "133618",
+  wolverhampton: "133618",
+  everton: "133611",
+  bournemouth: "134301",
+  "afc bournemouth": "134301",
+  "nottingham forest": "133623",
+  forest: "133623",
+  leicester: "133626",
+  "leicester city": "133626",
+  southampton: "133617",
+  ipswich: "134778",
+  "ipswich town": "134778",
+  // Serie A
+  juventus: "133676",
+  inter: "133681",
+  "inter milan": "133681",
+  milan: "133667",
+  "ac milan": "133667",
+  napoli: "133678",
+  roma: "133679",
+  "as roma": "133679",
+  lazio: "133680",
+  atalanta: "133682",
+  fiorentina: "133683",
+  bologna: "133684",
+  torino: "133685",
+  udinese: "133686",
+  genoa: "133675",
+  cagliari: "133688",
+  empoli: "134290",
+  monza: "135182",
+  lecce: "134291",
+  como: "134243",
+  "como 1907": "134243",
+  // Eredivisie / UCL
+  feyenoord: "133758",
+  ajax: "133772",
+  psv: "133768",
+  "psv eindhoven": "133768",
+  "az alkmaar": "133756",
   galatasaray: "133804",
   "sporting cp": "135708",
   "sporting lisbon": "135708",
   sporting: "135708",
-  como: "134243",
-  "como 1907": "134243",
+  benfica: "134108",
+  porto: "133819",
   sabah: "138341",
   "sabah fk": "138341",
-  "sabah baku": "138341"
+  "sabah baku": "138341",
+  // MLS / other common
+  "inter miami": "137722",
+  "la galaxy": "134147"
 };
 var SEARCH_ALIASES = {
   "athletic club": "Athletic Bilbao",
@@ -105,15 +225,41 @@ var SEARCH_ALIASES = {
   "celta de vigo": "Celta Vigo",
   "valencia cf": "Valencia",
   "man city": "Manchester City",
+  "man united": "Manchester United",
+  "man utd": "Manchester United",
   psg: "Paris Saint-Germain",
+  "paris sg": "Paris Saint-Germain",
+  "stade brestois": "Brest",
+  "stade brestois 29": "Brest",
   sporting: "Sporting CP",
   "como 1907": "Como",
   racing: "Racing de Santander",
-  sabah: "Sabah Baku"
+  sabah: "Sabah Baku",
+  bvb: "Borussia Dortmund",
+  bayern: "Bayern Munich",
+  leipzig: "RB Leipzig",
+  hsv: "Hamburger SV",
+  hamburg: "Hamburger SV",
+  gladbach: "Borussia Monchengladbach",
+  spurs: "Tottenham",
+  om: "Marseille",
+  ol: "Lyon",
+  deportivo: "Deportivo La Coruna"
 };
 var BLOCKED_LEAGUE_HINTS = ["thai", "league of legends", " women", "malaysian", "esports", "fantasy"];
+var LEAGUE_HINT_MATCHERS = [
+  { test: /la\s*liga|spain/i, prefer: ["La Liga", "Spanish"] },
+  { test: /premier|epl|england/i, prefer: ["English Premier", "Premier League"] },
+  { test: /bundesliga|germany/i, prefer: ["German Bundesliga", "Bundesliga"] },
+  { test: /serie\s*a|italy/i, prefer: ["Italian Serie", "Serie A"] },
+  { test: /ligue\s*1|france/i, prefer: ["French Ligue", "Ligue 1"] },
+  { test: /eredivisie|netherlands/i, prefer: ["Dutch Eredivisie", "Eredivisie"] },
+  { test: /champions|ucl/i, prefer: ["UEFA Champions"] },
+  { test: /europa|uel/i, prefer: ["UEFA Europa"] },
+  { test: /mls|major league/i, prefer: ["American Major League", "MLS"] }
+];
 function normalizeTeamKey(name) {
-  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/^fc\s+/i, "").trim();
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/^fc\s+/i, "").replace(/^ac\s+/i, "").replace(/^as\s+/i, "").replace(/^rc\s+/i, "").trim();
 }
 function resolveTeamId(name) {
   const key = normalizeTeamKey(name);
@@ -123,11 +269,35 @@ function resolveTeamId(name) {
     const aliasKey = normalizeTeamKey(alias);
     if (TEAM_IDS[aliasKey]) return TEAM_IDS[aliasKey];
   }
+  const parts = key.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    const lastTwo = parts.slice(-2).join(" ");
+    if (TEAM_IDS[lastTwo]) return TEAM_IDS[lastTwo];
+  }
+  if (parts[0] && TEAM_IDS[parts[0]]) return TEAM_IDS[parts[0]];
   return void 0;
 }
 function isBlockedSearchResult(league) {
   const l = league.toLowerCase();
   return BLOCKED_LEAGUE_HINTS.some((hint) => l.includes(hint));
+}
+function pickByCompetition(teams, competition, searchTerm) {
+  const compHint = competition ?? "";
+  const prefer = LEAGUE_HINT_MATCHERS.find((m) => m.test.test(compHint))?.prefer ?? [];
+  for (const needle of prefer) {
+    const hit = teams.find((t) => String(t.strLeague ?? "").includes(needle));
+    if (hit?.strBadge) return hit;
+  }
+  if (searchTerm) {
+    const exact = teams.find((t) => normalizeTeamKey(String(t.strTeam ?? "")) === normalizeTeamKey(searchTerm));
+    if (exact?.strBadge) return exact;
+  }
+  return teams.find((t) => String(t.strLeague ?? "").includes("La Liga")) ?? teams.find((t) => String(t.strLeague ?? "").includes("Premier")) ?? teams.find((t) => String(t.strLeague ?? "").includes("Bundesliga")) ?? teams.find((t) => String(t.strLeague ?? "").includes("Ligue")) ?? teams.find((t) => String(t.strLeague ?? "").includes("Serie")) ?? teams[0];
+}
+function espnSoccerCrest(teamId) {
+  const id = Number(teamId);
+  if (!Number.isFinite(id) || id <= 0) return "";
+  return `https://a.espncdn.com/i/teamlogos/soccer/500/${id}.png`;
 }
 async function fetchTeamBadge(teamName, competition) {
   const id = resolveTeamId(teamName);
@@ -138,7 +308,6 @@ async function fetchTeamBadge(teamName, competition) {
   const key = normalizeTeamKey(teamName);
   if (key.length <= 5 && !id) return "";
   const searchTerm = SEARCH_ALIASES[key] ?? teamName.replace(/^FC\s+/i, "").trim();
-  const compHint = competition?.toLowerCase() ?? "";
   try {
     const res = await fetch(`${TSDB}/searchteams.php?t=${encodeURIComponent(searchTerm)}`, {
       headers: { "User-Agent": "Culers/1.0" }
@@ -146,11 +315,16 @@ async function fetchTeamBadge(teamName, competition) {
     if (!res.ok) return "";
     const data = await res.json();
     const teams = (data.teams ?? []).filter((t) => !isBlockedSearchResult(String(t.strLeague ?? "")));
-    const pick = (compHint.includes("champions") ? teams.find((t) => String(t.strLeague ?? "").toLowerCase().includes("champions")) : null) ?? teams.find((t) => String(t.strLeague ?? "").includes("La Liga")) ?? teams.find((t) => normalizeTeamKey(String(t.strTeam ?? "")) === normalizeTeamKey(searchTerm)) ?? teams[0];
+    const pick = pickByCompetition(teams, competition, searchTerm);
     return String(pick?.strBadge ?? "");
   } catch {
     return "";
   }
+}
+async function resolveTeamCrest(options) {
+  const badge = await fetchTeamBadge(options.teamName, options.competition);
+  if (badge) return badge;
+  return espnSoccerCrest(options.teamId);
 }
 async function lookupTeamById(id) {
   try {
@@ -636,6 +810,115 @@ async function fetchClubHomeGroundBackground(teamName) {
   }
 }
 
+// culers-player-photos.ts
+var TSDB2 = "https://www.thesportsdb.com/api/v1/json/3";
+var cutoutCache = /* @__PURE__ */ new Map();
+function normalizeName(name) {
+  return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+function lastToken(name) {
+  const parts = normalizeName(name).split(" ").filter(Boolean);
+  return parts[parts.length - 1] ?? "";
+}
+function isJerseyAsset(url) {
+  const u = url.toLowerCase();
+  return /jersey|kitimage|kit_|\/kits\/|shirt|uniform|jerseyimages/i.test(u);
+}
+function scoreCandidate(row, playerName, teamName) {
+  const sport = String(row.strSport ?? "Soccer");
+  if (/baseball|basketball|hockey|tennis|cricket|rugby|american/i.test(sport)) return -1;
+  const pname = normalizeName(String(row.strPlayer ?? ""));
+  const want = normalizeName(playerName);
+  if (!pname || !want) return -1;
+  let score = 0;
+  if (pname === want) score += 8;
+  else if (pname.endsWith(lastToken(want)) && lastToken(want).length > 3) score += 5;
+  else if (pname.includes(want) || want.includes(pname)) score += 3;
+  else return -1;
+  if (teamName) {
+    const team = normalizeName(teamName);
+    const rowTeam = normalizeName(String(row.strTeam ?? ""));
+    if (team && rowTeam) {
+      if (rowTeam === team || rowTeam.includes(team) || team.includes(rowTeam)) score += 4;
+      else {
+        const tLast = lastToken(team);
+        if (tLast.length > 3 && rowTeam.includes(tLast)) score += 2;
+      }
+    }
+  }
+  if (row.strThumb) score += 3;
+  if (row.strCutout) score += 1;
+  return score;
+}
+function pickPhoto(row) {
+  const thumb = String(row.strThumb?.trim() || "");
+  const cutout = String(row.strCutout?.trim() || "");
+  if (thumb && !isJerseyAsset(thumb)) return thumb;
+  if (cutout && !isJerseyAsset(cutout)) return cutout;
+  return thumb || cutout || "";
+}
+async function fetchPlayerCutout(playerName, teamName) {
+  const key = `${normalizeName(playerName)}::${normalizeName(teamName ?? "")}`;
+  if (cutoutCache.has(key)) return cutoutCache.get(key);
+  if (!playerName.trim()) {
+    cutoutCache.set(key, "");
+    return "";
+  }
+  try {
+    const res = await fetch(`${TSDB2}/searchplayers.php?p=${encodeURIComponent(playerName.trim())}`, {
+      headers: { "User-Agent": "Culers/1.0" }
+    });
+    if (!res.ok) {
+      cutoutCache.set(key, "");
+      return "";
+    }
+    const data = await res.json();
+    const rows = data.player ?? [];
+    let best = null;
+    let bestScore = 0;
+    for (const row of rows) {
+      const score = scoreCandidate(row, playerName, teamName);
+      if (score > bestScore && pickPhoto(row)) {
+        best = row;
+        bestScore = score;
+      }
+    }
+    const photo = best ? pickPhoto(best) : "";
+    cutoutCache.set(key, photo);
+    return photo;
+  } catch {
+    cutoutCache.set(key, "");
+    return "";
+  }
+}
+function photoFromEspnAthlete(athlete) {
+  if (!athlete) return "";
+  const headshot = athlete.headshot;
+  if (typeof headshot === "string" && headshot.trim() && !isJerseyAsset(headshot)) return headshot.trim();
+  if (headshot && typeof headshot === "object" && headshot.href) {
+    const href = String(headshot.href).trim();
+    if (href && !isJerseyAsset(href)) return href;
+  }
+  return "";
+}
+async function enrichPlayersWithCutouts(players, teamName, concurrency = 5) {
+  const out = [...players];
+  let i = 0;
+  async function worker() {
+    while (i < out.length) {
+      const idx = i++;
+      const p = out[idx];
+      const existing = p.photo?.trim() || "";
+      if (existing && !isJerseyAsset(existing)) continue;
+      const photo = await fetchPlayerCutout(p.name, teamName);
+      if (photo) out[idx] = { ...p, photo };
+      else if (existing && isJerseyAsset(existing)) out[idx] = { ...p, photo: "" };
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, Math.max(out.length, 1)) }, () => worker()));
+  return out;
+}
+
 // culers-espn.ts
 var BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 var ESPN_BARCA_TEAM_ID = 83;
@@ -708,12 +991,12 @@ function statsSourceReachable() {
 function resetStatsSourceReachable() {
   espnReachable = false;
 }
-function normalizeName(name) {
+function normalizeName2(name) {
   return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z\s]/g, " ").replace(/\s+/g, " ").trim();
 }
 function opponentMatches(a, b) {
-  const left = normalizeName(a);
-  const right = normalizeName(b);
+  const left = normalizeName2(a);
+  const right = normalizeName2(b);
   if (!left || !right) return false;
   if (left.includes(right) || right.includes(left)) return true;
   const lt = left.split(" ").filter((p) => p.length > 2);
@@ -953,7 +1236,7 @@ async function fetchEspnTeamSchedule(teamId, leagueSlug = "esp.1") {
   return events.sort((a, b) => b.startTimestamp - a.startTimestamp);
 }
 function resolveEspnTeamIdSync(teamName) {
-  const key = normalizeName(teamName);
+  const key = normalizeName2(teamName);
   if (ESPN_TEAM_IDS[key]) return ESPN_TEAM_IDS[key];
   for (const [name, id] of Object.entries(ESPN_TEAM_IDS)) {
     if (key.includes(name) || name.includes(key)) return id;
@@ -988,10 +1271,10 @@ async function resolveEventForFixture(options) {
   });
 }
 function squadMatch(squad, name) {
-  const target = normalizeName(name);
+  const target = normalizeName2(name);
   let best = null;
   for (const player of squad) {
-    const full = normalizeName(player.name);
+    const full = normalizeName2(player.name);
     if (full === target) return player;
     const parts = full.split(" ").filter(Boolean);
     const last = parts[parts.length - 1];
@@ -1088,7 +1371,8 @@ function sideFromRoster(roster, teamName, teamId) {
       subOn: row.subbedIn ? 0 : null,
       subOff: row.subbedOut ? 0 : null,
       isCaptain: false,
-      isMotm: false
+      isMotm: false,
+      photo: photoFromEspnAthlete(athlete)
     };
   };
   const rows = roster?.roster ?? [];
@@ -1102,6 +1386,7 @@ function sideFromRoster(roster, teamName, teamId) {
     isBarca: /barcel/i.test(teamName) || teamId === ESPN_BARCA_TEAM_ID,
     formation,
     avgRating,
+    crestUrl: "",
     starters,
     bench
   };
@@ -1116,6 +1401,26 @@ async function fetchEspnMatchRatings(options) {
   const awayRoster = rosters.find((r) => String(r.homeAway) === "away");
   const home = sideFromRoster(homeRoster, event.homeTeam, event.homeTeamId);
   const away = sideFromRoster(awayRoster, event.awayTeam, event.awayTeamId);
+  const [homeCrest, awayCrest] = await Promise.all([
+    resolveTeamCrest({
+      teamName: event.homeTeam,
+      teamId: event.homeTeamId,
+      competition: event.competition
+    }),
+    resolveTeamCrest({
+      teamName: event.awayTeam,
+      teamId: event.awayTeamId,
+      competition: event.competition
+    })
+  ]);
+  home.crestUrl = homeCrest;
+  away.crestUrl = awayCrest;
+  const [homeStarters, awayStarters] = await Promise.all([
+    enrichPlayersWithCutouts(home.starters, home.teamName),
+    enrichPlayersWithCutouts(away.starters, away.teamName)
+  ]);
+  home.starters = homeStarters;
+  away.starters = awayStarters;
   const all = [...home.starters, ...away.starters];
   const top = [...all].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))[0];
   if (top) {
@@ -1204,8 +1509,8 @@ async function fetchEspnPlayerMatchStats(options) {
   };
 }
 function nameMatchScore(candidate, target) {
-  const full = normalizeName(candidate);
-  const want = normalizeName(target);
+  const full = normalizeName2(candidate);
+  const want = normalizeName2(target);
   if (!full || !want) return 0;
   if (full === want) return 100;
   if (want.includes(full) || full.includes(want)) return 80;
@@ -1325,7 +1630,7 @@ async function fetchEspnPreviewMatch(teamId, options) {
     minute: inc.minute,
     type: /goal/i.test(inc.type) ? "goal" : /red/i.test(inc.type) ? "red" : /yellow/i.test(inc.type) ? "yellow" : "sub",
     player: inc.player,
-    team: /barcel/i.test(inc.team) === isHome || normalizeName(inc.team) === normalizeName(event.homeTeam) ? "home" : "away",
+    team: /barcel/i.test(inc.team) === isHome || normalizeName2(inc.team) === normalizeName2(event.homeTeam) ? "home" : "away",
     detail: inc.detail
   }));
   const roster = (data.rosters ?? []).find((r) => Number(r.team?.id) === teamId);
@@ -2815,14 +3120,14 @@ function computeStats(fixtures) {
 // culers-photos.ts
 var FCB_SITE2 = "https://www.fcbarcelona.com";
 var photoCache = /* @__PURE__ */ new Map();
-function normalizeName2(name) {
+function normalizeName3(name) {
   return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z\s]/g, " ").replace(/\s+/g, " ").trim();
 }
 function nameToSlug(name) {
   return name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 function nameTokens(name) {
-  const norm = normalizeName2(name);
+  const norm = normalizeName3(name);
   const parts = norm.split(" ").filter((p) => p.length > 2);
   return [.../* @__PURE__ */ new Set([norm.replace(/ /g, ""), ...parts])];
 }
@@ -5084,6 +5389,13 @@ async function dispatchCulersApi(url, options = {}) {
       const team = String(url.searchParams.get("team") || "").trim();
       if (!team) return jsonResult({ error: "team required" }, 400);
       return jsonResult(await fetchClubHomeGroundBackground(team));
+    }
+    if (url.pathname === "/api/player-photo") {
+      const name = String(url.searchParams.get("name") || "").trim();
+      const team = String(url.searchParams.get("team") || "").trim();
+      if (!name) return jsonResult({ error: "name required" }, 400);
+      const photo = await fetchPlayerCutout(name, team || void 0);
+      return jsonResult({ name, team: team || null, photo });
     }
     return jsonResult({ error: "Not found" }, 404);
   } catch (err) {

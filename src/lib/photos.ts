@@ -48,6 +48,13 @@ export function knownTeamCrest(teamName: string): string {
 	return '';
 }
 
+/** ESPN soccer crest CDN — works for any club that appears on ESPN scoreboards. */
+export function espnTeamCrest(teamId: number | string | null | undefined): string {
+	const id = Number(teamId);
+	if (!Number.isFinite(id) || id <= 0) return '';
+	return `https://a.espncdn.com/i/teamlogos/soccer/500/${id}.png`;
+}
+
 export function teamCrestSrc(teamName: string, remoteUrl: string) {
 	if (isBarcaTeamName(teamName)) return BARCA_CREST;
 	// Prefer known CDN badges — API remotes often fail hotlink / CORS in the browser.

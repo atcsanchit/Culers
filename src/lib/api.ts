@@ -167,6 +167,15 @@ export async function fetchClubGround(team: string): Promise<{
 	return res.json();
 }
 
+export async function fetchPlayerPhoto(name: string, team?: string): Promise<string> {
+	const qs = new URLSearchParams({ name });
+	if (team?.trim()) qs.set('team', team.trim());
+	const res = await fetch(`/api/player-photo?${qs}`);
+	if (!res.ok) return '';
+	const data = (await res.json()) as { photo?: string };
+	return data.photo?.trim() || '';
+}
+
 export function formatDate(date: string, time?: string) {
 	const d = parseFixtureUtc(date, time);
 	if (!d) return 'TBD';

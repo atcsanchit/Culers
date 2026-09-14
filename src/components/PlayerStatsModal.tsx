@@ -3,7 +3,7 @@ import type { Player, PlayerMatchStats, PlayerStats, StatRow } from '../types';
 import type { PlayerOpenOrigin, PlayerStatsContext } from '../store/BarcaState';
 import { useBarca } from '../store/BarcaState';
 import { CAMP_NOU_BG, attachSquadIdentity, isBarcaTeamName, playerInitials, playerPhotoSrc } from '../lib/photos';
-import { fetchClubGround, fetchPlayerMatchStats, fetchPlayerStats, fetchLaMasiaPlayerStats, formatDateTime, LIVE_POLL_MS } from '../lib/api';
+import { fetchClubGround, fetchPlayerMatchStats, fetchPlayerPhoto, fetchPlayerStats, fetchLaMasiaPlayerStats, formatDateTime, LIVE_POLL_MS } from '../lib/api';
 import { useProfileMotion } from '../lib/motion';
 
 type Props = {
@@ -14,6 +14,16 @@ type Props = {
 };
 
 type StatsTab = 'match' | 'season' | 'career';
+
+function isJerseyAssetUrl(url: string) {
+	return /jersey|kitimage|kit_|\/kits\/|shirt|uniform|jerseyimages/i.test(url);
+}
+
+function usablePlayerPhoto(player: Player | null | undefined) {
+	const src = player ? playerPhotoSrc(player) : '';
+	if (!src || isJerseyAssetUrl(src)) return '';
+	return src;
+}
 
 function statsSignature(stats: { key: string; value: number | string }[]) {
 	return stats.map((row) => `${row.key}:${row.value}`).join('|');
@@ -80,18 +90,36 @@ export function PlayerStatsModal({ player: openedPlayer, origin, statsContext, o
 	const [error, setError] = useState<string | null>(null);
 	const [tab, setTab] = useState<StatsTab>(defaultTab);
 	const [photoOk, setPhotoOk] = useState(false);
+	const [remotePhoto, setRemotePhoto] = useState('');
 	const [groundBg, setGroundBg] = useState(CAMP_NOU_BG);
 	const pollRef = useRef<number | null>(null);
 	const { motion, requestClose } = useProfileMotion(resolvedPlayer?.id ?? null, onClose);
 
-	const photo = resolvedPlayer ? playerPhotoSrc(resolvedPlayer) : '';
+	const photo = usablePlayerPhoto(resolvedPlayer) || remotePhoto;
 
 	useEffect(() => {
 		if (!resolvedPlayer) return;
 		setTab(defaultTab);
 		setPhotoOk(false);
+		setRemotePhoto('');
 		setSeasonError(null);
 	}, [resolvedPlayer?.id, defaultTab]);
+
+	useEffect(() => {
+		if (!resolvedPlayer) return;
+		if (usablePlayerPhoto(resolvedPlayer)) return;
+		let cancelled = false;
+		void fetchPlayerPhoto(resolvedPlayer.name, resolvedPlayer.club)
+			.then((url) => {
+				if (!cancelled && url && !isJerseyAssetUrl(url)) setRemotePhoto(url);
+			})
+			.catch(() => {
+				/* keep initials fallback */
+			});
+		return () => {
+			cancelled = true;
+		};
+	}, [resolvedPlayer?.id, resolvedPlayer?.name, resolvedPlayer?.club]);
 
 	const clubHint = resolvedPlayer?.club?.trim() || (resolvedPlayer?.fcbId ? 'Barcelona' : '');
 
@@ -275,6 +303,7 @@ export function PlayerStatsModal({ player: openedPlayer, origin, statsContext, o
 
 	const showPhoto = Boolean(photo && photoOk);
 	const compactPhoto = Boolean(sofaId && !player.fcbId);
+	const headshotPhoto = Boolean(photo && (/\.(jpe?g)(\?|$)/i.test(photo) || /\/thumb\//i.test(photo)));
 	const ox = origin ? (origin.x / window.innerWidth) * 100 : 22;
 	const oy = origin ? (origin.y / window.innerHeight) * 100 : 78;
 
@@ -296,16 +325,17 @@ export function PlayerStatsModal({ player: openedPlayer, origin, statsContext, o
 				}
 			>
 				<div
-					className={`modal-photo-panel profile-photo-panel profile-motion-${motion}${compactPhoto ? ' is-compact-photo' : ''}`}
+					className={`modal-photo-panel profile-photo-panel profile-motion-${motion}${compactPhoto ? ' is-compact-photo' : ''}${headshotPhoto ? ' is-headshot-photo' : ''}`}
 					style={groundBg ? { backgroundImage: `url(${groundBg})` } : undefined}
 					onClick={requestClose}
 					role="presentation"
 				>
 					{photo && (
 						<img
+							key={photo}
 							src={photo}
 							alt=""
-							className={`modal-hero-photo profile-hero-photo profile-motion-${motion}${compactPhoto ? ' is-compact' : ''}${showPhoto ? '' : ' is-loading'}`}
+							className={`modal-hero-photo profile-hero-photo profile-motion-${motion}${compactPhoto ? ' is-compact' : ''}${headshotPhoto ? ' is-headshot' : ''}${showPhoto ? '' : ' is-loading'}`}
 							onLoad={() => setPhotoOk(true)}
 							onError={() => setPhotoOk(false)}
 						/>
