@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { fetchLiveBoard, fetchLiveMatch, formatDateTime, LIVE_POLL_MS } from '../lib/api';
 import type { LiveBoardDetail, LiveBoardGroupId, LiveBoardHub, LiveBoardMatch } from '../types';
 import type { PlayerOpenOrigin } from '../store/BarcaState';
 import { useBarca } from '../store/BarcaState';
 import { LiveGraphic } from './LiveGraphic';
+import { LiveMatchHoverCard } from './LiveMatchHoverCard';
 import { MatchRatingsPitch } from './MatchRatingsPitch';
 import type { RatedPitchPlayer } from '../types';
 
@@ -31,6 +32,27 @@ function hoursAgo(ts: number, finished = false) {
 	return `${hours} hours ago`;
 }
 
+function leagueName(match: LiveBoardMatch) {
+	return match.competition.trim() || 'Other';
+}
+
+/** Section = league; group matches under competition names. */
+function groupByLeague(matches: LiveBoardMatch[]) {
+	const map = new Map<string, LiveBoardMatch[]>();
+	for (const match of matches) {
+		const key = leagueName(match);
+		const list = map.get(key);
+		if (list) list.push(match);
+		else map.set(key, [match]);
+	}
+	return [...map.entries()]
+		.sort((a, b) => a[0].localeCompare(b[0], undefined, { sensitivity: 'base' }))
+		.map(([league, rows]) => ({
+			league,
+			matches: [...rows].sort((a, b) => b.startTimestamp - a.startTimestamp),
+		}));
+}
+
 function tabSlice(hub: LiveBoardHub | null, tab: LiveBoardGroupId) {
 	const live = hub?.groups.find((g) => g.id === tab)?.matches ?? [];
 	const history = hub?.history.find((g) => g.id === tab)?.matches ?? [];
@@ -49,6 +71,50 @@ function matchStillExists(hub: LiveBoardHub, id: number) {
 	);
 }
 
+function leagueKey(section: 'live' | 'ft', league: string) {
+	return `${section}:${league}`;
+}
+
+type LeagueBucket = { league: string; matches: LiveBoardMatch[] };
+
+function LeagueGroup({
+	section,
+	bucket,
+	collapsed,
+	onToggle,
+	children,
+}: {
+	section: 'live' | 'ft';
+	bucket: LeagueBucket;
+	collapsed: boolean;
+	onToggle: () => void;
+	children: ReactNode;
+}) {
+	const panelId = `live-board-${section}-${bucket.league.replace(/\s+/g, '-').toLowerCase()}`;
+	return (
+		<div className={`live-board-league${collapsed ? ' is-collapsed' : ''}`}>
+			<button
+				type="button"
+				className="live-board-league-toggle"
+				aria-expanded={!collapsed}
+				aria-controls={panelId}
+				onClick={onToggle}
+			>
+				<span className="live-board-league-chevron" aria-hidden>
+					{collapsed ? '▸' : '▾'}
+				</span>
+				<span className="live-board-league-name">{bucket.league}</span>
+				<span className="live-board-league-count">{bucket.matches.length}</span>
+			</button>
+			{!collapsed && (
+				<ul id={panelId} className="live-board-league-matches">
+					{children}
+				</ul>
+			)}
+		</div>
+	);
+}
+
 export function LiveBoardPage() {
 	const rootRef = useRef<HTMLDivElement>(null);
 	const { openPlayerStats } = useBarca();
@@ -57,6 +123,43 @@ export function LiveBoardPage() {
 	const [groupTab, setGroupTab] = useState<LiveBoardGroupId>('ucl');
 	const [selectedId, setSelectedId] = useState<number | null>(null);
 	const [detail, setDetail] = useState<LiveBoardDetail | null>(null);
+	/** Expanded league keys only — groups start closed. */
+	const [expandedLeagues, setExpandedLeagues] = useState<Set<string>>(() => new Set());
+	const [hoverMatch, setHoverMatch] = useState<LiveBoardMatch | null>(null);
+	const [hoverAnchor, setHoverAnchor] = useState<{ top: number; left: number } | null>(null);
+	const hoverCloseTimer = useRef<number | null>(null);
+
+	const clearHoverCloseTimer = () => {
+		if (hoverCloseTimer.current != null) {
+			window.clearTimeout(hoverCloseTimer.current);
+			hoverCloseTimer.current = null;
+		}
+	};
+
+	const openHover = (match: LiveBoardMatch, el: HTMLElement) => {
+		clearHoverCloseTimer();
+		const rect = el.getBoundingClientRect();
+		setHoverMatch(match);
+		setHoverAnchor({ top: rect.top, left: rect.right + 14 });
+	};
+
+	const scheduleCloseHover = () => {
+		clearHoverCloseTimer();
+		hoverCloseTimer.current = window.setTimeout(() => {
+			setHoverMatch(null);
+			setHoverAnchor(null);
+			hoverCloseTimer.current = null;
+		}, 280);
+	};
+
+	const toggleLeague = (key: string) => {
+		setExpandedLeagues((prev) => {
+			const next = new Set(prev);
+			if (next.has(key)) next.delete(key);
+			else next.add(key);
+			return next;
+		});
+	};
 
 	useEffect(() => {
 		let cancelled = false;
@@ -87,10 +190,20 @@ export function LiveBoardPage() {
 		return () => {
 			cancelled = true;
 			window.clearInterval(timer);
+			clearHoverCloseTimer();
 		};
 	}, []);
 
 	const slice = useMemo(() => tabSlice(hub, groupTab), [hub, groupTab]);
+	const liveByLeague = useMemo(() => groupByLeague(slice.live), [slice.live]);
+	const historyByLeague = useMemo(() => groupByLeague(slice.history), [slice.history]);
+
+	useEffect(() => {
+		setHoverMatch(null);
+		setHoverAnchor(null);
+		// Reset — all league groups closed when switching competition tabs.
+		setExpandedLeagues(new Set());
+	}, [groupTab]);
 
 	useEffect(() => {
 		if (!hub) return;
@@ -170,6 +283,24 @@ export function LiveBoardPage() {
 	const fixtureId = selectedId ? String(selectedId) : '';
 	const tabMeta = GROUP_TABS.find((t) => t.id === groupTab);
 	const fullLabel = hub?.groups.find((g) => g.id === groupTab)?.label ?? tabMeta?.label ?? '';
+	const hoverIsLive = Boolean(hoverMatch && slice.live.some((m) => m.id === hoverMatch.id));
+
+	const renderMatchButton = (match: LiveBoardMatch, finished: boolean) => (
+		<li key={match.id}>
+			<button
+				type="button"
+				className={`${finished ? 'is-ft' : ''}${match.id === selectedId ? ' active' : ''}${hoverMatch?.id === match.id ? ' is-hovering' : ''}`}
+				onClick={() => setSelectedId(match.id)}
+				onMouseEnter={(e) => openHover(match, e.currentTarget)}
+				onMouseLeave={scheduleCloseHover}
+			>
+				<strong>
+					{match.homeTeam} {scoreLabel(match)} {match.awayTeam}
+				</strong>
+				<em>{finished ? hoursAgo(match.startTimestamp, true) : match.clock}</em>
+			</button>
+		</li>
+	);
 
 	return (
 		<div className="live-board-shell" ref={rootRef}>
@@ -220,45 +351,39 @@ export function LiveBoardPage() {
 					{slice.live.length > 0 && (
 						<section>
 							<h2>Live</h2>
-							<ul>
-								{slice.live.map((match) => (
-									<li key={match.id}>
-										<button
-											type="button"
-											className={match.id === selectedId ? 'active' : ''}
-											onClick={() => setSelectedId(match.id)}
-										>
-											<span className="live-board-comp">{match.competition}</span>
-											<strong>
-												{match.homeTeam} {scoreLabel(match)} {match.awayTeam}
-											</strong>
-											<em>{match.clock}</em>
-										</button>
-									</li>
-								))}
-							</ul>
+							{liveByLeague.map((bucket) => {
+								const key = leagueKey('live', bucket.league);
+								return (
+									<LeagueGroup
+										key={key}
+										section="live"
+										bucket={bucket}
+										collapsed={!expandedLeagues.has(key)}
+										onToggle={() => toggleLeague(key)}
+									>
+										{bucket.matches.map((match) => renderMatchButton(match, false))}
+									</LeagueGroup>
+								);
+							})}
 						</section>
 					)}
 					{slice.history.length > 0 && (
 						<section className={slice.live.length ? 'live-board-history' : undefined}>
 							<h2>Last 24 hours</h2>
-							<ul>
-								{slice.history.map((match) => (
-									<li key={match.id}>
-										<button
-											type="button"
-											className={`is-ft${match.id === selectedId ? ' active' : ''}`}
-											onClick={() => setSelectedId(match.id)}
-										>
-											<span className="live-board-comp">{match.competition}</span>
-											<strong>
-												{match.homeTeam} {scoreLabel(match)} {match.awayTeam}
-											</strong>
-											<em>{hoursAgo(match.startTimestamp, true)}</em>
-										</button>
-									</li>
-								))}
-							</ul>
+							{historyByLeague.map((bucket) => {
+								const key = leagueKey('ft', bucket.league);
+								return (
+									<LeagueGroup
+										key={key}
+										section="ft"
+										bucket={bucket}
+										collapsed={!expandedLeagues.has(key)}
+										onToggle={() => toggleLeague(key)}
+									>
+										{bucket.matches.map((match) => renderMatchButton(match, true))}
+									</LeagueGroup>
+								);
+							})}
 						</section>
 					)}
 				</aside>
@@ -306,6 +431,16 @@ export function LiveBoardPage() {
 					)}
 				</section>
 			</div>
+
+			{hoverMatch && hoverAnchor && (
+				<LiveMatchHoverCard
+					match={hoverMatch}
+					isLive={hoverIsLive}
+					anchor={hoverAnchor}
+					onKeepOpen={clearHoverCloseTimer}
+					onRequestClose={scheduleCloseHover}
+				/>
+			)}
 		</div>
 	);
 }

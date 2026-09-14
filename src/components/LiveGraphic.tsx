@@ -24,22 +24,31 @@ const EVENT_ICONS: Array<[string, string]> = [
 ];
 
 function iconFor(type: string, detail = '') {
-	const t = `${type} ${detail}`.toLowerCase();
-	// Prefer red over generic "card" — ESPN labels like "Red Card" / "redcard" also contain "card".
-	if (/redcard|\bred\b/.test(t)) return '🟥';
-	if (/yellowcard|\byellow\b|\bcard\b/.test(t)) return '🟨';
+	const typeL = type.toLowerCase().trim();
+	const blob = `${type} ${detail}`.toLowerCase();
+	// Trust the ESPN type token first when it is unambiguous.
+	if (/^(goal|own.?goal|penalty)$/i.test(typeL) || /^scoring/i.test(typeL)) return '⚽';
+	if (/redcard|^red(\s*card)?$/i.test(typeL)) return '🟥';
+	if (/yellowcard|^yellow(\s*card)?$/i.test(typeL)) return '🟨';
+	// Fall back to type + detail text (covers "Red Card" labels that also contain "card").
+	if (/redcard|\bred\b/.test(blob)) return '🟥';
+	if (/yellowcard|\byellow\b|\bcard\b/.test(blob)) return '🟨';
 	for (const [key, icon] of EVENT_ICONS) {
-		if (t.includes(key)) return icon;
+		if (blob.includes(key)) return icon;
 	}
 	return '•';
 }
 
 function eventKind(type: string, detail = ''): 'goal' | 'yellow' | 'red' | 'sub' | 'other' {
-	const t = `${type} ${detail}`.toLowerCase();
-	if (t.includes('goal')) return 'goal';
-	if (/redcard|\bred\b/.test(t)) return 'red';
-	if (/yellowcard|\byellow\b|\bcard\b/.test(t)) return 'yellow';
-	if (t.includes('sub')) return 'sub';
+	const typeL = type.toLowerCase().trim();
+	const blob = `${type} ${detail}`.toLowerCase();
+	if (/^(goal|own.?goal|penalty)$/i.test(typeL) || /^scoring/i.test(typeL) || (/\bgoal\b/.test(typeL) && !/card/.test(typeL))) {
+		return 'goal';
+	}
+	if (/redcard|^red(\s*card)?$/i.test(typeL) || /redcard|\bred\b/.test(blob)) return 'red';
+	if (/yellowcard|^yellow(\s*card)?$/i.test(typeL) || /yellowcard|\byellow\b|\bcard\b/.test(blob)) return 'yellow';
+	if (typeL.includes('sub') || blob.includes('substitut')) return 'sub';
+	if (blob.includes('goal')) return 'goal';
 	return 'other';
 }
 
