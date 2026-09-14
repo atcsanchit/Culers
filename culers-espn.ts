@@ -3,6 +3,9 @@
  * with TheSportsDB as a second hop when a host 403s/429s.
  */
 
+import { resolveTeamCrest } from './culers-team-badges.ts';
+import { enrichPlayersWithCutouts, photoFromEspnAthlete } from './culers-player-photos.ts';
+
 type Json = Record<string, unknown>;
 
 const BROWSER_UA =
@@ -613,6 +616,7 @@ function sideFromRoster(
 	isBarca: boolean;
 	formation: string;
 	avgRating: number | null;
+	crestUrl: string;
 	starters: Array<{
 		id: string;
 		sofaId: number;
@@ -674,6 +678,7 @@ function sideFromRoster(
 			subOff: row.subbedOut ? 0 : null,
 			isCaptain: false,
 			isMotm: false,
+			photo: photoFromEspnAthlete(athlete),
 		};
 	};
 	const rows = (roster?.roster as Json[]) ?? [];
@@ -688,6 +693,7 @@ function sideFromRoster(
 		isBarca: /barcel/i.test(teamName) || teamId === ESPN_BARCA_TEAM_ID,
 		formation,
 		avgRating,
+		crestUrl: '',
 		starters,
 		bench,
 	};
@@ -708,6 +714,26 @@ export async function fetchEspnMatchRatings(options: {
 	const awayRoster = rosters.find((r) => String(r.homeAway) === 'away');
 	const home = sideFromRoster(homeRoster, event.homeTeam, event.homeTeamId);
 	const away = sideFromRoster(awayRoster, event.awayTeam, event.awayTeamId);
+	const [homeCrest, awayCrest] = await Promise.all([
+		resolveTeamCrest({
+			teamName: event.homeTeam,
+			teamId: event.homeTeamId,
+			competition: event.competition,
+		}),
+		resolveTeamCrest({
+			teamName: event.awayTeam,
+			teamId: event.awayTeamId,
+			competition: event.competition,
+		}),
+	]);
+	home.crestUrl = homeCrest;
+	away.crestUrl = awayCrest;
+	const [homeStarters, awayStarters] = await Promise.all([
+		enrichPlayersWithCutouts(home.starters, home.teamName),
+		enrichPlayersWithCutouts(away.starters, away.teamName),
+	]);
+	home.starters = homeStarters;
+	away.starters = awayStarters;
 	const all = [...home.starters, ...away.starters];
 	const top = [...all].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))[0];
 	if (top) {

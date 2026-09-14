@@ -323,6 +323,8 @@ export type MatchRatingsSide = {
 	isBarca: boolean;
 	formation: string;
 	avgRating: number | null;
+	/** Club crest URL (TheSportsDB or ESPN CDN). */
+	crestUrl?: string;
 	starters: RatedPitchPlayer[];
 	bench: RatedPitchPlayer[];
 };

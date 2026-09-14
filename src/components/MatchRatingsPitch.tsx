@@ -3,7 +3,7 @@ import type { MatchRatingsBoard, MatchRatingsSide, RatedPitchPlayer } from '../t
 import type { PlayerOpenOrigin } from '../store/BarcaState';
 import { fetchMatchRatings } from '../lib/api';
 import { assignToFormation, formationKeyFromString } from '../lib/lineup';
-import { teamCrestSrc, teamInitials } from '../lib/photos';
+import { teamCrestSrc, teamInitials, espnTeamCrest } from '../lib/photos';
 
 type Props = {
 	fixtureId: string;
@@ -62,13 +62,18 @@ function placeBoard(board: MatchRatingsBoard): MatchRatingsBoard {
 	};
 }
 
-function SideCrest({ name }: { name: string }) {
-	const src = teamCrestSrc(name, '');
+function SideCrest({ name, crestUrl = '', teamId = 0 }: { name: string; crestUrl?: string; teamId?: number }) {
+	const remote = crestUrl.trim() || espnTeamCrest(teamId);
+	const src = teamCrestSrc(name, remote);
 	const [ok, setOk] = useState(false);
+	useEffect(() => {
+		setOk(false);
+	}, [src]);
 	return (
-		<span className="mrp-crest-wrap">
+		<span className="mrp-crest-wrap" title={name}>
 			{src ? (
 				<img
+					key={src}
 					src={src}
 					alt=""
 					className={`mrp-crest${ok ? '' : ' is-loading'}`}
@@ -114,7 +119,11 @@ function PlayerNode({
 				</span>
 			)}
 			<span className="mrp-avatar" aria-hidden>
-				{player.number || '·'}
+				{player.photo ? (
+					<img src={player.photo} alt="" className="mrp-avatar-img" loading="lazy" />
+				) : (
+					player.number || '·'
+				)}
 			</span>
 			<span className="mrp-name">
 				{player.number ? `${player.number} ` : ''}
@@ -182,10 +191,10 @@ export function MatchRatingsPitch({ fixtureId, pollKey, onPlayerClick }: Props) 
 		<section className="match-ratings-pitch pop-card">
 			<header className="mrp-header">
 				<div className="mrp-team home">
-					<SideCrest name={display.home.teamName} />
-					<div>
+					<SideCrest name={display.home.teamName} crestUrl={display.home.crestUrl} teamId={display.home.teamId} />
+					<div className="mrp-team-meta">
 						<strong>{display.home.teamName}</strong>
-						<span className="muted">{display.home.formation}</span>
+						<span className="muted">{display.home.formation || 'XI'}</span>
 					</div>
 					{display.home.avgRating != null && (
 						<span className={`mrp-team-rating ${ratingClass(display.home.avgRating)}`}>
@@ -196,7 +205,9 @@ export function MatchRatingsPitch({ fixtureId, pollKey, onPlayerClick }: Props) 
 				<div className="mrp-score">
 					<span className="mrp-clock">{display.clock ?? display.status}</span>
 					<strong>
-						{display.homeScore ?? '–'} : {display.awayScore ?? '–'}
+						{display.homeScore ?? '–'}
+						<span className="mrp-score-sep">:</span>
+						{display.awayScore ?? '–'}
 					</strong>
 				</div>
 				<div className="mrp-team away">
@@ -205,11 +216,11 @@ export function MatchRatingsPitch({ fixtureId, pollKey, onPlayerClick }: Props) 
 							{display.away.avgRating.toFixed(1)}
 						</span>
 					)}
-					<div>
+					<div className="mrp-team-meta">
 						<strong>{display.away.teamName}</strong>
-						<span className="muted">{display.away.formation}</span>
+						<span className="muted">{display.away.formation || 'XI'}</span>
 					</div>
-					<SideCrest name={display.away.teamName} />
+					<SideCrest name={display.away.teamName} crestUrl={display.away.crestUrl} teamId={display.away.teamId} />
 				</div>
 			</header>
 

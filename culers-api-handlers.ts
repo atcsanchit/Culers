@@ -11,6 +11,7 @@ import { fetchEspnMatchRatings, fetchEspnPlayerMatchStats, parseEspnEventId } fr
 import { fetchLiveBoard, fetchLiveMatchDetail } from './culers-live-board.ts';
 import { fetchClubHomeGroundBackground } from './culers-stadium-photos.ts';
 import { fetchTransfersHub, attachNewsToTransferRumors } from './culers-transfers.ts';
+import { fetchPlayerCutout } from './culers-player-photos.ts';
 
 const BARCA_TEAM_ID = '133739';
 
@@ -541,6 +542,13 @@ export async function dispatchCulersApi(
 			const team = String(url.searchParams.get('team') || '').trim();
 			if (!team) return jsonResult({ error: 'team required' }, 400);
 			return jsonResult(await fetchClubHomeGroundBackground(team));
+		}
+		if (url.pathname === '/api/player-photo') {
+			const name = String(url.searchParams.get('name') || '').trim();
+			const team = String(url.searchParams.get('team') || '').trim();
+			if (!name) return jsonResult({ error: 'name required' }, 400);
+			const photo = await fetchPlayerCutout(name, team || undefined);
+			return jsonResult({ name, team: team || null, photo });
 		}
 		return jsonResult({ error: 'Not found' }, 404);
 	} catch (err) {
