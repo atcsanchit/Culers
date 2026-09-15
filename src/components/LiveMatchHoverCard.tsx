@@ -8,6 +8,7 @@ import { MatchRatingsPitch } from './MatchRatingsPitch';
 type Props = {
 	match: LiveBoardMatch;
 	isLive: boolean;
+	isUpcoming?: boolean;
 	anchor: { top: number; left: number };
 	onKeepOpen: () => void;
 	onRequestClose: () => void;
@@ -22,6 +23,19 @@ function hoursAgo(ts: number) {
 	return `${hours} hours ago`;
 }
 
+function kickoffLabel(ts: number) {
+	if (!ts) return 'Upcoming';
+	const d = new Date(ts * 1000);
+	if (Number.isNaN(d.getTime())) return 'Upcoming';
+	return d.toLocaleString('en-IN', {
+		timeZone: 'Asia/Kolkata',
+		weekday: 'short',
+		hour: 'numeric',
+		minute: '2-digit',
+		hour12: true,
+	});
+}
+
 function clampPosition(top: number, left: number, width: number, height: number) {
 	const pad = 12;
 	const maxLeft = Math.max(pad, window.innerWidth - width - pad);
@@ -33,7 +47,14 @@ function clampPosition(top: number, left: number, width: number, height: number)
 }
 
 /** Floating gold-edged preview: score, timeline, and lineup pitch. */
-export function LiveMatchHoverCard({ match, isLive, anchor, onKeepOpen, onRequestClose }: Props) {
+export function LiveMatchHoverCard({
+	match,
+	isLive,
+	isUpcoming = false,
+	anchor,
+	onKeepOpen,
+	onRequestClose,
+}: Props) {
 	const [detail, setDetail] = useState<LiveBoardDetail | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [pos, setPos] = useState(anchor);
@@ -63,10 +84,12 @@ export function LiveMatchHoverCard({ match, isLive, anchor, onKeepOpen, onReques
 		setPos(clampPosition(anchor.top, anchor.left, width, height));
 	}, [anchor.top, anchor.left]);
 
-	const clock = isLive ? detail?.clock || match.clock : 'Full time';
+	const clock = isLive ? detail?.clock || match.clock : isUpcoming ? kickoffLabel(match.startTimestamp) : 'Full time';
 	const statusLine = isLive
 		? clock
-		: `Full time${match.startTimestamp ? ` · ${hoursAgo(match.startTimestamp)}` : ''}${match.venue ? ` · ${match.venue}` : ''}`;
+		: isUpcoming
+			? `Kick-off ${kickoffLabel(match.startTimestamp)}${match.venue ? ` · ${match.venue}` : ''}`
+			: `Full time${match.startTimestamp ? ` · ${hoursAgo(match.startTimestamp)}` : ''}${match.venue ? ` · ${match.venue}` : ''}`;
 
 	return createPortal(
 		<div
@@ -81,9 +104,7 @@ export function LiveMatchHoverCard({ match, isLive, anchor, onKeepOpen, onReques
 				<span className="panel-label">{match.competition}</span>
 				<div className="live-board-score-row">
 					<strong>{match.homeTeam}</strong>
-					<span>
-						{match.homeScore ?? '–'} : {match.awayScore ?? '–'}
-					</span>
+					<span>{isUpcoming ? 'vs' : `${match.homeScore ?? '–'} : ${match.awayScore ?? '–'}`}</span>
 					<strong>{match.awayTeam}</strong>
 				</div>
 				<p className="muted">
@@ -93,7 +114,11 @@ export function LiveMatchHoverCard({ match, isLive, anchor, onKeepOpen, onReques
 
 			{loading && <p className="muted live-board-hover-status">Loading match preview…</p>}
 
-			{!loading && (
+			{!loading && isUpcoming && (
+				<p className="muted live-board-hover-status">Lineups and events unlock at kick-off.</p>
+			)}
+
+			{!loading && !isUpcoming && (
 				<>
 					<LiveGraphic
 						events={detail?.events ?? []}

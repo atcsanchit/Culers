@@ -534,6 +534,24 @@ a:hover {
 	border-top: 1px solid var(--line);
 }
 
+.live-board-upcoming {
+	margin-top: 1.1rem;
+	padding-top: 0.85rem;
+	border-top: 1px solid var(--line);
+}
+
+.live-board-upcoming-note {
+	margin: 0.85rem 0 0;
+	padding: 0.85rem 1rem;
+	border-radius: 12px;
+	border: 1px dashed rgba(232, 185, 35, 0.35);
+	background: rgba(232, 185, 35, 0.06);
+}
+
+.live-board-list button.is-upcoming em {
+	color: var(--gold-soft, #f0d56a);
+}
+
 .live-board-league {
 	margin-top: 0.55rem;
 }

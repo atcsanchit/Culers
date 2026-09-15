@@ -1112,7 +1112,8 @@ async function fetchEspnLiveAndRecentEvents() {
   const now = /* @__PURE__ */ new Date();
   const ymd = (d) => d.toISOString().slice(0, 10).replace(/-/g, "");
   const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1e3);
-  const dateKeys = [.../* @__PURE__ */ new Set([ymd(now), ymd(yesterday)])];
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1e3);
+  const dateKeys = [.../* @__PURE__ */ new Set([ymd(now), ymd(yesterday), ymd(tomorrow)])];
   const pages = await Promise.all(
     SCOREBOARD_LEAGUES.flatMap(
       (league) => dateKeys.map(async (dates) => {
@@ -4353,6 +4354,18 @@ function scoreOf(side) {
   const n = Number(side.current ?? side.period1 ?? NaN);
   return Number.isFinite(n) ? n : null;
 }
+function kickoffClock(startTimestamp) {
+  if (!startTimestamp) return "Upcoming";
+  const d = new Date(startTimestamp * 1e3);
+  if (Number.isNaN(d.getTime())) return "Upcoming";
+  return d.toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    weekday: "short",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true
+  });
+}
 function mapLiveMatch(raw) {
   const group = classify(raw);
   if (!group) return null;
@@ -4364,6 +4377,8 @@ function mapLiveMatch(raw) {
   const venue = raw.venue;
   const statusType = String(status?.type ?? "");
   const finished = /finished|closed|ended/i.test(statusType);
+  const live = /inprogress|live/i.test(statusType);
+  const startTimestamp = Number(raw.startTimestamp ?? 0);
   return {
     id,
     homeTeam: String(home.name ?? ""),
@@ -4374,10 +4389,10 @@ function mapLiveMatch(raw) {
       raw._competitionName ?? raw.tournament?.uniqueTournament?.name ?? raw.tournament?.name ?? ""
     ),
     group,
-    clock: finished ? "FT" : String(status?.description ?? status?.type ?? "LIVE"),
-    status: statusType || (finished ? "finished" : "inprogress"),
+    clock: finished ? "FT" : live ? String(status?.description ?? status?.type ?? "LIVE") : kickoffClock(startTimestamp),
+    status: statusType || (finished ? "finished" : live ? "inprogress" : "scheduled"),
     venue: String(venue?.name ?? venue?.stadium?.name ?? ""),
-    startTimestamp: Number(raw.startTimestamp ?? 0)
+    startTimestamp
   };
 }
 function groupMatches(matches) {
@@ -4393,6 +4408,9 @@ function utcYmd(d) {
 function isFinishedMatch(match) {
   return /finished|closed|ended/i.test(match.status);
 }
+function isLiveMatch(match) {
+  return !isFinishedMatch(match) && /inprogress|live/i.test(match.status);
+}
 async function espnShapes() {
   const raw = await fetchEspnLiveAndRecentEvents().catch(() => []);
   return raw.map(mapEspnRawToLiveShape);
@@ -4400,32 +4418,41 @@ async function espnShapes() {
 async function sportsDbShapes() {
   const now = /* @__PURE__ */ new Date();
   const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1e3);
-  const [live, today, yday] = await Promise.all([
+  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1e3);
+  const [live, today, yday, tmrw] = await Promise.all([
     fetchSportsDbLiveSoccer().catch(() => []),
     fetchSportsDbSoccerDay(utcYmd(now)).catch(() => []),
-    fetchSportsDbSoccerDay(utcYmd(yesterday)).catch(() => [])
+    fetchSportsDbSoccerDay(utcYmd(yesterday)).catch(() => []),
+    fetchSportsDbSoccerDay(utcYmd(tomorrow)).catch(() => [])
   ]);
-  return [...live, ...today, ...yday].map(mapSportsDbEventToLiveShape);
+  return [...live, ...today, ...yday, ...tmrw].map(mapSportsDbEventToLiveShape);
 }
 async function fetchLiveBoard() {
   resetStatsSourceReachable();
   let shapes = await espnShapes();
-  let source = "ESPN / Google Sports scoreboards (live + last 24 hours)";
+  let source = "ESPN / Google Sports scoreboards (live + last/next 24 hours)";
   if (!shapes.length) {
     shapes = await sportsDbShapes();
     source = "TheSportsDB live + day results (ESPN scoreboard unavailable)";
   }
   const mapped = shapes.map(mapLiveMatch).filter(Boolean);
-  const live = mapped.filter((m) => !isFinishedMatch(m) && /inprogress|live/i.test(m.status));
+  const live = mapped.filter(isLiveMatch);
   const liveIds = new Set(live.map((m) => m.id));
-  const cutoff = Math.floor(Date.now() / 1e3) - 28 * 60 * 60;
-  const history = mapped.filter((m) => isFinishedMatch(m) && !liveIds.has(m.id) && m.startTimestamp >= cutoff).sort((a, b) => b.startTimestamp - a.startTimestamp);
+  const nowSec = Math.floor(Date.now() / 1e3);
+  const pastCutoff = nowSec - 28 * 60 * 60;
+  const upcomingCutoff = nowSec + 28 * 60 * 60;
+  const history = mapped.filter((m) => isFinishedMatch(m) && !liveIds.has(m.id) && m.startTimestamp >= pastCutoff).sort((a, b) => b.startTimestamp - a.startTimestamp);
+  const historyIds = new Set(history.map((m) => m.id));
+  const upcoming = mapped.filter(
+    (m) => !isFinishedMatch(m) && !liveIds.has(m.id) && !historyIds.has(m.id) && m.startTimestamp > 0 && m.startTimestamp >= nowSec - 30 * 60 && m.startTimestamp <= upcomingCutoff
+  ).sort((a, b) => a.startTimestamp - b.startTimestamp);
   return {
     groups: groupMatches(live),
     history: groupMatches(history),
+    upcoming: groupMatches(upcoming),
     fetchedAt: (/* @__PURE__ */ new Date()).toISOString(),
     source,
-    note: !live.length && !history.length ? statsSourceReachable() ? "No live or last-24-hour matches in European leagues, MLS, UCL/UEL, or internationals." : "Live score hosts were blocked or empty. Trying ESPN, then TheSportsDB \u2014 refresh after a minute." : void 0
+    note: !live.length && !history.length && !upcoming.length ? statsSourceReachable() ? "No live, last-24-hour, or next-24-hour matches in European leagues, MLS, UCL/UEL, or internationals." : "Live score hosts were blocked or empty. Trying ESPN, then TheSportsDB \u2014 refresh after a minute." : void 0
   };
 }
 async function fetchLiveMatchDetail(eventId) {
@@ -4434,7 +4461,7 @@ async function fetchLiveMatchDetail(eventId) {
     fetchEspnEventById(eventId),
     fetchEspnEventIncidents(eventId).catch(() => [])
   ]);
-  const fromBoard = [...board.groups, ...board.history].flatMap((g) => g.matches).find((m) => m.id === eventId) ?? null;
+  const fromBoard = [...board.groups, ...board.history, ...board.upcoming].flatMap((g) => g.matches).find((m) => m.id === eventId) ?? null;
   const fromEvent = event ? {
     id: event.id,
     homeTeam: event.homeTeam,
@@ -4443,7 +4470,7 @@ async function fetchLiveMatchDetail(eventId) {
     awayScore: event.awayScore,
     competition: event.competition || "Football",
     group: classifyCompetition(event.competition || "") ?? "europe",
-    clock: /finished|closed|ended/i.test(event.statusType ?? "") ? "FT" : event.clock || event.statusType || "LIVE",
+    clock: /finished|closed|ended/i.test(event.statusType ?? "") ? "FT" : /inprogress|live/i.test(event.statusType ?? "") ? event.clock || event.statusType || "LIVE" : kickoffClock(event.startTimestamp),
     status: event.statusType || "inprogress",
     venue: event.venue || "",
     startTimestamp: event.startTimestamp
