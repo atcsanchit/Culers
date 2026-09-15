@@ -309,7 +309,9 @@ export async function fetchEspnLiveAndRecentEvents(): Promise<Json[]> {
 	const now = new Date();
 	const ymd = (d: Date) => d.toISOString().slice(0, 10).replace(/-/g, '');
 	const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-	const dateKeys = [...new Set([ymd(now), ymd(yesterday)])];
+	const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+	// Yesterday (FT), today (live + upcoming), tomorrow (upcoming next 24h).
+	const dateKeys = [...new Set([ymd(now), ymd(yesterday), ymd(tomorrow)])];
 
 	const pages = await Promise.all(
 		SCOREBOARD_LEAGUES.flatMap((league) =>

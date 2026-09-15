@@ -17,10 +17,15 @@ const GROUP_TABS: { id: LiveBoardGroupId; label: string }[] = [
 ];
 
 function scoreLabel(match: LiveBoardMatch) {
-	if (match.homeScore == null || match.awayScore == null) {
-		return /finished|closed|ended/i.test(match.status) ? 'FT' : 'LIVE';
+	if (/finished|closed|ended/i.test(match.status)) {
+		if (match.homeScore == null || match.awayScore == null) return 'FT';
+		return `${match.homeScore}–${match.awayScore}`;
 	}
-	return `${match.homeScore}–${match.awayScore}`;
+	if (/inprogress|live/i.test(match.status)) {
+		if (match.homeScore == null || match.awayScore == null) return 'LIVE';
+		return `${match.homeScore}–${match.awayScore}`;
+	}
+	return 'vs';
 }
 
 function hoursAgo(ts: number, finished = false) {
@@ -32,12 +37,25 @@ function hoursAgo(ts: number, finished = false) {
 	return `${hours} hours ago`;
 }
 
+function kickoffLabel(ts: number) {
+	if (!ts) return 'Upcoming';
+	const d = new Date(ts * 1000);
+	if (Number.isNaN(d.getTime())) return 'Upcoming';
+	return d.toLocaleString('en-IN', {
+		timeZone: 'Asia/Kolkata',
+		weekday: 'short',
+		hour: 'numeric',
+		minute: '2-digit',
+		hour12: true,
+	});
+}
+
 function leagueName(match: LiveBoardMatch) {
 	return match.competition.trim() || 'Other';
 }
 
 /** Section = league; group matches under competition names. */
-function groupByLeague(matches: LiveBoardMatch[]) {
+function groupByLeague(matches: LiveBoardMatch[], ascending = false) {
 	const map = new Map<string, LiveBoardMatch[]>();
 	for (const match of matches) {
 		const key = leagueName(match);
@@ -49,29 +67,33 @@ function groupByLeague(matches: LiveBoardMatch[]) {
 		.sort((a, b) => a[0].localeCompare(b[0], undefined, { sensitivity: 'base' }))
 		.map(([league, rows]) => ({
 			league,
-			matches: [...rows].sort((a, b) => b.startTimestamp - a.startTimestamp),
+			matches: [...rows].sort((a, b) =>
+				ascending ? a.startTimestamp - b.startTimestamp : b.startTimestamp - a.startTimestamp,
+			),
 		}));
 }
 
 function tabSlice(hub: LiveBoardHub | null, tab: LiveBoardGroupId) {
 	const live = hub?.groups.find((g) => g.id === tab)?.matches ?? [];
 	const history = hub?.history.find((g) => g.id === tab)?.matches ?? [];
-	return { live, history, total: live.length + history.length };
+	const upcoming = hub?.upcoming?.find((g) => g.id === tab)?.matches ?? [];
+	return { live, history, upcoming, total: live.length + history.length + upcoming.length };
 }
 
 function firstMatchId(hub: LiveBoardHub | null, tab: LiveBoardGroupId) {
 	const slice = tabSlice(hub, tab);
-	return slice.live[0]?.id ?? slice.history[0]?.id ?? null;
+	return slice.live[0]?.id ?? slice.upcoming[0]?.id ?? slice.history[0]?.id ?? null;
 }
 
 function matchStillExists(hub: LiveBoardHub, id: number) {
 	return (
 		hub.groups.some((g) => g.matches.some((m) => m.id === id)) ||
-		hub.history.some((g) => g.matches.some((m) => m.id === id))
+		hub.history.some((g) => g.matches.some((m) => m.id === id)) ||
+		(hub.upcoming ?? []).some((g) => g.matches.some((m) => m.id === id))
 	);
 }
 
-function leagueKey(section: 'live' | 'ft', league: string) {
+function leagueKey(section: 'live' | 'ft' | 'up', league: string) {
 	return `${section}:${league}`;
 }
 
@@ -84,7 +106,7 @@ function LeagueGroup({
 	onToggle,
 	children,
 }: {
-	section: 'live' | 'ft';
+	section: 'live' | 'ft' | 'up';
 	bucket: LeagueBucket;
 	collapsed: boolean;
 	onToggle: () => void;
@@ -197,6 +219,7 @@ export function LiveBoardPage() {
 	const slice = useMemo(() => tabSlice(hub, groupTab), [hub, groupTab]);
 	const liveByLeague = useMemo(() => groupByLeague(slice.live), [slice.live]);
 	const historyByLeague = useMemo(() => groupByLeague(slice.history), [slice.history]);
+	const upcomingByLeague = useMemo(() => groupByLeague(slice.upcoming, true), [slice.upcoming]);
 
 	useEffect(() => {
 		setHoverMatch(null);
@@ -207,13 +230,19 @@ export function LiveBoardPage() {
 
 	useEffect(() => {
 		if (!hub) return;
-		if (selectedId && (slice.live.some((m) => m.id === selectedId) || slice.history.some((m) => m.id === selectedId))) {
+		if (
+			selectedId &&
+			(slice.live.some((m) => m.id === selectedId) ||
+				slice.history.some((m) => m.id === selectedId) ||
+				slice.upcoming.some((m) => m.id === selectedId))
+		) {
 			return;
 		}
 		setSelectedId(firstMatchId(hub, groupTab));
 	}, [hub, groupTab, selectedId, slice]);
 
 	const selectedIsLive = Boolean(slice.live.some((match) => match.id === selectedId));
+	const selectedIsUpcoming = Boolean(slice.upcoming.some((match) => match.id === selectedId));
 
 	useEffect(() => {
 		if (!selectedId) {
@@ -277,6 +306,7 @@ export function LiveBoardPage() {
 
 	const selected =
 		slice.live.find((m) => m.id === selectedId) ??
+		slice.upcoming.find((m) => m.id === selectedId) ??
 		slice.history.find((m) => m.id === selectedId) ??
 		detail?.match ??
 		null;
@@ -284,12 +314,13 @@ export function LiveBoardPage() {
 	const tabMeta = GROUP_TABS.find((t) => t.id === groupTab);
 	const fullLabel = hub?.groups.find((g) => g.id === groupTab)?.label ?? tabMeta?.label ?? '';
 	const hoverIsLive = Boolean(hoverMatch && slice.live.some((m) => m.id === hoverMatch.id));
+	const hoverIsUpcoming = Boolean(hoverMatch && slice.upcoming.some((m) => m.id === hoverMatch.id));
 
-	const renderMatchButton = (match: LiveBoardMatch, finished: boolean) => (
+	const renderMatchButton = (match: LiveBoardMatch, kind: 'live' | 'ft' | 'up') => (
 		<li key={match.id}>
 			<button
 				type="button"
-				className={`${finished ? 'is-ft' : ''}${match.id === selectedId ? ' active' : ''}${hoverMatch?.id === match.id ? ' is-hovering' : ''}`}
+				className={`${kind === 'ft' ? 'is-ft' : ''}${kind === 'up' ? ' is-upcoming' : ''}${match.id === selectedId ? ' active' : ''}${hoverMatch?.id === match.id ? ' is-hovering' : ''}`}
 				onClick={() => setSelectedId(match.id)}
 				onMouseEnter={(e) => openHover(match, e.currentTarget)}
 				onMouseLeave={scheduleCloseHover}
@@ -297,7 +328,13 @@ export function LiveBoardPage() {
 				<strong>
 					{match.homeTeam} {scoreLabel(match)} {match.awayTeam}
 				</strong>
-				<em>{finished ? hoursAgo(match.startTimestamp, true) : match.clock}</em>
+				<em>
+					{kind === 'ft'
+						? hoursAgo(match.startTimestamp, true)
+						: kind === 'up'
+							? kickoffLabel(match.startTimestamp)
+							: match.clock}
+				</em>
 			</button>
 		</li>
 	);
@@ -309,7 +346,8 @@ export function LiveBoardPage() {
 					<span className="panel-label">Live</span>
 					<h1>Live matches</h1>
 					<p className="muted">
-						Pick a competition. Live games first, then full-time results from the last 24 hours — including Barça.
+						Pick a competition. Live games, upcoming kickoffs in the next 24 hours, then full-time from the last 24
+						hours — including Barça.
 					</p>
 				</div>
 				<div className="live-board-actions">
@@ -345,7 +383,7 @@ export function LiveBoardPage() {
 				<aside className="live-board-list">
 					{hub && slice.total === 0 && (
 						<p className="muted live-board-empty">
-							No live or last-24-hour {fullLabel || 'matches'} right now.
+							No live, next-24-hour, or last-24-hour {fullLabel || 'matches'} right now.
 						</p>
 					)}
 					{slice.live.length > 0 && (
@@ -361,14 +399,33 @@ export function LiveBoardPage() {
 										collapsed={!expandedLeagues.has(key)}
 										onToggle={() => toggleLeague(key)}
 									>
-										{bucket.matches.map((match) => renderMatchButton(match, false))}
+										{bucket.matches.map((match) => renderMatchButton(match, 'live'))}
+									</LeagueGroup>
+								);
+							})}
+						</section>
+					)}
+					{slice.upcoming.length > 0 && (
+						<section className={slice.live.length ? 'live-board-upcoming' : undefined}>
+							<h2>Next 24 hours</h2>
+							{upcomingByLeague.map((bucket) => {
+								const key = leagueKey('up', bucket.league);
+								return (
+									<LeagueGroup
+										key={key}
+										section="up"
+										bucket={bucket}
+										collapsed={!expandedLeagues.has(key)}
+										onToggle={() => toggleLeague(key)}
+									>
+										{bucket.matches.map((match) => renderMatchButton(match, 'up'))}
 									</LeagueGroup>
 								);
 							})}
 						</section>
 					)}
 					{slice.history.length > 0 && (
-						<section className={slice.live.length ? 'live-board-history' : undefined}>
+						<section className={slice.live.length || slice.upcoming.length ? 'live-board-history' : undefined}>
 							<h2>Last 24 hours</h2>
 							{historyByLeague.map((bucket) => {
 								const key = leagueKey('ft', bucket.league);
@@ -380,7 +437,7 @@ export function LiveBoardPage() {
 										collapsed={!expandedLeagues.has(key)}
 										onToggle={() => toggleLeague(key)}
 									>
-										{bucket.matches.map((match) => renderMatchButton(match, true))}
+										{bucket.matches.map((match) => renderMatchButton(match, 'ft'))}
 									</LeagueGroup>
 								);
 							})}
@@ -389,7 +446,7 @@ export function LiveBoardPage() {
 				</aside>
 
 				<section className="live-board-detail">
-					{!selected && <p className="muted">Select a live or last-24-hour match.</p>}
+					{!selected && <p className="muted">Select a live, upcoming, or last-24-hour match.</p>}
 					{selected && (
 						<>
 							<div className="live-board-score pop-card">
@@ -397,36 +454,52 @@ export function LiveBoardPage() {
 								<div className="live-board-score-row">
 									<strong>{selected.homeTeam}</strong>
 									<span>
-										{selected.homeScore ?? '–'} : {selected.awayScore ?? '–'}
+										{selectedIsUpcoming
+											? 'vs'
+											: `${selected.homeScore ?? '–'} : ${selected.awayScore ?? '–'}`}
 									</span>
 									<strong>{selected.awayTeam}</strong>
 								</div>
 								<p className="muted">
 									{selectedIsLive ? <span className="pulse" /> : null}{' '}
-									{selectedIsLive ? detail?.clock || selected.clock : 'Full time'}
-									{!selectedIsLive && selected.startTimestamp ? ` · ${hoursAgo(selected.startTimestamp, true)}` : ''}
+									{selectedIsLive
+										? detail?.clock || selected.clock
+										: selectedIsUpcoming
+											? `Kick-off ${kickoffLabel(selected.startTimestamp)}`
+											: 'Full time'}
+									{!selectedIsLive && !selectedIsUpcoming && selected.startTimestamp
+										? ` · ${hoursAgo(selected.startTimestamp, true)}`
+										: ''}
 									{selected.venue ? ` · ${selected.venue}` : ''}
 								</p>
 							</div>
 
-							<LiveGraphic
-								events={detail?.events ?? []}
-								clock={detail?.clock || selected.clock}
-								live={selectedIsLive}
-								homeScore={selected.homeScore}
-								awayScore={selected.awayScore}
-								homeLabel={selected.homeTeam}
-								awayLabel={selected.awayTeam}
-							/>
+							{selectedIsUpcoming ? (
+								<p className="muted live-board-upcoming-note">
+									Lineups and match events appear here once the match kicks off.
+								</p>
+							) : (
+								<>
+									<LiveGraphic
+										events={detail?.events ?? []}
+										clock={detail?.clock || selected.clock}
+										live={selectedIsLive}
+										homeScore={selected.homeScore}
+										awayScore={selected.awayScore}
+										homeLabel={selected.homeTeam}
+										awayLabel={selected.awayTeam}
+									/>
 
-							<details className="match-ratings-details" open>
-								<summary>Both-teams match ratings</summary>
-								<MatchRatingsPitch
-									fixtureId={fixtureId}
-									pollKey={detail?.fetchedAt ?? selected.id}
-									onPlayerClick={openRated}
-								/>
-							</details>
+									<details className="match-ratings-details" open>
+										<summary>Both-teams match ratings</summary>
+										<MatchRatingsPitch
+											fixtureId={fixtureId}
+											pollKey={detail?.fetchedAt ?? selected.id}
+											onPlayerClick={openRated}
+										/>
+									</details>
+								</>
+							)}
 						</>
 					)}
 				</section>
@@ -436,6 +509,7 @@ export function LiveBoardPage() {
 				<LiveMatchHoverCard
 					match={hoverMatch}
 					isLive={hoverIsLive}
+					isUpcoming={hoverIsUpcoming}
 					anchor={hoverAnchor}
 					onKeepOpen={clearHoverCloseTimer}
 					onRequestClose={scheduleCloseHover}

@@ -226,6 +226,11 @@ export type LiveBoardHub = {
 		label: string;
 		matches: LiveBoardMatch[];
 	}>;
+	upcoming: Array<{
+		id: LiveBoardGroupId;
+		label: string;
+		matches: LiveBoardMatch[];
+	}>;
 	fetchedAt: string;
 	source: string;
 	note?: string;
