@@ -11,6 +11,18 @@ function parseFixtureUtc(date: string, time?: string): Date | null {
 	return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/** Civil YYYY-MM-DD for a fixture in IST (fixes late-night UTC dates landing on the previous day). */
+export function fixtureIstYmd(date: string, time?: string): string {
+	const d = parseFixtureUtc(date, time);
+	if (!d) return date;
+	return d.toLocaleDateString('en-CA', { timeZone: IST });
+}
+
+/** Today's civil date in IST. */
+export function todayIstYmd(): string {
+	return new Date().toLocaleDateString('en-CA', { timeZone: IST });
+}
+
 const FETCH_ALL_TIMEOUT_MS = 120_000;
 
 export async function fetchAll(): Promise<FetchPayload> {
@@ -211,10 +223,12 @@ export function formatDateTime(iso: string) {
 }
 
 export function formatCalendarDate(date: string) {
-	const d = parseFixtureUtc(date);
-	if (!d) return date;
-	return d.toLocaleDateString('en-IN', {
-		timeZone: IST,
+	// `date` is a civil YYYY-MM-DD (calendar / IST day), not a UTC instant.
+	const [y, m, d] = date.split('-').map(Number);
+	if (!y || !m || !d) return date;
+	const utcNoon = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+	return utcNoon.toLocaleDateString('en-IN', {
+		timeZone: 'UTC',
 		weekday: 'long',
 		day: 'numeric',
 		month: 'long',
