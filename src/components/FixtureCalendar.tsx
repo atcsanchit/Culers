@@ -1,6 +1,13 @@
 import { useMemo, useState } from 'react';
 import type { Fixture } from '../types';
-import { resultLabel, formatTime, formatCalendarDate, formatMonthYear } from '../lib/api';
+import {
+	resultLabel,
+	formatTime,
+	formatCalendarDate,
+	formatMonthYear,
+	fixtureIstYmd,
+	todayIstYmd,
+} from '../lib/api';
 
 type Props = {
 	fixtures: Fixture[];
@@ -11,6 +18,7 @@ type Props = {
 
 export function FixtureCalendar({ fixtures, selectedDate, onSelectDate, onSelectFixture }: Props) {
 	const [monthOffset, setMonthOffset] = useState(0);
+	const todayYmd = todayIstYmd();
 
 	const { monthLabel, weeks, fixtureByDate } = useMemo(() => {
 		const now = new Date();
@@ -19,11 +27,13 @@ export function FixtureCalendar({ fixtures, selectedDate, onSelectDate, onSelect
 		const month = view.getMonth();
 		const firstDow = new Date(year, month, 1).getDay();
 		const daysInMonth = new Date(year, month + 1, 0).getDate();
+		const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`;
 
 		const byDate = new Map<string, Fixture[]>();
 		for (const f of fixtures) {
-			if (!f.date.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`)) continue;
-			(byDate.get(f.date) ?? byDate.set(f.date, []).get(f.date)!).push(f);
+			const istDate = fixtureIstYmd(f.date, f.time);
+			if (!istDate.startsWith(monthPrefix)) continue;
+			(byDate.get(istDate) ?? byDate.set(istDate, []).get(istDate)!).push(f);
 		}
 
 		const cells: Array<{ date: string | null; day: number | null; fixtures: Fixture[] }> = [];
@@ -67,12 +77,12 @@ export function FixtureCalendar({ fixtures, selectedDate, onSelectDate, onSelect
 					if (!cell.date) return <div key={`empty-${i}`} className="cal-cell empty" />;
 					const hasMatch = cell.fixtures.length > 0;
 					const isSelected = selectedDate === cell.date;
-					const today = new Date().toISOString().slice(0, 10) === cell.date;
+					const isToday = todayYmd === cell.date;
 					return (
 						<button
 							key={cell.date}
 							type="button"
-							className={`cal-cell ${hasMatch ? 'has-match' : ''} ${isSelected ? 'selected' : ''} ${today ? 'today' : ''}`}
+							className={`cal-cell ${hasMatch ? 'has-match' : ''} ${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''}`}
 							onClick={() => onSelectDate(isSelected ? null : cell.date)}
 						>
 							<span className="cal-day">{cell.day}</span>
@@ -103,7 +113,9 @@ export function FixtureCalendar({ fixtures, selectedDate, onSelectDate, onSelect
 								<span className={`comp-badge ${f.competition.includes('Champions') ? 'ucl' : 'laliga'}`}>
 									{f.competition.includes('Champions') ? 'UCL' : 'LAL'}
 								</span>
-								<span>{f.isHome ? 'vs' : '@'} {f.opponent}</span>
+								<span>
+									{f.isHome ? 'vs' : '@'} {f.opponent}
+								</span>
 								<span className="muted">{formatTime(f.time, f.date)}</span>
 								{f.homeScore != null && (
 									<span className="score-cell">
