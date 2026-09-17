@@ -5,6 +5,8 @@
 
 import { resolveTeamCrest } from './culers-team-badges.ts';
 import { enrichPlayersWithCutouts, photoFromEspnAthlete } from './culers-player-photos.ts';
+import { overlayFcbSquadPhotos } from './culers-photos.ts';
+import { fetchFcbSquad } from './culers-fcb.ts';
 
 type Json = Record<string, unknown>;
 
@@ -730,12 +732,37 @@ export async function fetchEspnMatchRatings(options: {
 	]);
 	home.crestUrl = homeCrest;
 	away.crestUrl = awayCrest;
-	const [homeStarters, awayStarters] = await Promise.all([
-		enrichPlayersWithCutouts(home.starters, home.teamName),
-		enrichPlayersWithCutouts(away.starters, away.teamName),
-	]);
-	home.starters = homeStarters;
-	away.starters = awayStarters;
+
+	// Barça side: official fcbarcelona.com photos (same source as Squad Hub).
+	// Opponent sides keep ESPN / TheSportsDB cutouts.
+	const barcaSquad =
+		home.isBarca || away.isBarca
+			? await fetchFcbSquad()
+					.then((s) => s.players)
+					.catch(() => [])
+			: [];
+
+	const enrichSide = async (
+		side: typeof home,
+	): Promise<{ starters: typeof home.starters; bench: typeof home.bench }> => {
+		if (side.isBarca && barcaSquad.length) {
+			const [starters, bench] = await Promise.all([
+				overlayFcbSquadPhotos(side.starters, barcaSquad),
+				overlayFcbSquadPhotos(side.bench, barcaSquad),
+			]);
+			return { starters, bench };
+		}
+		return {
+			starters: await enrichPlayersWithCutouts(side.starters, side.teamName),
+			bench: side.bench,
+		};
+	};
+
+	const [homeEnriched, awayEnriched] = await Promise.all([enrichSide(home), enrichSide(away)]);
+	home.starters = homeEnriched.starters;
+	home.bench = homeEnriched.bench;
+	away.starters = awayEnriched.starters;
+	away.bench = awayEnriched.bench;
 	const all = [...home.starters, ...away.starters];
 	const top = [...all].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))[0];
 	if (top) {

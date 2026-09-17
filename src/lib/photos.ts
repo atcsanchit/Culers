@@ -101,20 +101,62 @@ export function findSquadPlayer(player: Player, squad: readonly Player[]): Playe
 }
 
 /** Copy photo plus official ids from Squad Hub onto a lineup / ratings player. */
-export function attachSquadIdentity(player: Player, squad: readonly Player[]): Player {
+export function attachSquadIdentity(
+	player: Player,
+	squad: readonly Player[],
+	opts?: { preferSquadPhoto?: boolean },
+): Player {
 	const hit = findSquadPlayer(player, squad);
 	if (!hit) return player;
+	const squadPhoto = playerPhotoSrc(hit);
+	const existing = playerPhotoSrc(player);
+	const existingIsFcb = /fcbarcelona\.com/i.test(existing);
+	// Prefer official FCB / Squad Hub photos over ESPN/TheSportsDB placeholders for Barça players.
+	const preferSquad =
+		Boolean(opts?.preferSquadPhoto) ||
+		isBarcaTeamName(player.club ?? '') ||
+		Boolean(hit.fcbId && squadPhoto && !existingIsFcb);
 	return {
 		...hit,
 		...player,
 		fcbId: player.fcbId ?? hit.fcbId,
 		sofaId: player.sofaId ?? hit.sofaId,
-		photo: playerPhotoSrc(player) ? player.photo : hit.photo,
+		photo: preferSquad && squadPhoto ? hit.photo : existing || hit.photo,
 		nationality: player.nationality || hit.nationality,
 		birthDate: player.birthDate || hit.birthDate,
 		position: player.position || hit.position,
 		number: player.number || hit.number,
 		club: player.club || hit.club,
+	};
+}
+
+/** Prefer Squad Hub / FCB photos for a Barça ratings side; leave other clubs unchanged. */
+export function enrichRatedSideWithSquadPhotos<T extends { name: string; number?: string; photo?: string }>(
+	side: { teamName: string; starters: T[]; bench?: T[] },
+	squad: readonly Player[],
+): { starters: T[]; bench?: T[] } {
+	if (!squad.length || !isBarcaTeamName(side.teamName)) {
+		return { starters: side.starters, bench: side.bench };
+	}
+	const mapOne = (p: T): T => {
+		const hit = findSquadPlayer(
+			{
+				id: '',
+				name: p.name,
+				position: '',
+				number: p.number ?? '',
+				nationality: '',
+				photo: p.photo ?? '',
+				birthDate: '',
+			},
+			squad,
+		);
+		const photo = hit ? playerPhotoSrc(hit) : '';
+		return photo ? { ...p, photo } : p;
+	};
+	return {
+		starters: side.starters.map(mapOne),
+		bench: side.bench?.map(mapOne),
 	};
 }
 
