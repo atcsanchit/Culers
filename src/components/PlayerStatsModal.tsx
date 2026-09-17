@@ -303,7 +303,13 @@ export function PlayerStatsModal({ player: openedPlayer, origin, statsContext, o
 
 	const showPhoto = Boolean(photo && photoOk);
 	const compactPhoto = Boolean(sofaId && !player.fcbId);
-	const headshotPhoto = Boolean(photo && (/\.(jpe?g)(\?|$)/i.test(photo) || /\/thumb\//i.test(photo)));
+	// Studio thumbs + official FCB photo-resources → circular gold headshot plate
+	const headshotPhoto = Boolean(
+		photo &&
+			(/\.(jpe?g)(\?|$)/i.test(photo) ||
+				/\/thumb\//i.test(photo) ||
+				/fcbarcelona\.com\/photo-resources\//i.test(photo)),
+	);
 	const ox = origin ? (origin.x / window.innerWidth) * 100 : 22;
 	const oy = origin ? (origin.y / window.innerHeight) * 100 : 78;
 

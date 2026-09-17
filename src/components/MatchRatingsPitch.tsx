@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { MatchRatingsBoard, MatchRatingsSide, RatedPitchPlayer } from '../types';
 import type { PlayerOpenOrigin } from '../store/BarcaState';
+import { useBarca } from '../store/BarcaState';
 import { fetchMatchRatings } from '../lib/api';
 import { assignToFormation, formationKeyFromString } from '../lib/lineup';
-import { teamCrestSrc, teamInitials, espnTeamCrest } from '../lib/photos';
+import { teamCrestSrc, teamInitials, espnTeamCrest, enrichRatedSideWithSquadPhotos, isBarcaTeamName } from '../lib/photos';
 
 type Props = {
 	fixtureId: string;
@@ -59,6 +60,16 @@ function placeBoard(board: MatchRatingsBoard): MatchRatingsBoard {
 		...board,
 		home: placeSide(board.home),
 		away: placeSide(board.away),
+	};
+}
+
+function applyBarcaSquadPhotos(board: MatchRatingsBoard, squad: import('../types').Player[]): MatchRatingsBoard {
+	const home = enrichRatedSideWithSquadPhotos(board.home, squad);
+	const away = enrichRatedSideWithSquadPhotos(board.away, squad);
+	return {
+		...board,
+		home: { ...board.home, starters: home.starters, bench: home.bench ?? board.home.bench },
+		away: { ...board.away, starters: away.starters, bench: away.bench ?? board.away.bench },
 	};
 }
 
@@ -150,6 +161,8 @@ function PlayerNode({
 }
 
 export function MatchRatingsPitch({ fixtureId, pollKey, onPlayerClick }: Props) {
+	const { data } = useBarca();
+	const squad = data?.squad.players ?? [];
 	const [board, setBoard] = useState<MatchRatingsBoard | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -177,7 +190,12 @@ export function MatchRatingsPitch({ fixtureId, pollKey, onPlayerClick }: Props) 
 		};
 	}, [fixtureId, pollKey]);
 
-	const display = useMemo(() => (board ? placeBoard(board) : null), [board]);
+	const display = useMemo(() => {
+		if (!board) return null;
+		const placed = placeBoard(board);
+		const hasBarca = isBarcaTeamName(placed.home.teamName) || isBarcaTeamName(placed.away.teamName);
+		return hasBarca && squad.length ? applyBarcaSquadPhotos(placed, squad) : placed;
+	}, [board, squad]);
 
 	if (loading && !display) {
 		return <p className="muted mrp-status">Loading match ratings…</p>;

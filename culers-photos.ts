@@ -128,4 +128,48 @@ export async function enrichPlayerPhotos<T extends PhotoPlayer>(players: T[]): P
 	return enriched;
 }
 
+function lastNameToken(name: string) {
+	const parts = normalizeName(name).split(' ').filter(Boolean);
+	return parts[parts.length - 1] ?? '';
+}
+
+function findSquadPhotoMatch<T extends { name: string; number?: string; photo?: string; fcbId?: number }>(
+	player: { name: string; number?: string },
+	squad: T[],
+): T | undefined {
+	const key = normalizeName(player.name);
+	const last = lastNameToken(player.name);
+	return (
+		squad.find((s) => normalizeName(s.name) === key) ??
+		(player.number
+			? squad.find((s) => s.number === player.number && normalizeName(s.name).includes(last))
+			: undefined) ??
+		(last.length > 3 ? squad.find((s) => normalizeName(s.name).endsWith(last)) : undefined)
+	);
+}
+
+/**
+ * Overlay official fcbarcelona.com photos onto a Barça XI / bench.
+ * Prefer FCB photos over ESPN / TheSportsDB placeholders.
+ */
+export async function overlayFcbSquadPhotos<T extends { name: string; number?: string; photo?: string }>(
+	players: T[],
+	squad: Array<{ name: string; number?: string; photo?: string; fcbId?: number }>,
+): Promise<T[]> {
+	if (!players.length || !squad.length) return players;
+	const withPhotos = await enrichPlayerPhotos(
+		squad.map((p) => ({
+			name: p.name,
+			number: p.number,
+			photo: p.photo?.trim() || '',
+			fcbId: p.fcbId,
+		})),
+	);
+	return players.map((p) => {
+		const hit = findSquadPhotoMatch(p, withPhotos);
+		const photo = hit?.photo?.trim() || '';
+		return photo ? { ...p, photo } : p;
+	});
+}
+
 export { normalizeName as normalizePlayerName };
