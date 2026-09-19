@@ -694,8 +694,11 @@ a:hover {
 }
 
 .live-board-hover-card .timeline-panel {
-	max-height: 220px;
-	overflow: auto;
+	max-height: 260px;
+}
+
+.live-board-hover-card .timeline-list {
+	overflow-y: auto;
 }
 
 .live-board-hover-lineup {
@@ -2513,17 +2516,32 @@ a:hover {
 
 .timeline-panel {
 	padding: 1rem;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	max-height: min(52vh, 420px);
 }
 
 .timeline-panel h3 {
 	font-family: var(--display);
 	margin: 0 0 0.75rem;
+	flex-shrink: 0;
+}
+
+.timeline-panel .live-event-chips {
+	flex-shrink: 0;
 }
 
 .timeline-list {
 	list-style: none;
 	margin: 0;
 	padding: 0;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	min-height: 0;
+	flex: 1 1 auto;
+	-webkit-overflow-scrolling: touch;
+	scrollbar-gutter: stable;
 }
 
 .timeline-item {

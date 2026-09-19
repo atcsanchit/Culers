@@ -62,11 +62,12 @@ export function LiveGraphic({
 	homeLabel = 'Barcelona',
 	awayLabel = 'Opponent',
 }: Props) {
-	const recent = useMemo(() => [...events].reverse().slice(0, 12), [events]);
-	const goals = recent.filter((e) => eventKind(e.type, e.detail) === 'goal');
-	const yellows = recent.filter((e) => eventKind(e.type, e.detail) === 'yellow');
-	const reds = recent.filter((e) => eventKind(e.type, e.detail) === 'red');
-	const subs = recent.filter((e) => eventKind(e.type, e.detail) === 'sub');
+	// Newest first — full feed (panel scrolls; do not truncate).
+	const timeline = useMemo(() => [...events].reverse(), [events]);
+	const goals = timeline.filter((e) => eventKind(e.type, e.detail) === 'goal');
+	const yellows = timeline.filter((e) => eventKind(e.type, e.detail) === 'yellow');
+	const reds = timeline.filter((e) => eventKind(e.type, e.detail) === 'red');
+	const subs = timeline.filter((e) => eventKind(e.type, e.detail) === 'sub');
 
 	const [tick, setTick] = useState(false);
 	const prevScore = useRef(`${homeScore}-${awayScore}`);
@@ -105,7 +106,7 @@ export function LiveGraphic({
 
 			<div className="timeline-panel pop-card is-quiet">
 				<h3>Match events</h3>
-				{recent.length === 0 ? (
+				{timeline.length === 0 ? (
 					<p className="muted">
 						{live ? 'Waiting for events… stay on this page while the match runs.' : 'No match events recorded.'}
 					</p>
@@ -120,7 +121,7 @@ export function LiveGraphic({
 							</div>
 						)}
 						<ul className="timeline-list">
-							{recent.map((ev, i) => {
+							{timeline.map((ev, i) => {
 								const kind = eventKind(ev.type, ev.detail);
 								return (
 									<li
